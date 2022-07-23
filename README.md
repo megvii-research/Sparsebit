@@ -5,7 +5,7 @@ Sparsebit是一个具备prune, quantization两个功能的工具包, 其目的�
 Quantization是一种将full-precision params转化为low-bit percision params的方法, 可以在不改变模型结构的情况下实现模型的压缩与加速. 工具包支持Post-Training-Quantization和Quant-Aware-Training两种常用量化范式, 具备如下特点:
 - 得益于torch.fx的支持, 以QuantModel为操作对象, 每个operation成为一个QuantModule
 - 方便用户扩展. 可自行通过注册扩展 QuantModule, Quantizer和Observer等重要对象, 以满足研究所需
-- 支持导出QDQ ONNX[link](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers), 可以被tensorrt/onnxrutime等后端加载部署.
+- 支持导出[QDQ-ONNX](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers), 可以被tensorrt/onnxrutime等后端加载部署.
 
 ## Pruning
 还在开发, 敬请期待.
