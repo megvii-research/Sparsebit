@@ -1,0 +1,8 @@
+torch>=1.9.0
+torchvision>=0.10.0
+numpy
+yacs
+onnx>=1.8
+Ninja
+#for TensorRT testing
+pycuda

@@ -1,0 +1,83 @@
+import torch
+from typing import Callable
+from ..base import ReplacePatternBase, MatcherNode
+from sparsebit.quantization.modules import (
+    QAdd,
+    QReLU,
+    QReLU6,
+    QConv2d,
+    QLinear,
+    QSigmoid,
+    QBatchNorm2d,
+)
+
+
+def check(node, module):
+    return not module.fake_fused
+
+
+class ReplacePattern_DisableQuant(ReplacePatternBase):
+    def __init__(self, matcher_ops):
+        self.matcher_ops = matcher_ops
+        super(ReplacePattern_DisableQuant, self).__init__()
+
+    def make_ops(self):
+        return self.matcher_ops
+
+    def get_new_graph(self, nodes_dict, modules_dict, model=None, transform_idx=None):
+        noninput_node_names = set(
+            [
+                matcher_node.name
+                for matcher_node in self.matcher_ops
+                if not all(i is None for i in matcher_node.inputs)
+            ]
+        )
+        anchor_node_name = set(i.name for i in self.matcher_ops) - set(
+            inp_name for i in self.matcher_ops for inp_name in i.inputs
+        )
+        assert len(anchor_node_name) == 1
+        anchor_node_name = list(anchor_node_name)[0]
+
+        for noninput_node in noninput_node_names:
+            op = modules_dict[noninput_node]
+            op.set_fake_fused()
+        return nodes_dict[anchor_node_name]
+
+
+def make_chain_connection(op_types):
+    # 只支持链式连接关系，即：一串op按顺序相连，除第一个op外其他op只能有唯一的输入。否则，要自己写连接关系nodes
+    nodes = []
+    for idx, op_type in enumerate(op_types):
+        if issubclass(op_type, torch.nn.Module):
+            input_nums = op_type.forward.__code__.co_argcount - 1  # except "self" args
+        elif isinstance(op_type, Callable):
+            input_nums = op_type.__code__.co_argcount
+        else:
+            raise NotImplementedError("can't recognize class {}".format(op_type))
+        if idx != 0:
+            assert input_nums == 1
+        nodes.append(
+            MatcherNode(
+                name="op_{}".format(idx),
+                inputs=[None] * input_nums if idx == 0 else ["op_{}".format(idx - 1)],
+                op_type=[op_type],
+                checker=check if idx != 0 else (lambda op, module: True),
+            )
+        )
+    return nodes
+
+
+ReplacePatterns = [
+    ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QBatchNorm2d])),
+    ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QReLU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QReLU6])),
+    ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QSigmoid])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QBatchNorm2d])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QReLU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QReLU6])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QSigmoid])),
+    ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QReLU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QReLU6])),
+    ReplacePattern_DisableQuant(make_chain_connection([QAdd, QReLU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QAdd, QReLU6])),
+]
