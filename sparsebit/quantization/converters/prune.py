@@ -3,10 +3,20 @@ import torch.fx as fx
 
 
 class PruneGraph(object):
+    """网络剪枝，去掉和输出无关的算子。"""
+
     def __init__(self):
         pass
 
     def apply(self, m: torch.fx.GraphModule):
+        """运行剪枝。
+
+        Args:
+            m (torch.fx.GraphModule): 需要剪枝的模型。
+
+        Returns:
+            torch.fx.GraphModule: 剪枝后的新模型。
+        """
         node_dict = {i.name: i for i in m.graph.nodes}
         q = []
         q_names = set()

@@ -51,7 +51,9 @@ class ReplaceStrategyInner(object):
 
 class ReplaceStrategy(object):
     """替换子图的替换策略。
+
     Args:
+
         APPLY_NOINTERSECT_REPEAT (ReplaceStrategyInner):
             找到多个不相交的匹配并替换，循环到不再出现为止。
         APPLY_NOINTERSECT (ReplaceStrategyInner):
@@ -72,23 +74,37 @@ class MatcherNode(object):
     """Matcher中的node匹配基类。
 
     Args:
-        - name (str): 在一个Matcher中不可重复。用于在Matcher子图中标识每个node。
-        - inputs (List[Union[str, None]]):
+        name (str):
+            在一个Matcher中不可重复。用于在Matcher子图中标识每个node。
+        inputs (List[Union[str, None]]):
             该点的输入节点名,在Matcher子图中表示连接关系。
+
             如果没有输入，留空: ``[]`` 。
+
             如果有输入的连接关系但不希望放在匹配里或者写成一个新MatcherNode,使用 ``None`` 。
-        - op_type (List[Union[Callable, object]]):
+        op_type (List[Union[Callable, object]]):
             一个允许类型的list,表示这个op可以是哪些类型。
-        - checker (Callable):
+        checker (Callable):
             单个op (与对应module)的自定义匹配条件,输入(node_op, node_module),输出bool。
-        - input_match_type (int):
+
+            .. Note::
+
+                一个示例如下::
+
+                >>> lambda cat, module: module.axis == 1
+
+        input_match_type (int):
             输入一个InputMatchType,在Matcher子图中表示 ``inputs`` 的匹配要求。
-            参见 ``InputMatchType`` 。
+            参见 (InputMatchType) 。
 
     在以下条件满足时,可以匹配graph中的一个node:
+
     - op_type对齐。
+
     - checker中的条件满足。
+
     如果需要匹配子图,那么还需要满足 ``inputs`` 和 ``input_match_type`` 规定的子图连接关系限制。
+
     """
 
     def __init__(
@@ -119,14 +135,14 @@ class SubgraphMatcher(object):
     """网络中子图匹配类,执行匹配子图相关部分的工作。
 
     Args:
-        - ops (List[MatcherNode]):
+        ops (List[MatcherNode]):
             一个构建好连接关系的MatcherNode list。
             需要满足拓扑序,即一个MatcherNode引用到的其他输入点都在它前面。
-        - joint_checkers (List[Tuple[Tuple[str], Callable]]):
+        joint_checkers (List[Tuple[Tuple[str], Callable]]):
             多个MatcherNode的联合自定义匹配条件 list。
             每个联合匹配条件是一个形如 `` ((names), joint_checker) `` 的形式。
             ``joint_checker`` 输入(name1, name2, ..., modules:dict),输出bool。
-        - matching_strategy (ReplaceStrategy):
+        matching_strategy (ReplaceStrategy):
             调用Matcher的子图替换使用的策略,根据这个策略决定是否需要同时返回多个匹配。
     """
 
@@ -175,11 +191,22 @@ class SubgraphMatcher(object):
         self.joint_checkers = {}
         self.joint_checkers[self.anchor_name] = joint_checkers
 
-    def apply(self, m: torch.fx.GraphModule):
+    def apply(
+        self, m: torch.fx.GraphModule
+    ) -> List[Tuple[Dict[str, torch.fx.Node], Dict[str, torch.nn.Module]]]:
         """执行子图匹配。
 
         Args:
             m (torch.fx.GraphModule): 需要匹配的网络。
+
+        Returns:
+            List[Tuple[Dict[str, torch.fx.Node], Dict[str, torch.nn.Module]]]:
+                返回一个匹配list,每个匹配是 ``(nodes_dict, modules_dict)`` 的形式。
+
+                其中:
+
+                - nodes_dict为一个MatcherNode名称到网络中node的映射dict。
+                - modules_dict为一个MatcherNode名称到网络中module的映射dict。
         """
         named_modules = dict(m.named_modules())
         graph = m.graph
@@ -398,25 +425,31 @@ class ReplacePatternBase(object):
         raise NotImplementedError("graph modification not implemented")
 
     def make_ops(self) -> List[MatcherNode]:
-        """需要重载的方法,返回一个要匹配的子图。"""
+        """需要重载的方法,指定一个要匹配的子图。"""
         raise NotImplementedError("replace_pattern ops not implemented")
 
     def make_joint_checkers(self) -> List[Tuple[Tuple[str], Callable]]:
-        """需要重载的方法,传入需要多个op和对应modules_list一起判断的条件,
+        """需要重载的方法,指定需要多个op和对应modules_list一起判断的条件,
         module和前面op名称一一对应。默认不使用任何联合checker。
 
-        Examples::
+        .. Note::
+            一个示例如下::
+
             >>> [
             >>>     (
             >>>         ("cat1", "cat2"),
             >>>         lambda cat1, cat2, modules: modules["cat1"].axis == modules["cat2"].axis
             >>>     )
             >>> ]
+
         """
         return []
 
-    def make_matching_strategy(self):
-        """可以重载的方法，传入一个匹配策略。"""
+    def make_matching_strategy(self) -> ReplaceStrategyInner:
+        """可以重载的方法，指定匹配策略。
+
+        默认使用 ``ReplaceStrategy.APPLY_NOINTERSECT_REPEAT`` 。
+        """
         return ReplaceStrategy.APPLY_NOINTERSECT_REPEAT
 
     def apply(self, m: torch.fx.GraphModule) -> bool:
@@ -457,7 +490,7 @@ class ReplacePatternBase(object):
 
 
 class Hungary(object):
-    """二分图匹配,可用于匹配 ``InputMatchType.SUBSET`` 类型的输入格式。"""
+    """二分图匹配,用于匹配 ``InputMatchType.SUBSET`` 类型的输入格式。"""
 
     def __init__(self, n, m):
         self.n = n

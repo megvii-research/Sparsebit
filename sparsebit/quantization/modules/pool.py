@@ -6,6 +6,14 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 @register_qmodule(sources=[nn.MaxPool2d])
 class QMaxPool2d(QuantOpr):
+    """量化MaxPool层。认为maxpool不改变运算前后值域范围,所以不做量化。
+
+    是QuantOpr的子类。
+
+    Args:
+        fwd_kwargs (Dict[str, any]): 运行 ``torch.nn.functional.max_pool2d`` 需要的参数。
+    """
+
     def __init__(self, org_module, config=None):
         super().__init__()
         self.fwd_kwargs = dict(
@@ -18,12 +26,23 @@ class QMaxPool2d(QuantOpr):
         self._repr_info = "Q" + org_module.__repr__()
 
     def forward(self, x_in):
-        # note: maxpool is non-quant default
+        """MaxPool层的前向传播,不做量化。"""
         return F.max_pool2d(x_in, **self.fwd_kwargs)
 
 
 @register_qmodule(sources=[nn.AdaptiveAvgPool2d, F.adaptive_avg_pool2d])
 class QAdaptiveAvgPool2d(QuantOpr):
+    """量化AvgPool层,拥有 ``input_quantizer`` 。
+
+    是QuantOpr的子类。
+
+    Args:
+        input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
+            输入量化器。
+        output_size (any):
+            同 ``torch.nn.AdaptiveAvgPool2d`` 。
+    """
+
     def __init__(self, org_module, config=None):
         super().__init__()
         if isinstance(org_module, nn.Module):
@@ -33,6 +52,7 @@ class QAdaptiveAvgPool2d(QuantOpr):
         self._repr_info = "Q" + org_module.__repr__()
 
     def forward(self, x_in, *args):
+        """AvgPool层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.adaptive_avg_pool2d(x_in, self.output_size)
         return out

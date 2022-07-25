@@ -6,9 +6,7 @@ import torch.nn.functional as F
 
 
 class SharedData(object):
-    """
-    用于管理中间计算结果和保存对分结果
-    """
+    """用于管理中间计算结果和保存对分结果。"""
 
     def __init__(self):
         self.outputs = {}
@@ -39,7 +37,7 @@ class SharedData(object):
         self.outputs[name] = value
 
     def get_value(self, name: str):
-        if not name in self.outputs.keys():
+        if name not in self.outputs:
             return None
         return self.outputs[name]
 
@@ -58,14 +56,18 @@ class QuantizationErrorProfiler(object):
     """用提供的样例输入和对分方法对比量化前后的分数。
 
     提供异步/同步两种对分策略。其中
-    - ``异步``表示衡量每一层在"网络中只有该层被量化"时的误差。
-    - ``同步``表示衡量每一层在"网络中所有层都被量化"时的误差。
-    调用apply()，输出一个{name: error_value},表示量化前后每一层对应误差
 
-    Attributes:
-        data: 一个样例输入
-        checker: 一个metric,要求接受同一层网络在量化前后的两个tensor输出,产生一个自定义误差值
-        is_async: 是否异步运行
+    - ``异步`` 表示衡量每一层在"网络中只有该层被量化"时的误差。
+
+    - ``同步`` 表示衡量每一层在"网络中所有层都被量化"时的误差。
+
+    调用apply()，输出一个 ``{name: error_value}`` ,表示量化前后每一层对应误差
+
+    Args:
+        data (torch.Tensor): 一个样例输入。
+        checker (Callable):
+            一个metric,要求接受同一层layer在量化前后的两个tensor输出,产生一个自定义误差值。
+        is_async (bool): 是否异步运行
     """
 
     def __init__(self, model: fx.GraphModule):
@@ -86,9 +88,10 @@ class QuantizationErrorProfiler(object):
 
         使用异步对分策略。即： 计算"网络中只有该层被量化"时的误差。
 
-        Attributes:
-            data: 一个样例输入
-            checker: 一个metric,要求接受同一层网络在量化前后的两个tensor输出,产生一个自定义误差值
+        Args:
+            data (torch.Tensor): 一个样例输入。
+            checker (Callable):
+                一个metric,要求接受同一层layer在量化前后的两个tensor输出,产生一个自定义误差值。
         """
         named_modules = dict(self.model.named_modules())
         handles = []
@@ -119,9 +122,10 @@ class QuantizationErrorProfiler(object):
 
         使用同步对分策略。即： 计算"网络中所有层都被量化"时的误差。
 
-        Attributes:
-            data: 一个样例输入
-            checker: 一个metric,要求接受同一层网络在量化前后的两个tensor输出,产生一个自定义误差值
+        Args:
+            data (torch.Tensor): 一个样例输入。
+            checker (Callable):
+                一个metric,要求接受同一层layer在量化前后的两个tensor输出,产生一个自定义误差值。
         """
         fx_graph = self.model.graph
         named_modules = dict(self.model.named_modules())

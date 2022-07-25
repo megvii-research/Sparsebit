@@ -13,6 +13,15 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 @register_qmodule(sources=[torch.flatten, nn.Flatten])
 class Flatten(nn.Module):
+    """量化Flatten层。认为flatten不改变运算前后值域范围,所以不做量化。
+
+    是QuantOpr的子类。
+
+    Args:
+        start_dim (any): 同 ``torch.nn.Flatten`` 。
+        end_dim (any): 同 ``torch.nn.Flatten`` 。
+    """
+
     def __init__(self, org_module=None, config=None):
         super(Flatten, self).__init__()
         if isinstance(org_module, torch.fx.Node):
@@ -25,5 +34,6 @@ class Flatten(nn.Module):
             self.end_dim = org_module.end_dim
 
     def forward(self, x_in, *args):
+        """Flatten层的前向传播,不做量化。"""
         out = torch.flatten(x_in, self.start_dim, self.end_dim)
         return out

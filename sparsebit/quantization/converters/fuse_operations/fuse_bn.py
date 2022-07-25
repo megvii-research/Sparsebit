@@ -6,11 +6,18 @@ from sparsebit.quantization.modules import QConv2d, QLinear, QBatchNorm2d
 
 
 class ReplacePattern(ReplacePatternBase):
+    """把conv-bn或linear-bn吸成一整个新conv / linear。
+
+    .. Note::
+
+        在config.SCHEDULE配置变换的开关,默认为关闭。
+    """
+
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
     def make_ops(self):
-
+        """匹配 conv-bn / linear-bn 结构。"""
         return [
             MatcherNode(
                 "cnn_layer",
@@ -25,6 +32,12 @@ class ReplacePattern(ReplacePatternBase):
         ]
 
     def get_new_graph(self, nodes_dict, modules_dict, model, transform_idx):
+        """替换子图部分调用了 ``torch.nn.utils.fusion`` api
+
+        - fuse_conv_bn_eval
+
+        - fuse_linear_bn_eval
+        """
         cnn_module = modules_dict["cnn_layer"]
         bn_module = modules_dict["bn"].module
         module_training = cnn_module.training

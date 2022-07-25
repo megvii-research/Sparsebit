@@ -4,21 +4,25 @@ from ..base import ReplacePatternBase, MatcherNode
 from sparsebit.quantization.modules.shape import Size
 
 
-def check_getattr(node, module):
-    return node.args[1] == "shape"
-
-
 class ReplacePattern(ReplacePatternBase):
+    """把网络出现的 getattr-getitem 得到shape的结构直接改成Size算子"""
+
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
     def make_ops(self):
+        """匹配
+
+        - getattr("shape")
+
+        - getitem(dim)
+        """
         return [
             MatcherNode(
                 "getattr",
                 inputs=[None],
                 op_type=[getattr],
-                checker=check_getattr,
+                checker=lambda node, module: node.args[1] == "shape",
             ),
             MatcherNode(
                 "getitem",
@@ -28,6 +32,7 @@ class ReplacePattern(ReplacePatternBase):
         ]
 
     def get_new_graph(self, nodes_dict, modules_dict, model, transform_idx):
+        """替换成Size算子"""
         getitem_node = nodes_dict["getitem"]
         getattr_node = nodes_dict["getattr"]
         op_name = "size_{}".format(transform_idx) if transform_idx else "size"

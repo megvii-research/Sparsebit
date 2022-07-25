@@ -13,18 +13,46 @@ from sparsebit.quantization.modules import (
 
 
 def check(node, module):
+    """检查是否已经关闭量化,防止死循环。用于ops的checker。
+
+    Args:
+        node (torch.fx.Node): 要匹配的node。
+        module (torch.nn.Module): node对应的Module。
+    """
     return not module.fake_fused
 
 
 class ReplacePattern_DisableQuant(ReplacePatternBase):
+    """在遇到特定结构时，关闭除首层以外其他层的量化,即调用 QuantOpr.set_fake_fused() 。
+
+    如:
+
+    - conv + bn
+    - conv + relu
+    - linear + bn
+    - linear + relu
+
+    等等。
+
+    Args:
+        matcher_ops (List[MatcherNode]):
+            指定一个结构。除首层(入度为0的层)以外的其他层都会关闭量化。
+
+    .. Note::
+
+        在config.SCHEDULE配置变换的开关,默认为开启。
+    """
+
     def __init__(self, matcher_ops):
         self.matcher_ops = matcher_ops
         super(ReplacePattern_DisableQuant, self).__init__()
 
     def make_ops(self):
+        """self.matcher_ops"""
         return self.matcher_ops
 
     def get_new_graph(self, nodes_dict, modules_dict, model=None, transform_idx=None):
+        """自动识别和执行set_fake_fused()。"""
         noninput_node_names = set(
             [
                 matcher_node.name
@@ -45,7 +73,12 @@ class ReplacePattern_DisableQuant(ReplacePatternBase):
 
 
 def make_chain_connection(op_types):
-    # 只支持链式连接关系，即：一串op按顺序相连，除第一个op外其他op只能有唯一的输入。否则，要自己写连接关系nodes
+    """自动生成ops。
+
+    只支持链式连接关系,即:一串op按顺序相连,除第一个op外其他op只能有唯一的输入。
+
+    如果不是链式连接,则不能调用本函数。需要构造一个正确的ops。
+    """
     nodes = []
     for idx, op_type in enumerate(op_types):
         if issubclass(op_type, torch.nn.Module):
