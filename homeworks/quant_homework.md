@@ -17,9 +17,7 @@
 
 ### Q3: 请增加moving-average observer，并重新运行题目一的Resnet18，观察实验结果。
 *Hint:*
-$$
-value = value * (1 - \alpha) + new *\alpha
-$$
+$$value = value * (1 - \alpha) + new *\alpha$$
 
 | Model | Calibration Set|Quant Config |Alpha |Quant Acc1 |
 | :-------- | :----------------- | :------  |:------------- |:--|
