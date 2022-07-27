@@ -12,7 +12,7 @@ Quantization是一种将full-precision params转化为low-bit precision params�
 
 ## Resources
 ### Documentations
-我们在文档中提供详尽的使用指导和开发指导, 有需要的用户可以自行参考. [docs]()
+我们在文档中提供详尽的使用指导和开发指导, 有需要的用户可以自行参考. [docs](https://sparsebit.readthedocs.io/en/latest/)
 
 ### CV-Master
 - 我们在Bilibili维护了一门关于量化的公开课, 介绍量化的基本知识和小组最新的工作. 有兴趣的用户可以前往. [video](https://www.bilibili.com/video/BV13a411p7PC?p=1&vd_source=f746210dbb726509198fbec99dfe7367)
