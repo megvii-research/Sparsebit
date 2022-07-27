@@ -21,3 +21,4 @@ cache
 *.ninja
 *.ninja_log
 *.ninja_deps
+examples/DEiT_ptq
