@@ -1,5 +1,5 @@
 ## Introduction
-Sparsebit is a toolkit with pruning and quantization capabilities. It is designed to help researchers compress and accelerate the network by modifying only a few codes in existing pytorch project.
+Sparsebit is a toolkit with pruning and quantization capabilities. It is designed to help researchers compress and accelerate neural network models by modifying only a few codes in existing pytorch project.
 
 ## Quantization 
 Quantization turns full-precision params into low-bit precision params, which can compress and accelerate the model without changing its structure. This toolkit supports two common quantization paradigms, Post-Training-Quantization and Quantization-Aware-Training, with following features:
@@ -13,18 +13,18 @@ About to released.
 
 ## Resources
 ### Documentations
-Detailed usage and development guidance is located in the document. Any users in need can refer to it. [docs]()
+Detailed usage and development guidance is located in the document. Refer to: [docs](https://sparsebit.readthedocs.io/en/latest/)
 
 ### CV-Master
 - We maintain a public course on quantification at Bilibili, introducing the basics of quantification and our latest work. Interested users can join the course.[video](https://www.bilibili.com/video/BV13a411p7PC?p=1&vd_source=f746210dbb726509198fbec99dfe7367)
 - Aiming at better enabling users to understand and apply the knowledge related to model compression, we designed related homework based on Sparsebit. Interested users can complete it by themselves.[quantization\_homework](https://github.com/megvii-research/Sparsebit/blob/homeworks/homeworks/quant_homework.md)
 
 ## Join Us
-- Our team is always recruiting interns. The required research interests include but are not limited to: model quantification, sparsity and pruning, model distillation, self-supervised learning, model deployment, etc.
-- Candidates interested in model compression and acceleration can submit resumes to: sunpeiqin@megvii.com
+- Welcome to be a member (or an intern) of our team if you are interested in Quantization, Pruning, Distillation, Self-Supervised Learning and Model Deployment.
+- Submit your resume to: sunpeiqin@megvii.com
 
 ## Acknowledgement
-The implementation of Sparsebit was inspired by several open source projects. We are grateful for these excellent projects and list them as follows:
+Sparsebit was inspired by several open source projects. We are grateful for these excellent projects and list them as follows:
 - [torch](https://github.com/pytorch/pytorch/tree/master/torch/quantization)
 - [pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization)
 - [PPQ](https://github.com/openppl-public/ppq)
