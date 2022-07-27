@@ -133,7 +133,7 @@ It provide 4 methods for the fusion.
     .. code-block:: python
         :linenos:
 
-        with model.graph.inserting_after(node_to_replace)\:
+        with model.graph.inserting_after(node_to_replace):
             new_node = model.graph.create_node(
                 op=...,
                 target=...,
