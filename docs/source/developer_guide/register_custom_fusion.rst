@@ -58,10 +58,10 @@ That is the core fusion class.
 
 It provide 4 methods for the fusion.
 
-**get_new_graph**
+**make_ops**
 
     Override this method and give a return value of MatcherNode list.
-    The MatcherNode list is a list of MatcherNode with attributes of each node correctly set, including:
+    The MatcherNode list is a list of *MatcherNode* with attributes of each node correctly set, including:
 
     - *name* : String name given to each node. Names of different nodes should **NOT** be the same.
     - *inputs* : A list of string names, corresponding to each input of the node respectively. The names in inputs should be the names in previous MatcherNodes.
@@ -74,7 +74,7 @@ It provide 4 methods for the fusion.
 
         .. Note::
             the checker accepts two args: the target *torch.fx.Node* and its corresponding instance.
-            An example is ``lambda concat_node, module: module.axis == 1`` .
+            An example is ``lambda concat_node, module: module.dim == 1`` .
     - *input_match_type* : An enum value in :doc:`InputMatchType <../user_guide/apis/quantization/converters/base>`.
 
         .. Warning::
@@ -102,7 +102,7 @@ It provide 4 methods for the fusion.
     Here ``names`` include all names of used MatcherNodes in ``joint_checker``.
     ``joint_checker`` is a function that accepts all nodes mentioned in names in corresponding order, and a dict of modules.
 
-    A simple example is ``[ ( ("cat1", "cat2"), lambda cat1, cat2, modules: modules["cat1"].axis == modules["cat2"].axis ) ]`` .
+    A simple example is ``[ ( ("cat1", "cat2"), lambda cat1, cat2, modules: modules["cat1"].dim == modules["cat2"].dim ) ]`` .
 
 **get_new_graph**
 
@@ -133,7 +133,7 @@ It provide 4 methods for the fusion.
     .. code-block:: python
         :linenos:
 
-        with model.graph.inserting_after(node_to_replace)\:
+        with model.graph.inserting_after(node_to_replace):
             new_node = model.graph.create_node(
                 op=...,
                 target=...,
