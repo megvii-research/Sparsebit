@@ -1,3 +1,4 @@
 sphinxcontrib.contentui
 torch>=1.9.0
 onnx
+yacs
