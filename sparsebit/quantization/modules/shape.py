@@ -17,7 +17,7 @@ class Flatten(nn.Module):
 
     是QuantOpr的子类。
 
-    Args:
+    Attributes:
         start_dim (any): 同 ``torch.nn.Flatten`` 。
         end_dim (any): 同 ``torch.nn.Flatten`` 。
     """
