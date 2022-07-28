@@ -9,7 +9,7 @@ class QuantOpr(nn.Module):
     它提供可配置的 ``input_quantizer`` 和 ``weight_quantizer`` ,
     可根据需要启用。启用后,将转出QDQ格式的onnx模型,便于tensorRT运行。
 
-    Args:
+    Attributes:
         input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
             输入量化器。
         weight_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
