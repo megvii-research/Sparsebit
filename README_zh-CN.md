@@ -1,3 +1,4 @@
+## [English](https://github.com/megvii-research/Sparsebit/blob/main/README.md)
 ## Introduction
 Sparsebit是一个具备prune, quantization两个功能的工具包, 其目的是协助研究人员在已有的pytorch工程代码中通过少量的代码修改实现网络的压缩与加速. 
 
