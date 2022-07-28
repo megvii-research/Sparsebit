@@ -19,6 +19,10 @@ Detailed usage and development guidance is located in the document. Refer to: [d
 - We maintain a public course on quantification at Bilibili, introducing the basics of quantification and our latest work. Interested users can join the course.[video](https://www.bilibili.com/video/BV13a411p7PC?p=1&vd_source=f746210dbb726509198fbec99dfe7367)
 - Aiming at better enabling users to understand and apply the knowledge related to model compression, we designed related homework based on Sparsebit. Interested users can complete it by themselves.[quantization\_homework](https://github.com/megvii-research/Sparsebit/blob/homeworks/homeworks/quant_homework.md)
 
+### Plan to re-implement
+* [ ] https://github.com/megvii-research/SSQL-ECCV2022
+* [ ] https://github.com/megvii-research/FQ-ViT
+
 ## Join Us
 - Welcome to be a member (or an intern) of our team if you are interested in Quantization, Pruning, Distillation, Self-Supervised Learning and Model Deployment.
 - Submit your resume to: sunpeiqin@megvii.com
