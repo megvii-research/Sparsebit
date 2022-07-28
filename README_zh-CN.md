@@ -18,6 +18,10 @@ Quantization是一种将full-precision params转化为low-bit precision params�
 - 我们在Bilibili维护了一门关于量化的公开课, 介绍量化的基本知识和小组最新的工作. 有兴趣的用户可以前往. [video](https://www.bilibili.com/video/BV13a411p7PC?p=1&vd_source=f746210dbb726509198fbec99dfe7367)
 - 为了更好让大家理解和应用压缩的相关知识, 我们基于Sparsebit设计相关作业, 有兴趣的同学可以自行完成. [quantization\_homework](https://github.com/megvii-research/Sparsebit/blob/homeworks/homeworks/quant_homework.md)
 
+### 重写计划
+* [ ] https://github.com/megvii-research/SSQL-ECCV2022
+* [ ] https://github.com/megvii-research/FQ-ViT
+
 ## Join Us
 - 小组常年招收实习生, 包括但不限于: 模型量化, 模型稀疏与剪枝, 模型蒸馏, 自监督学习, 模型部署等.
 - 有志于从事模型压缩与加速的同学可以投递简历至: sunpeiqin@megvii.com,
