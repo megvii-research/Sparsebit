@@ -111,29 +111,17 @@ class QuantModel(nn.Module):
         """
         对与input相接的QuantOpr注册hook, (weight_quantizer不需要)
         """
-        # TODO: 如果有两个输入怎么
-        from sparsebit.quantization.tools.calibration import get_topo, register_hook
+        from sparsebit.quantization.tools.calibration import CalibrationRunner
 
         self.eval()
-        self.calib_cache = get_topo(self.model)
-        self._calibration_handles = register_hook(self.model, self.calib_cache)
+        self.calibration_runner = CalibrationRunner(self.model)
+        self.calibration_runner.prepare_calibration()
 
     def calc_qparams(self):
-        from sparsebit.quantization.tools.calibration import (
-            feature_layerwise_calibration,
-        )
-
-        for h in self._calibration_handles:
-            h.remove()
-
-        # Feature calibration
-        feature_layerwise_calibration(self.model, self.calib_cache, self.device)
-
-        # Weight calibration
-        for n, m in self.model.named_modules():
-            if isinstance(m, QuantOpr) and m.weight_quantizer:
-                m.weight_quantizer.update_observer(m.weight)
-                m.weight_quantizer.calc_qparams()
+        assert hasattr(self, "calibration_runner"), "run self.prepare_calibration first"
+        self.calibration_runner.feature_layerwise_calibration(self.device)
+        self.calibration_runner.weight_calibration()
+        del self.calibration_runner
 
     def init_QAT(self):
         named_modules = dict(self.model.named_modules())

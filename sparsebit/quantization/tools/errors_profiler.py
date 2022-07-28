@@ -1,55 +1,12 @@
+from operator import mod
 from typing import Callable
 from functools import partial
 import torch
 import torch.fx as fx
 import torch.nn.functional as F
 
-
-class SharedData(object):
-    """用于管理中间计算结果和保存对分结果。"""
-
-    def __init__(self):
-        self.outputs = {}
-        self.edges = {}
-        self.output_degrees = {}
-        self.diffs = {}
-
-    def add_node(self, name: str, inputs: list):
-        self.output_degrees[name] = 0
-        self.edges[name] = [i for i in inputs if i is not None]
-        for inp in self.edges[name]:
-            if inp not in self.output_degrees:
-                self.output_degrees[inp] = 1
-            else:
-                self.output_degrees[inp] += 1
-
-    def finish_node(self, name):
-        for inp in self.edges[name]:
-            self.output_degrees[inp] -= 1
-            if self.output_degrees[inp] == 0:
-                del self.output_degrees[inp]
-                del self.outputs[inp]
-        if self.output_degrees[name] == 0:
-            del self.output_degrees[name]
-            del self.outputs[name]
-
-    def set_value(self, name: str, value):
-        self.outputs[name] = value
-
-    def get_value(self, name: str):
-        if name not in self.outputs:
-            return None
-        return self.outputs[name]
-
-    def save_diff(self, name: str, diff: torch.Tensor):
-        self.diffs[name] = diff.detach()
-
-    def get_output_diff(self):
-        output = self.diffs
-        self.diffs = {}
-        assert len(self.outputs) == 0
-        assert len(self.output_degrees) == 0
-        return output
+from .tensor_wrapper import to_detach
+from .graph_wrapper import GraphVisisor, SharedData
 
 
 class QuantizationErrorProfiler(object):
@@ -72,16 +29,14 @@ class QuantizationErrorProfiler(object):
 
     def __init__(self, model: fx.GraphModule):
         self.model = model
-        self.storage = SharedData()
 
     def apply(
         self, data: torch.Tensor, checker: Callable = F.mse_loss, is_async: bool = True
     ):
         if is_async:
-            self._quantization_error_async(data=data, checker=checker)
+            return self._quantization_error_async(data=data, checker=checker)
         else:
-            self._quantization_error_sync(data=data, checker=checker)
-        return self.storage.get_output_diff()
+            return self._quantization_error_sync(data=data, checker=checker)
 
     def _quantization_error_async(self, data: torch.Tensor, checker: Callable):
         """用提供的样例输入和对分方法对比量化前后的分数。
@@ -93,29 +48,35 @@ class QuantizationErrorProfiler(object):
             checker (Callable):
                 一个metric,要求接受同一层layer在量化前后的两个tensor输出,产生一个自定义误差值。
         """
-        named_modules = dict(self.model.named_modules())
-        handles = []
 
-        for name, module in named_modules.items():
-            if getattr(module, "input_quantizer", None):
-                handles.append(module.register_forward_pre_hook(hook=_forward_pre_hook))
-                handles.append(
-                    module.register_forward_hook(
-                        hook=partial(
-                            _forward_hook,
-                            name=name,
-                            input_names=None,
-                            storage=self.storage,
-                            checker=checker,
-                            check_diff=True,
-                            is_async=True,
-                        )
+        forward_pre_hook = _forward_pre_hook
+        forward_hook = partial(_forward_hook, checker=checker, is_async=True)
+
+        def hook_wrapper(
+            node,
+            module,
+            storage: SharedData,
+        ):
+            handles = []
+            handles.append(module.register_forward_pre_hook(hook=forward_pre_hook))
+            handles.append(
+                module.register_forward_hook(
+                    hook=partial(
+                        forward_hook,
+                        node=node,
+                        storage=storage,
+                        check_diff=getattr(module, "input_quantizer", None)
+                        and module.input_quantizer.is_enable,
                     )
                 )
+            )
+            return handles
+
+        builder = GraphVisisor(self.model, hook_wrapper)
 
         self.model.forward(data)
-        for handle in handles:
-            handle.remove()
+
+        return builder.storage.extract_value("diff")
 
     def _quantization_error_sync(self, data: torch.Tensor, checker: Callable):
         """用提供的样例输入和对分方法对比量化前后的分数。
@@ -127,54 +88,50 @@ class QuantizationErrorProfiler(object):
             checker (Callable):
                 一个metric,要求接受同一层layer在量化前后的两个tensor输出,产生一个自定义误差值。
         """
-        fx_graph = self.model.graph
-        named_modules = dict(self.model.named_modules())
-        handles = []
 
-        # assume fx_graph.node is topological-sorted
-        for node in fx_graph.nodes:
-            if node.op in ["placeholder", "output"]:  # skip IO empty node
-                continue
-            node_name = node.target
-            module = named_modules[node_name]
+        forward_pre_hook = _forward_pre_hook
+        forward_hook = partial(_forward_hook, checker=checker, is_async=False)
 
-            # 输入module名称，None表示不是module，此时没有量化，可以直接使用float输入值作为量化输入值。
-            input_node_names = []
-            for input_node in node.args:
-                if not isinstance(input_node, torch.fx.node.Node) or input_node.op in [
-                    "placeholder",
-                    "output",
-                ]:
-                    input_node_names.append(None)
-                else:
-                    input_node_names.append(input_node.target)
-            self.storage.add_node(node_name, input_node_names)
-
-            forward_hook_func = partial(
-                _forward_hook,
-                name=node_name,
-                input_names=input_node_names,
-                storage=self.storage,
-                checker=checker,
-                is_async=False,
-            )
-            if node.op == "call_module" and getattr(module, "input_quantizer", None):
-                handles.append(module.register_forward_pre_hook(_forward_pre_hook))
+        def hook_wrapper(
+            node,
+            module,
+            storage: SharedData,
+        ):
+            handles = []
+            if (
+                node.op == "call_module"
+                and getattr(module, "input_quantizer", None)
+                and module.input_quantizer.is_enable
+            ):
+                handles.append(module.register_forward_pre_hook(forward_pre_hook))
                 handles.append(
                     module.register_forward_hook(
-                        partial(forward_hook_func, check_diff=True)
+                        partial(
+                            forward_hook,
+                            node=node,
+                            storage=storage,
+                            check_diff=True,
+                        )
                     )
                 )
             else:
                 handles.append(
                     module.register_forward_hook(
-                        partial(forward_hook_func, check_diff=False)
+                        partial(
+                            forward_hook,
+                            node=node,
+                            storage=storage,
+                            check_diff=False,
+                        )
                     )
                 )
+            return handles
+
+        builder = GraphVisisor(self.model, hook_wrapper)
 
         self.model.forward(data)
-        for handle in handles:
-            handle.remove()
+
+        return builder.storage.extract_value("diff")
 
 
 def _forward_pre_hook(module, f_in):  # before forward()
@@ -195,8 +152,7 @@ def _forward_hook(
     module,
     f_in,
     f_out,
-    name: str,
-    input_names: str,
+    node: torch.fx.Node,
     storage: SharedData,
     checker: Callable,
     check_diff: bool,
@@ -210,14 +166,10 @@ def _forward_hook(
 
     # 计算量化的结果pred
     if is_async:
-        pred = module.forward(*f_in)
+        if check_diff:
+            pred = to_detach(module.forward(*f_in))
     else:
-        q_in = [
-            storage.get_value(i)
-            if i is not None
-            else _detach(f_in[idx])  # 如果输入层名称是None，直接使用float输入
-            for idx, i in enumerate(input_names)
-        ]
+        q_in = to_detach(storage.extract_node_args(node.args, f_in, batch=None))
         # 手动forward可以避免循环调用_forward_hook
         pred = module.forward(*q_in)
 
@@ -228,14 +180,15 @@ def _forward_hook(
         module.weight_quantizer.disable_quant()
 
     # 对分
-    pred = _detach(pred)
-    gt = _detach(f_out)
-    storage.save_diff(name, checker(pred, gt))
-
+    name = node.target
+    if check_diff:
+        pred = to_detach(pred)
+        gt = to_detach(f_out)
+        storage.set_value(name, "diff", checker(pred, gt))
     if not is_async:
-        storage.set_value(name, pred)
-        # (同步对分优化)删除接下来不再使用的中间结果
-        storage.finish_node(name)
+        storage.set_output(name, pred)
+
+    storage.finish_node(name)
 
     # 还原module的量化配置
     if hasattr(module, "reverse_input_quant_flag"):
@@ -246,11 +199,3 @@ def _forward_hook(
         if module.reverse_weight_quant_flag:
             module.weight_quantizer.enable_quant()
         delattr(module, "reverse_weight_quant_flag")
-
-
-def _detach(x):
-    if isinstance(x, torch.Tensor):
-        return x.detach()
-    if isinstance(x, (list, tuple)):
-        return tuple([_detach(i) for i in x])
-    return x
