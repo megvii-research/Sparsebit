@@ -10,7 +10,7 @@ class QConv2d(QuantOpr):
 
     是QuantOpr的子类。
 
-    Args:
+    Attributes:
         input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
             输入量化器。
         weight_quantizer (sparsebit.quantization.quantizers.base.Quantizer):

@@ -10,7 +10,7 @@ class QMaxPool2d(QuantOpr):
 
     是QuantOpr的子类。
 
-    Args:
+    Attributes:
         fwd_kwargs (Dict[str, any]): 运行 ``torch.nn.functional.max_pool2d`` 需要的参数。
     """
 
@@ -36,7 +36,7 @@ class QAdaptiveAvgPool2d(QuantOpr):
 
     是QuantOpr的子类。
 
-    Args:
+    Attributes:
         input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
             输入量化器。
         output_size (any):
