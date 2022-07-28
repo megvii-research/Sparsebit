@@ -1,4 +1,4 @@
-## [English](https://github.com/megvii-research/Sparsebit/edit/main/README.md), [中文版](https://github.com/megvii-research/Sparsebit/blob/main/README_zh-CN.md)
+## [中文版](https://github.com/megvii-research/Sparsebit/blob/main/README_zh-CN.md)
 ## Introduction
 Sparsebit is a toolkit with pruning and quantization capabilities. It is designed to help researchers compress and accelerate neural network models by modifying only a few codes in existing pytorch project.
 
