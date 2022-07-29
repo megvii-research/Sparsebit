@@ -102,7 +102,10 @@ class GraphVisisor(object):
             if node.op in ["placeholder", "output"]:  # skip IO empty node
                 continue
             node_name = node.target
-            module = named_modules[node_name]
+            if node.op == "get_attr":  # use model.xxx to get constant nn.Parameter
+                module = getattr(model, node.target)
+            else:
+                module = named_modules[node_name]
 
             input_node_names = [
                 input_node.target for input_node in node.all_input_nodes

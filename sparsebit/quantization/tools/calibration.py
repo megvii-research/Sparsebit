@@ -88,6 +88,9 @@ class CalibrationRunner(object):
             with torch.no_grad():
                 outputs = []
                 for batch_idx in range(batch_num):
+                    if node.op == "get_attr":  # is constant value
+                        outputs.append(to_cpu(module.data))
+                        continue
                     batch = self.builder.storage.extract_node_args(
                         node.args, batch=batch_idx
                     )
@@ -99,6 +102,6 @@ class CalibrationRunner(object):
 
     def weight_calibration(self):
         for n, m in self.model.named_modules():
-            if isinstance(m, QuantOpr) and m.weight_quantizer:
+            if isinstance(m, QuantOpr) and getattr(m, "weight_quantizer", None):
                 m.weight_quantizer.update_observer(m.weight)
                 m.weight_quantizer.calc_qparams()
