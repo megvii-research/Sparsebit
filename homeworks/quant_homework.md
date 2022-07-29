@@ -21,9 +21,9 @@ $$\text{value} = \text{value} * (1 - \alpha) + \text{new} *\alpha$$
 
 | Model | Calibration Set|Quant Config |Alpha |Quant Acc1 |
 | :-------- | :----------------- | :------  |:------------- |:--|
-| Mobilenet_v2  | 256  |W8A8  | 0.5|      |
-| Mobilenet_v2  | 256 | W8A8  | 0.9|      |
-| Mobilenet_v2  | 256 | W8A8  | 0.99|    |
+| Resnet18  | 256  |W8A8  | 0.5|      |
+| Resnet18  | 256 | W8A8  | 0.9|      |
+| Resnet18  | 256 | W8A8  | 0.99|    |
 - 代码:
 ```python
 # TO DO
