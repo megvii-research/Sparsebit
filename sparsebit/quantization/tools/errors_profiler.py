@@ -1,4 +1,3 @@
-from operator import mod
 from typing import Callable
 from functools import partial
 import torch
