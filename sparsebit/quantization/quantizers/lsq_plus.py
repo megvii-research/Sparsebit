@@ -23,7 +23,7 @@ class Quantizer(BaseQuantizer):
             return self.scale, self.zero_point
         if not self.init_params:
             if self.is_perchannel:
-                x_oc = torch.cat(self.observer.data_cache, axis=1)
+                x_oc = self.observer.get_c_first_data_cache()
                 self.observer.reset_data_cache()
                 assert (
                     self.is_symmetric

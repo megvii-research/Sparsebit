@@ -31,7 +31,7 @@ class Quantizer(BaseQuantizer):
     def calc_qparams(self):
         if self.fake_fused:
             return self.scale, self.zero_point
-        x_oc = torch.cat(self.observer.data_cache, axis=1)
+        x_oc = self.observer.get_c_first_data_cache()
         self.observer.reset_data_cache()
         if not self.init_params:
             if self.is_perchannel:
