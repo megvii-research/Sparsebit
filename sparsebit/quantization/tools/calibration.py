@@ -2,7 +2,7 @@ import torch
 from functools import partial
 
 from sparsebit.quantization.modules import QuantOpr
-from .graph_wrapper import GraphVisisor, fx_symbolic_trace
+from .graph_wrapper import GraphVisitor, fx_symbolic_trace
 from .tensor_wrapper import to_cpu, to_device, to_detach
 
 
@@ -11,7 +11,7 @@ class CalibrationRunner(object):
         self.model = fx_symbolic_trace(model)
 
     def prepare_calibration(self):
-        record_input_names = set(
+        input_names_cache = set(
             i.target for i in self.model.graph.nodes if i.op == "placeholder"
         )
 
@@ -39,28 +39,28 @@ class CalibrationRunner(object):
 
         def hook_wrapper(node, module, storage):
             hooks = []
-            input_names_to_record = [
+            input_names = [
                 inp_node.target
                 for inp_node in node.all_input_nodes
-                if inp_node.target in record_input_names
+                if inp_node.target in input_names_cache
             ]
-            if len(input_names_to_record) > 0:
+            if len(input_names) > 0:
                 hooks.append(
                     module.register_forward_hook(
                         hook=partial(
                             _forward_hook,
                             node=node,
                             storage=storage,
-                            record_names=input_names_to_record,
+                            record_names=input_names,
                         )
                     )
                 )
-                for input_name_to_record in input_names_to_record:
-                    record_input_names.remove(input_name_to_record)
+                for input_name in input_names:
+                    input_names_cache.remove(input_name)
 
             return hooks
 
-        self.builder = GraphVisisor(self.model, hook_wrapper)
+        self.builder = GraphVisitor(self.model, hook_wrapper)
 
     def feature_layerwise_calibration(self, device):
         # manual forward once to calculate calibration
@@ -91,12 +91,12 @@ class CalibrationRunner(object):
                     if node.op == "get_attr":  # is constant value
                         outputs.append(to_cpu(module.data))
                         continue
-                    batch = self.builder.storage.extract_node_args(
+                    args = self.builder.storage.extract_node_args(
                         node.args, batch=batch_idx
                     )
+                    args = to_device(args, device)
                     # more time for less cuda memory occupation
-                    batch = [to_device(input, device) for input in batch]
-                    outputs.append(to_cpu(module(*batch, **node.kwargs)))
+                    outputs.append(to_cpu(module(*args, **node.kwargs)))
             self.builder.storage.set_output(node.target, outputs)
             self.builder.storage.finish_node(node.target)
 

@@ -5,7 +5,7 @@ import torch.fx as fx
 import torch.nn.functional as F
 
 from .tensor_wrapper import to_detach
-from .graph_wrapper import GraphVisisor, SharedData
+from .graph_wrapper import GraphVisitor, SharedData
 
 
 class QuantizationErrorProfiler(object):
@@ -71,7 +71,7 @@ class QuantizationErrorProfiler(object):
             )
             return handles
 
-        builder = GraphVisisor(self.model, hook_wrapper)
+        builder = GraphVisitor(self.model, hook_wrapper)
 
         self.model.forward(data)
 
@@ -126,7 +126,7 @@ class QuantizationErrorProfiler(object):
                 )
             return handles
 
-        builder = GraphVisisor(self.model, hook_wrapper)
+        builder = GraphVisitor(self.model, hook_wrapper)
 
         self.model.forward(data)
 

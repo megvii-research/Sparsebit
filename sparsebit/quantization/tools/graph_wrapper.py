@@ -83,7 +83,7 @@ class SharedData(object):
         return self.values.pop(value_name, {})
 
 
-class GraphVisisor(object):
+class GraphVisitor(object):
     def __init__(self, model: fx.GraphModule, hook_wrapper: Callable):
         self.storage = SharedData()
         self.build(model, hook_wrapper)
@@ -101,16 +101,15 @@ class GraphVisisor(object):
         for node in fx_graph.nodes:
             if node.op in ["placeholder", "output"]:  # skip IO empty node
                 continue
-            node_name = node.target
             if node.op == "get_attr":  # use model.xxx to get constant nn.Parameter
                 module = getattr(model, node.target)
             else:
-                module = named_modules[node_name]
+                module = named_modules[node.target]
 
-            input_node_names = [
+            input_node_targets = [
                 input_node.target for input_node in node.all_input_nodes
             ]
-            self.storage.add_node(node_name, input_node_names)
+            self.storage.add_node(node.target, input_node_targets)
 
             ret = hook_wrapper(
                 node=node,
