@@ -70,9 +70,59 @@ class Reshape(nn.Module):
 class Concat(nn.Module):
     def __init__(self, org_module=None, config=None):
         super().__init__()
-        self.dim = org_module.args[1]
+        if "dim" in org_module.kwargs:
+            self.dim = org_module.kwargs["dim"]
+        elif len(org_module.args) == 2:
+            self.dim = org_module.args[1]
+        else:
+            self.dim = None
         self._repr_info = "Concat"
 
     def forward(self, x_in, *args, **kwargs):
         out = torch.cat(x_in, dim=self.dim)
+        return out
+
+
+@register_qmodule(sources=[torch.Tensor.expand])
+class Expand(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Expand, self).__init__()
+        self.sizes = []
+        self.input_places = []
+        for idx, sz in enumerate(org_module.args[1:]):
+            if isinstance(sz, torch.fx.Node):
+                self.sizes.append(None)
+                self.input_places.append(idx)
+            else:
+                assert isinstance(sz, int)
+                self.sizes.append(sz)
+
+    def forward(self, x_in, *args):
+        sz = self.sizes.copy()
+        for idx, place in enumerate(self.input_places):
+            sz[place] = args[idx]
+        out = x_in.expand(sz)
+        return out
+
+
+@register_qmodule(sources=[torch.transpose, torch.Tensor.transpose])
+class Transpose(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Transpose, self).__init__()
+        self.dim0 = org_module.args[1]
+        self.dim1 = org_module.args[2]
+
+    def forward(self, x_in, *args):
+        out = torch.transpose(x_in, dim0=self.dim0, dim1=self.dim1)
+        return out
+
+
+@register_qmodule(sources=[torch.permute, torch.Tensor.permute])
+class Permute(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Permute, self).__init__()
+        self.dims = org_module.args[1:]
+
+    def forward(self, x_in, *args):
+        out = torch.permute(x_in, dims=self.dims)
         return out

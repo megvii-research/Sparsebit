@@ -1,10 +1,11 @@
 import operator
 import torch
+import torch.nn as nn
 from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
 @register_qmodule(sources=[operator.add, torch.add])
-class QAdd(QuantOpr):
+class QAdd(nn.Module):
     def __init__(self, org_module=None, config=None):
         super().__init__()
         self._repr_info = "QAdd"
@@ -14,14 +15,47 @@ class QAdd(QuantOpr):
         return out
 
 
+@register_qmodule(sources=[operator.sub, torch.subtract])
+class QSubtract(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self._repr_info = "QSubtract "
+
+    def forward(self, x_left, x_right):
+        out = torch.subtract(x_left, x_right)
+        return out
+
+
 @register_qmodule(sources=[operator.mul, torch.mul])
-class QMul(QuantOpr):
+class QMul(nn.Module):
     def __init__(self, org_module=None, config=None):
         super().__init__()
         self._repr_info = "QMul"
 
     def forward(self, x_left, x_right):
         out = torch.mul(x_left, x_right)
+        return out
+
+
+@register_qmodule(sources=[operator.truediv, torch.div])
+class QDivide(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self._repr_info = "QDivide "
+
+    def forward(self, x_left, x_right):
+        out = torch.divide(x_left, x_right)  # x / y
+        return out
+
+
+@register_qmodule(sources=[operator.floordiv, torch.floor_divide])
+class QFloorDiv(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self._repr_info = "QFloorDiv "
+
+    def forward(self, x_left, x_right):
+        out = torch.floor_divide(x_left, x_right)  # x // y
         return out
 
 

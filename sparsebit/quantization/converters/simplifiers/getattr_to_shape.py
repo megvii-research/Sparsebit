@@ -49,6 +49,7 @@ class ReplacePattern(ReplacePatternBase):
                 op="call_module",
                 target=op_name,
                 args=(old_input,),
+                kwargs={"dim": getitem_node.args[1]},
                 name=op_name,
             )
         return new_node

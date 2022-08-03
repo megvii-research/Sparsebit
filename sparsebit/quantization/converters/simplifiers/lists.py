@@ -1,4 +1,5 @@
 simplify_list = [
     "remove_identity",
-    # "getattr_to_shape",
+    "getattr_to_shape",
+    "unbind_getitem_to_subtensor",
 ]
