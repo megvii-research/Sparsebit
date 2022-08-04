@@ -23,7 +23,7 @@ class Quantizer(BaseQuantizer):
             return self.scale, self.zero_point
         if not self.init_params:
             if self.is_perchannel:
-                x_oc = self.observer.get_c_first_data_cache()
+                x_oc = self.observer.get_concated_data_cache(c_first=True)
                 self.observer.reset_data_cache()
                 assert (
                     self.is_symmetric

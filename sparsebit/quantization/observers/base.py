@@ -32,21 +32,24 @@ class Observer(nn.Module):
         assert len(self.data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
-    def get_c_first_data_cache(self):
+    def get_concated_data_cache(self, c_first=False):
         assert (
             len(self.data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"
-        if self.qdesc.ch_axis > 0:
-            data = torch.cat(self.data_cache, axis=0)
-            data = (
-                data.transpose(self.qdesc.ch_axis, 0)
-                .reshape(data.shape[self.qdesc.ch_axis], -1)
-                .detach()
-                .data
-            )
+        if c_first:
+            if self.qdesc.ch_axis > 0:
+                data = torch.cat(self.data_cache, axis=0)
+                data = (
+                    data.transpose(self.qdesc.ch_axis, 0)
+                    .reshape(data.shape[self.qdesc.ch_axis], -1)
+                    .detach()
+                    .data
+                )
+            else:
+                data = torch.cat(self.data_cache, axis=1)
+                data = data.reshape(data.shape[self.qdesc.ch_axis], -1).detach().data
         else:
-            data = torch.cat(self.data_cache, axis=1)
-            data = data.reshape(data.shape[self.qdesc.ch_axis], -1).detach().data
+            data = torch.cat(self.data_cache, axis=0)
         return data
 
     def update(self, data):
