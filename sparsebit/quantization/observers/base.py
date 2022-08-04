@@ -29,16 +29,16 @@ class Observer(nn.Module):
             scale = (max_val_pos - min_val_neg) / float(qmax - qmin)
             scale = torch.maximum(scale, torch.tensor(1e-6))
             zero_point = torch.round(-min_val_neg / scale)
-        assert len(self.data_cache) == 0, "free data cache after calc_qparams"
+        assert len(self._data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
     def get_concated_data_cache(self, c_first=False):
         assert (
-            len(self.data_cache) > 0
+            len(self._data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"
         if c_first:
             if self.qdesc.ch_axis > 0:
-                data = torch.cat(self.data_cache, axis=0)
+                data = torch.cat(self._data_cache, axis=0)
                 data = (
                     data.transpose(self.qdesc.ch_axis, 0)
                     .reshape(data.shape[self.qdesc.ch_axis], -1)
@@ -46,17 +46,17 @@ class Observer(nn.Module):
                     .data
                 )
             else:
-                data = torch.cat(self.data_cache, axis=1)
+                data = torch.cat(self._data_cache, axis=1)
                 data = data.reshape(data.shape[self.qdesc.ch_axis], -1).detach().data
         else:
-            data = torch.cat(self.data_cache, axis=0)
+            data = torch.cat(self._data_cache, axis=0)
         return data
 
     def update(self, data):
-        self.data_cache.append(data)
+        self._data_cache.append(data)
 
     def reset_data_cache(self):
-        self.data_cache = []
+        self._data_cache = []
 
     @property
     def is_perchannel(self):
