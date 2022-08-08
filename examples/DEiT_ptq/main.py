@@ -122,7 +122,8 @@ def main():
     criterion = nn.CrossEntropyLoss().cuda()
     qmodel.set_quant(w_quant=True, a_quant=True)
 
-    validate(val_loader, model, criterion, args)
+    # validate(val_loader, model, criterion, args)
+    validate(val_loader, qmodel, criterion, args)
 
     qmodel.export_onnx(torch.randn(args.batch_size, 3, 224, 224), name="qViT.onnx")
 
