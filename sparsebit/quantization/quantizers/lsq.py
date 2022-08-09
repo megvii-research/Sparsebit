@@ -35,7 +35,11 @@ class Quantizer(BaseQuantizer):
         self.observer.reset_data_cache()
         if not self.init_params:
             if self.is_perchannel:
-                scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
+                scale = (
+                    2
+                    * x_oc.reshape(x_oc.shape[0], -1).abs().mean(axis=1)
+                    / math.sqrt(self.qdesc.qmax)
+                )
             else:
                 scale = 2 * x_oc.abs().mean() / math.sqrt(self.qdesc.qmax)
             self.scale = nn.Parameter(self._broadcast_qparams(scale)).to(self.device)
