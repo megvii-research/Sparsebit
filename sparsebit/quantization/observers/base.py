@@ -32,7 +32,7 @@ class Observer(nn.Module):
         assert len(self._data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
-    def get_concated_data_cache(self, c_first=False):
+    def get_calib_data(self, c_first=False):
         assert (
             len(self._data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"

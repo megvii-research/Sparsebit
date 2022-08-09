@@ -31,7 +31,7 @@ class Quantizer(BaseQuantizer):
     def calc_qparams(self):
         if self.fake_fused:
             return self.scale, self.zero_point
-        x_oc = self.observer.get_concated_data_cache(c_first=True)
+        x_oc = self.observer.get_calib_data(c_first=True)
         self.observer.reset_data_cache()
         if not self.init_params:
             if self.is_perchannel:
