@@ -155,7 +155,7 @@ def torch_fake_quant(x_f, scale, zero_point, qdesc):
 
     if scale.numel() > 1:  # perchannel
         ch_axis = np.argmax(list(scale.shape))
-        scale = scale.reshape(-1).to(x_f.device)
+        scale = scale.reshape(-1).detach().to(x_f.device)
         if torch.__version__.startswith("1.9"):  # fix bug in 1.9.x
             zero_point = zero_point.reshape(-1).long().to(x_f.device)
         else:
