@@ -32,7 +32,7 @@ class Observer(nn.Module):
         assert len(self._data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
-    def get_calib_data(self, c_first=False):
+    def get_calibration_data(self, c_first=False):
         assert (
             len(self._data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"
@@ -50,6 +50,7 @@ class Observer(nn.Module):
                 data = data.reshape(data.shape[self.qdesc.ch_axis], -1).detach().data
         else:
             data = torch.cat(self._data_cache, axis=0)
+        self.reset_data_cache()
         return data
 
     def update(self, data):
