@@ -31,8 +31,7 @@ class Quantizer(BaseQuantizer):
     def calc_qparams(self):
         if self.fake_fused:
             return self.scale, self.zero_point
-        x_oc = torch.cat(self.observer.data_cache, axis=1)
-        self.observer.reset_data_cache()
+        x_oc = self.observer.get_calibration_data(c_first=True)
         if not self.init_params:
             if self.is_perchannel:
                 scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)

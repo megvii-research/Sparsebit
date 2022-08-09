@@ -23,8 +23,7 @@ class Quantizer(BaseQuantizer):
             return self.scale, self.zero_point
         if not self.init_params:
             if self.is_perchannel:
-                x_oc = torch.cat(self.observer.data_cache, axis=1)
-                self.observer.reset_data_cache()
+                x_oc = self.observer.get_calibration_data(c_first=True)
                 assert (
                     self.is_symmetric
                 ), "LSQ+ only support per-channel-sysmetric quant for weight"

@@ -70,11 +70,14 @@ class STE(torch.autograd.Function):
 
 
 def trt_fake_quant(x_f, scale, zero_point, qdesc):
-    qmin, qmax = qdesc.qrange
+    assert (
+        x_f.device == scale.device == zero_point.device
+    ), "input, scale and zero_point of quantizer must be on same device!"
     assert (
         abs(zero_point).sum() == 0
     ), "tensorrt only support symmetric quant, but zp={}".format(zero_point)
-    if torch.cuda.is_available():
+    qmin, qmax = qdesc.qrange
+    if torch.cuda.is_available() and "cuda" in x_f.device.type:
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f, scale, zero_point, qmin, qmax, qdesc.ch_axis, 0
@@ -90,8 +93,11 @@ def trt_fake_quant(x_f, scale, zero_point, qdesc):
 
 
 def ort_fake_quant(x_f, scale, zero_point, qdesc):
+    assert (
+        x_f.device == scale.device == zero_point.device
+    ), "input, scale and zero_point of quantizer must be on same device!"
     qmin, qmax = qdesc.qrange
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and "cuda" in x_f.device.type:
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f, scale, zero_point, qmin, qmax, qdesc.ch_axis, 0
@@ -149,7 +155,7 @@ def torch_fake_quant(x_f, scale, zero_point, qdesc):
 
     if scale.numel() > 1:  # perchannel
         ch_axis = np.argmax(list(scale.shape))
-        scale = scale.reshape(-1).to(x_f.device)
+        scale = scale.reshape(-1).detach().to(x_f.device)
         if torch.__version__.startswith("1.9"):  # fix bug in 1.9.x
             zero_point = zero_point.reshape(-1).long().to(x_f.device)
         else:
