@@ -11,8 +11,7 @@ class Observer(BaseObserver):
         super(Observer, self).__init__(config, qdesc)
 
     def calc_minmax(self):
-        data = self.get_concated_data_cache(c_first=True)
-        self.reset_data_cache()
+        data = self.get_calibration_data(c_first=True)
         if self.is_perchannel:
             max_val = data.max(axis=1).values
             min_val = data.min(axis=1).values
