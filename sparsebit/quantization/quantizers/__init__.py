@@ -11,6 +11,7 @@ from . import uniform
 from . import lsq
 from . import dorefa
 from . import lsq_plus
+from . import pact
 
 
 def build_quantizer(cfg):
