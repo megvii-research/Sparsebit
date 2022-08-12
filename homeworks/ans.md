@@ -70,10 +70,6 @@ class Observer(BaseObserver):
 - 实验结果: 
 1. 不同Alpha的点数均小于Minmax observer
 2. Alpha较大时，掉点更多
-### 解析：
-- Moving-average的优点：适用于图片的分布随时间变化的情况(online learning)，此时moving average计算的min/max value能够抓住分布的变化
-- 在实验情况下，由于图片分布确定，不会发生较大变化，因此moving-average的效果普遍低于minmax observer
-- 当Alpha很大时，由于抛弃了太多信息，因此掉点会更多
 
 ## Q4:
 
