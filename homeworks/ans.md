@@ -37,7 +37,7 @@ class Observer(BaseObserver):
             data = torch.cat(self.data_cache, axis=0)
             data = (
                 data.transpose(self.qdesc.ch_axis, 0)
-                .reshape(data.shape[self.qdesc.ch_axis], -1)
+                .reshape(data.shape[0], data.shape[self.qdesc.ch_axis], -1)
                 .detach()
                 .data
             )
