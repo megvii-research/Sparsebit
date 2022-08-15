@@ -149,8 +149,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         output = model(images)
         cross_loss = criterion(output, target)
         l2_loss = get_l2_loss(model)
-        # loss = cross_loss + l2_loss
-        loss = cross_loss
+        loss = cross_loss + l2_loss
 
         # measure accuracy and record loss
         acc1 = accuracy(output, target, topk=(1,))[0]
