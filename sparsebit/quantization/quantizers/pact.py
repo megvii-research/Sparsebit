@@ -23,7 +23,6 @@ class Quantizer(BaseQuantizer):
             return x
         lower = -self.alpha if self.qdesc.qmin < 0 else torch.Tensor([0]).to(self.device)
         x_clamp = torch.clamp(x, lower, self.alpha)
-        #min_val, max_val = x_clamp.min(), x_clamp.max()
         self.scale, self.zero_point = self.calc_qparams_with_minmax(lower, self.alpha.detach())
         x_dq = STE.apply(x_clamp, self.scale, self.zero_point, self.qdesc, self.backend)
         return x_dq
