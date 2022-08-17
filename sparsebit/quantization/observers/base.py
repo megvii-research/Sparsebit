@@ -14,13 +14,17 @@ class Observer(nn.Module):
         self.reset_data_cache()
 
     def calc_qparams(self):
-        qmin, qmax = self.qdesc.qrange
         min_val, max_val = self.calc_minmax()
+        scale, zero_point = self.calc_qparams_with_minmax(min_val, max_val)
+        return scale, zero_point
+
+    def calc_qparams_with_minmax(self, min_val, max_val):
         min_val_neg = torch.minimum(min_val, torch.zeros_like(min_val))
         max_val_pos = torch.maximum(max_val, torch.zeros_like(max_val))
         device = min_val_neg.device
         scale = torch.ones(min_val_neg.size(), dtype=torch.float32, device=device)
         zero_point = torch.zeros(min_val_neg.size(), dtype=torch.float32, device=device)
+        qmin, qmax = self.qdesc.qrange
         if self.is_symmetric:
             max_val_pos = torch.maximum(-min_val_neg, max_val_pos)
             scale = max_val_pos * 2 / float(qmax - qmin)
