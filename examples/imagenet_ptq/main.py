@@ -166,7 +166,7 @@ def main():
     valdir = os.path.join(args.data, 'val')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-    train_dataset = datasets.ImageFolder(
+    calia_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
             transforms.Resize(256),
@@ -182,8 +182,8 @@ def main():
             transforms.ToTensor(),
             normalize,
         ]))
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
+    calia_loader = torch.utils.data.DataLoader(
+        calia_dataset,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=args.workers,
@@ -204,9 +204,11 @@ def main():
     calibration_size, cur_size = 256, 0
     model.eval()
     with torch.no_grad():
-        for data, target in train_loader:
-            res = qmodel(data.cuda())
-            cur_size += data.shape[0]
+        for images, target in calia_loader:
+            if torch.cuda.is_available():
+                images = images.cuda()
+            res = qmodel(images)
+            cur_size += images.shape[0]
             if cur_size >= calibration_size:
                 break
     qmodel.calc_qparams()
