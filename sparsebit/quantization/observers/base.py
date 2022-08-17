@@ -36,7 +36,6 @@ class Observer(nn.Module):
         assert (
             len(self._data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"
-
         if c_first:
             if self.qdesc.ch_axis > 0:
                 data = torch.cat(self._data_cache, axis=0)
