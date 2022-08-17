@@ -31,6 +31,14 @@ class Quantizer(nn.Module, abc.ABC):
         self.zero_point = self._broadcast_qparams(zero_point)
         return self.scale, self.zero_point
 
+    def calc_qparams_with_minmax(self, min_val, max_val):
+        if self.fake_fused:
+            return self.scale, self.zero_point
+        scale, zero_point = self.observer.calc_qparams_with_minmax(min_val, max_val)
+        self.scale = self._broadcast_qparams(scale)
+        self.zero_point = self._broadcast_qparams(zero_point)
+        return self.scale, self.zero_point
+
     def _forward(self, x):
         pass
 
