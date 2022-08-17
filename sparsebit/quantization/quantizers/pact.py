@@ -15,7 +15,7 @@ class Quantizer(BaseQuantizer):
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
         self.alpha = None
-        self.alpha_value = config.QUANTIZER.ALPHA_VALUE
+        self.alpha_value = config.QUANTIZER.PACT.ALPHA_VALUE
         self.init_params = False
 
     def calc_qparams(self):

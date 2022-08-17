@@ -112,12 +112,12 @@ scheduler = torch.optim.lr_scheduler.MultiStepLR(
 
 
 # PACT算法中对 alpha 增加 L2-regularization
-def get_l2_loss(model, scale=0.0001):
-    l2_loss = 0
+def get_regularizer_loss(model, scale=0.0001):
+    loss = 0
     for n, p in model.named_parameters():
         if "alpha" in n:
-            l2_loss += (p ** 2).sum()
-    return l2_loss * scale
+            loss += (p ** 2).sum()
+    return loss * scale
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
@@ -125,11 +125,11 @@ def train(train_loader, model, criterion, optimizer, epoch):
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
     cross_losses = AverageMeter("CrossLoss", ":.4e")
-    l2_losses = AverageMeter("L2Loss", ":.4e")
+    regular_losses = AverageMeter("RegularLoss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, cross_losses, l2_losses, losses, top1],
+        [batch_time, data_time, cross_losses, regular_losses, losses, top1],
         prefix="Epoch: [{}]".format(epoch),
     )
 
@@ -148,14 +148,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute output
         output = model(images)
         cross_loss = criterion(output, target)
-        l2_loss = get_l2_loss(model)
-        loss = cross_loss + l2_loss
+        regular_loss = get_regularizer_loss(model)
+        loss = cross_loss + regular_loss
 
         # measure accuracy and record loss
         acc1 = accuracy(output, target, topk=(1,))[0]
         cross_losses.update(cross_loss.item(), images.size(0))
+        regular_losses.update(regular_loss.item(), images.size(0))
         losses.update(loss.item(), images.size(0))
-        l2_losses.update(l2_loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
 
         # compute gradient and do SGD step
