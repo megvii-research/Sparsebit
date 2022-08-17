@@ -37,7 +37,7 @@ class Observer(nn.Module):
             len(self._data_cache) > 0
         ), "Before calculating the quant params, the observation of data should be done"
 
-        if c_first and len(self._data_cache[0].shape) > 1:
+        if c_first:
             if self.qdesc.ch_axis > 0:
                 data = torch.cat(self._data_cache, axis=0)
                 data = (
