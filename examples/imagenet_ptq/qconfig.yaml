@@ -7,12 +7,12 @@ W:
     TYPE: uniform
     BIT: 8
   OBSERVER:
-    TYPE: MINMAX
+    TYPE: minmax
 A:
   QSCHEME: per-tensor-symmetric
   QUANTIZER:
     TYPE: uniform
     BIT: 8
   OBSERVER:
-    TYPE: MINMAX
+    TYPE: moving_average
     LAYOUT: NCHW

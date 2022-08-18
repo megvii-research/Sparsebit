@@ -14,7 +14,7 @@ class Observer(BaseObserver):
         super(Observer, self).__init__(config, qdesc)
         self.alpha = config.OBSERVER.PERCENTILE.ALPHA
 
-    def _lp_loss(self, pred, tgt):
+    def _mse_loss(self, pred, tgt):
         """
         loss function measured in L_p Norm
         """
@@ -44,7 +44,7 @@ class Observer(BaseObserver):
             cur_max_val = max_val * (1.0 - (i * 0.01))
             scale, zero_point = self.calc_qparams_with_minmax(cur_min_val, cur_max_val)
             x_dq = STE.apply(x_f, scale, zero_point, self.qdesc, Backend.VIRTUAL)
-            loss = self._lp_loss(x_f, x_dq)
+            loss = self._mse_loss(x_f, x_dq)
             if loss < loss_min:
                 loss_min = loss
                 best_scale = scale
