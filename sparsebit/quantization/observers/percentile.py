@@ -18,16 +18,19 @@ class Observer(BaseObserver):
         if not self.is_perchannel:
             data = data.reshape(1, -1)
             channel = 1
-        neg_length = (data<0).sum(-1)
-        pos_length = (data>=0).sum(-1)
+        neg_length = (data < 0).sum(-1)
+        pos_length = (data >= 0).sum(-1)
 
         max_val = torch.zeros(channel)
         min_val = torch.zeros(channel)
         for i in range(channel):
             max_val[i] = torch.kthvalue(
-                    data[i], pos_length[i].item() + 1 - max(round(pos_length[i].item() * self.alpha), 1)
-                ).values
-            if neg_length[i]>0:
+                data[i],
+                pos_length[i].item()
+                + 1
+                - max(round(pos_length[i].item() * self.alpha), 1),
+            ).values
+            if neg_length[i] > 0:
                 min_val[i] = torch.kthvalue(
                     data[i],
                     max(round(neg_length[i].item() * self.alpha), 1),
