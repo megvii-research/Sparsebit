@@ -1,16 +1,12 @@
 import torch
 import numpy as np
 import copy
+from functools import partial
 from scipy import stats
+from typing import List, Tuple
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
 
-from functools import partial
-import numpy as np
-
-from typing import List, Tuple
-
-import torch.multiprocessing
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
