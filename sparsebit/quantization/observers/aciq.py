@@ -15,15 +15,6 @@ class Observer(BaseObserver):
     def __init__(self, config, qdesc):
         super(Observer, self).__init__(config, qdesc)
 
-        self.alpha_laplace = {
-            2: 2.83,
-            3: 3.89,
-            4: 5.03,
-            5: 6.2,
-            6: 7.41,
-            7: 8.64,
-            8: 9.89,
-        }
         self.alpha_gaus_positive = {
             1: 1.71,
             2: 2.15,
