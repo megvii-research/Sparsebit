@@ -156,9 +156,7 @@ class Observer(BaseObserver):
             self.is_perchannel,
         )
 
-        mse_gaus_laplace = torch.where(
-            mse_gaus < mse_laplace, mse_gaus, mse_laplace
-        )
+        mse_gaus_laplace = torch.where(mse_gaus < mse_laplace, mse_gaus, mse_laplace)
         self.min_val = torch.where(
             mse_gaus < mse_laplace, gaus_min_val, laplace_min_val
         )

@@ -12,7 +12,9 @@ class Observer(BaseObserver):
         self.ema_ratio = config.OBSERVER.MOVING_AVERAGE.EMA_RATIO
 
     def calc_minmax(self):
-        assert self.qdesc.ch_axis>0, "Moving_average observer only support feature observing!"
+        assert (
+            self.qdesc.ch_axis > 0
+        ), "Moving_average observer only support feature observing!"
         data = self.get_calibration_data(c_first=False)
         max_val, min_val = data[0].max(), data[0].min()
         for i in range(1, data.shape[0]):

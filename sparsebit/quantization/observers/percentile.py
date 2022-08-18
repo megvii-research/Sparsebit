@@ -24,12 +24,11 @@ class Observer(BaseObserver):
         max_val = torch.zeros(channel)
         min_val = torch.zeros(channel)
         for i in range(channel):
-            max_val[i] = torch.kthvalue(
-                data[i],
-                pos_length[i].item()
-                + 1
-                - max(round(pos_length[i].item() * self.alpha), 1),
-            ).values
+            if pos_length[i] > 0:
+                max_val[i] = torch.kthvalue(
+                    data[i],
+                    data[i].numel() - max(round(pos_length[i].item() * self.alpha), 0),
+                ).values
             if neg_length[i] > 0:
                 min_val[i] = torch.kthvalue(
                     data[i],
