@@ -57,16 +57,14 @@ class Observer(BaseObserver):
             7: 9.89,
             8: 11.16,
         }
-
         self.gaus_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
-        self.half_range = False
 
-    def calc_laplace_minmax(self, data):
+    def calc_laplace_minmax(self, data, half_range):
         if self.is_perchannel:
             b = torch.mean(torch.abs(data - data.mean(1).unsqueeze(1)), dim=1)
         else:
             b = torch.mean(torch.abs(data - data.mean()))
-        if data.min() >= 0:
+        if half_range:
             max_val = self.alpha_laplace_positive[self.qdesc.bit] * b
             min_val = torch.zeros(max_val.shape)
         else:
@@ -76,7 +74,7 @@ class Observer(BaseObserver):
             )
         return min_val, max_val
 
-    def calc_gaus_minmax(self, data, batch_size):
+    def calc_gaus_minmax(self, data, batch_size, half_range):
         if self.is_perchannel:
             max_val = data.max(axis=1).values
             min_val = data.min(axis=1).values
@@ -87,7 +85,7 @@ class Observer(BaseObserver):
         if self.qdesc.ch_axis > 0:
             N /= batch_size
         std = ((max_val - min_val) * self.gaus_const) / ((2 * math.log(N)) ** 0.5)
-        if data.min() >= 0:
+        if half_range:
             max_val = self.alpha_gaus_positive[self.qdesc.bit] * std
             min_val = torch.zeros(max_val.shape)
         else:
@@ -113,8 +111,9 @@ class Observer(BaseObserver):
             else 1
         )
         data = self.get_calibration_data(c_first=True)
+        half_range = data.min() >= 0
 
-        laplace_min_val, laplace_max_val = self.calc_laplace_minmax(data)
+        laplace_min_val, laplace_max_val = self.calc_laplace_minmax(data, half_range)
         scale_laplace, _ = self.calc_qparams_with_minmax(
             laplace_min_val, laplace_max_val
         )
@@ -126,7 +125,7 @@ class Observer(BaseObserver):
             data,
         )
 
-        gaus_min_val, gaus_max_val = self.calc_gaus_minmax(data, batch_size)
+        gaus_min_val, gaus_max_val = self.calc_gaus_minmax(data, batch_size, half_range)
         scale_gaus, _ = self.calc_qparams_with_minmax(gaus_min_val, gaus_max_val)
         mse_gaus = mse_loss(
             (torch.clamp(data, gaus_min_val, gaus_max_val) / scale_gaus).round()
