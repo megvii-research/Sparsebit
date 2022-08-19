@@ -1,6 +1,6 @@
 import torch
 import math
-from .utiils import mse_loss
+from .utils import mse_loss
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
 from sparsebit.quantization.quantizers.quant_tensor import STE
