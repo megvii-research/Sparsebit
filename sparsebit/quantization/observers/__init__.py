@@ -7,7 +7,7 @@ def register_observer(observer):
 
 
 from .base import Observer
-from . import minmax
+from . import minmax, percentile, mse, moving_average, kl_histogram, aciq
 
 
 def build_observer(config, qdesc):
