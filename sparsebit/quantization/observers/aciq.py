@@ -1,15 +1,9 @@
 import torch
 import math
+from .utiils import mse_loss
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
 from sparsebit.quantization.quantizers.quant_tensor import STE
-
-
-def mse_loss(pred, tgt, is_perchannel):
-    if is_perchannel:
-        return ((pred - tgt) ** 2).mean(-1)
-    else:
-        return ((pred - tgt) ** 2).mean()
 
 
 @register_observer
@@ -86,11 +80,11 @@ class Observer(BaseObserver):
         else:
             max_val = data.max()
             min_val = data.min()
-        num_elements_per_batch = data.numel()
+        num_elements = data.numel()
         if self.qdesc.ch_axis > 0:
-            num_elements_per_batch /= batch_size
+            num_elements /= batch_size
         std = ((max_val - min_val) * self.gaus_const) / (
-            (2 * math.log(num_elements_per_batch)) ** 0.5
+            (2 * math.log(num_elements)) ** 0.5
         )
         if (
             self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
@@ -156,7 +150,7 @@ class Observer(BaseObserver):
             self.is_perchannel,
         )
 
-        mse_gaus_laplace = torch.where(mse_gaus < mse_laplace, mse_gaus, mse_laplace)
+        mse_gaus_laplace = torch.minimum(mse_gaus, mse_laplace)
         self.min_val = torch.where(
             mse_gaus < mse_laplace, gaus_min_val, laplace_min_val
         )
