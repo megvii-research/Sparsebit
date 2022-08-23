@@ -206,9 +206,6 @@ def main():
         ]))
     if args.multiprocessing_distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(
-            val_dataset, shuffle=False, drop_last=True
-        )
     else:
         train_sampler = None
         val_sampler = None
@@ -226,7 +223,7 @@ def main():
         shuffle=False,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=val_sampler,
+        sampler=None,
     )
 
     # set head and tail of model is 8bit
@@ -278,10 +275,11 @@ def main():
             )
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
+    else:
+        best_acc1 = 0
 
     cudnn.benchmark = True
 
-    best_acc1 = 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.multiprocessing_distributed:
             train_sampler.set_epoch(epoch)
