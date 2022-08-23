@@ -58,7 +58,7 @@ class QuantModel(nn.Module):
                 if isinstance(n.target, str):
                     target_op = getattr(torch.Tensor, n.target)
                 else:
-                    target_op = n.target
+                    raise NotImplementedError
                 new_module = QMODULE_MAP[target_op](n)  # node作为module传入获取相关参数
             elif n.op in ["placeholder", "get_attr", "output"]:
                 continue
