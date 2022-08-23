@@ -8,6 +8,10 @@ Quantization是一种将full-precision params转化为low-bit precision params�
 - 方便用户扩展. 可自行通过注册扩展 QuantModule, Quantizer和Observer等重要对象, 以满足研究所需
 - 支持导出[QDQ-ONNX](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers), 可以被tensorrt/onnxruntime等后端加载部署.
 
+### 测试结果
+- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
+- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
+
 ## Pruning
 还在开发, 敬请期待.
 
