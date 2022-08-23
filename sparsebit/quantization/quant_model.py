@@ -55,7 +55,11 @@ class QuantModel(nn.Module):
             elif n.op == "call_function":
                 new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
             elif n.op == "call_method":
-                new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
+                if isinstance(n.target, str):
+                    target_op = getattr(torch.Tensor, n.target)
+                else:
+                    raise NotImplementedError
+                new_module = QMODULE_MAP[target_op](n)  # node作为module传入获取相关参数
             elif n.op in ["placeholder", "get_attr", "output"]:
                 continue
             with traced.graph.inserting_after(n):
