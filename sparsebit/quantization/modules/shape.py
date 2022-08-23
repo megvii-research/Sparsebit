@@ -64,3 +64,15 @@ class Reshape(nn.Module):
 
     def forward(self, x_in, *args):
         return torch.reshape(x_in, args)
+
+
+@register_qmodule(sources=[torch.cat])
+class Concat(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self.dim = org_module.args[1]
+        self._repr_info = "Concat"
+
+    def forward(self, x_in, *args, **kwargs):
+        out = torch.cat(x_in, dim=self.dim)
+        return out
