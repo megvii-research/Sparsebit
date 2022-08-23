@@ -9,6 +9,10 @@ Quantization turns full-precision params into low-bit precision params, which ca
 - Sparsebit can easily be extended by users to accommodate their own researches. Users can register to extend important objects such as QuantModule, Quantizer and Observer by themselves.
 - Exporting [QDQ-ONNX](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers) is supported, which can be loaded and deployed by backends such as TensorRT and OnnxRuntime.
 
+### Results
+- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
+- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
+
 ## Pruning
 About to released.
 
