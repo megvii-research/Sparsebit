@@ -103,8 +103,6 @@ class PruneModel(nn.Module):
 
     def calc_params(self):
         for node in self.model.graph.nodes:
-            if node.op in ["placeholder", "output"]:
-                continue
             if node.op == "call_module":
                 module = getattr(self.model, node.target, None)
                 if isinstance(module, PruneOpr) and getattr(module, "pruner", None):
