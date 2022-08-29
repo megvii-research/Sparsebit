@@ -12,7 +12,7 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
 import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
@@ -196,6 +196,14 @@ def main():
             transforms.ToTensor(),
             normalize,
         ]))
+    calib_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ]))
     val_dataset = datasets.ImageFolder(
         valdir,
         transforms.Compose([
@@ -217,6 +225,14 @@ def main():
         pin_memory=True,
         sampler=train_sampler,
     )
+    calib_loader = torch.utils.data.DataLoader(
+        calib_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+        sampler=None,
+    )
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=args.batch_size,
@@ -232,12 +248,14 @@ def main():
     model.model.fc.weight_quantizer.set_bit(bit=8)
     model.prepare_calibration()
     calib_size, cur_size = 256, 0
-    for data, target in train_loader:
-        model(data.cuda())
-        cur_size += data.shape[0]
-        if cur_size >= calib_size:
-            break
-    model.init_QAT()
+    model.eval()
+    with torch.no_grad():
+        for data, target in calib_loader:
+            model(data.cuda())
+            cur_size += data.shape[0]
+            if cur_size >= calib_size:
+                break
+        model.init_QAT()
     print(model.model)
     if args.multiprocessing_distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
@@ -250,7 +268,8 @@ def main():
         weight_decay=args.weight_decay,
     )
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+    scheduler = CosineAnnealingLR(optimizer, args.epochs)
+
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
