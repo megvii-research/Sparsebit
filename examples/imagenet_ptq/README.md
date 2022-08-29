@@ -10,7 +10,7 @@ python3 main.py qconfig.yaml /data/public-datasets/imagenet/ -a resnet18 --pretr
 ## ImageNet Benchmark
 - Task: ImageNet
 - Eval data num: 50k
-- Calib data num: 256
+- Calibration data num: 256
 - Weight bit: 8
 - Feature bit: 8
 - Weight observer: MinMax
