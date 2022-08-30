@@ -36,5 +36,5 @@ Pillow==8.4.0
 - Backend: TensorRT (symmetric feature quantization)
 
 |Model|Float|MinMax|MSE|
-|-----|-----|-----|
+|-----|-----|-----|-----|
 |YOLOV3-relu|59.6%|58.5%|58.8%|
