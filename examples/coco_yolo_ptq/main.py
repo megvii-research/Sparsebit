@@ -4,15 +4,9 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 
-from models.yolov3 import (
-    decode_outputs,
-    postprocess,
-    postprocess_boxes,
-    yolov3 as build_model,
-)
+from models.yolov3 import yolov3 as build_model, decode_outputs
 from dataset import coco_dataset as build_dataset, collate_fn
 from evaluate import coco_evaluate
-
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
@@ -96,14 +90,16 @@ def main(args):
         batch_data = batch_meta["data"].to(device)
         batch_id = batch_meta["images_id"]
         batch_size = batch_meta["images_size"]
+
         with torch.no_grad():
             outputs = qmodel(batch_data)
 
-        predictions = decode_outputs(
-            outputs, (args.image_size, args.image_size), args.num_classes
-        )
-        detections = postprocess(
-            predictions, args.num_classes, args.conf_threshold, args.nms_threshold
+        detections = decode_outputs(
+            outputs,
+            (args.image_size, args.image_size),
+            args.num_classes,
+            args.conf_threshold,
+            args.nms_threshold,
         )
 
         for ii, det in enumerate(detections):
@@ -137,6 +133,26 @@ def main(args):
 
     # Export onnx
     qmodel.export_onnx(data, name="qyolov3.onnx")
+
+
+def postprocess_boxes(pred_bbox, src_size, eval_size):
+    pred_coor = pred_bbox
+    src_w, src_h = src_size
+    eval_w, eval_h = eval_size
+    resize_ratio_w = float(eval_w) / src_w
+    resize_ratio_h = float(eval_h) / src_h
+    dw = (eval_size[0] - resize_ratio_w * src_w) / 2
+    dh = (eval_size[1] - resize_ratio_h * src_h) / 2
+    pred_coor[:, 0::2] = 1.0 * (pred_coor[:, 0::2] - dw) / resize_ratio_w
+    pred_coor[:, 1::2] = 1.0 * (pred_coor[:, 1::2] - dh) / resize_ratio_h
+    pred_coor = np.concatenate(
+        [
+            np.maximum(pred_coor[:, :2], [0, 0]),
+            np.minimum(pred_coor[:, 2:], [src_w - 1, src_h - 1]),
+        ],
+        axis=-1,
+    )
+    return pred_coor
 
 
 if __name__ == "__main__":

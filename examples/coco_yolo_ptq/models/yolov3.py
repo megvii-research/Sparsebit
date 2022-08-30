@@ -337,31 +337,6 @@ def decode_predictions(
         return output
 
 
-def decode_outputs(
-    outputs,
-    image_size,
-    num_classes,
-    anchors=[
-        [[116, 90], [156, 198], [373, 326]],
-        [[30, 61], [62, 45], [42, 119]],
-        [[10, 13], [16, 30], [33, 23]],
-    ],
-):
-    predictions = [
-        decode_predictions(
-            out,
-            a,
-            image_size,
-            num_classes,
-            len(a),
-            is_train=False,
-        )
-        for out, a in zip(outputs, anchors)
-    ]
-    predictions = torch.cat(predictions, 1)
-    return predictions
-
-
 def postprocess(
     prediction, num_classes, conf_thre=0.7, nms_thre=0.5, nms_type="normal"
 ):
@@ -437,24 +412,32 @@ def postprocess(
     return output
 
 
-def postprocess_boxes(pred_bbox, src_size, eval_size):
-    pred_coor = pred_bbox
-    src_w, src_h = src_size
-    eval_w, eval_h = eval_size
-    resize_ratio_w = float(eval_w) / src_w
-    resize_ratio_h = float(eval_h) / src_h
-    dw = (eval_size[0] - resize_ratio_w * src_w) / 2
-    dh = (eval_size[1] - resize_ratio_h * src_h) / 2
-    pred_coor[:, 0::2] = 1.0 * (pred_coor[:, 0::2] - dw) / resize_ratio_w
-    pred_coor[:, 1::2] = 1.0 * (pred_coor[:, 1::2] - dh) / resize_ratio_h
-    pred_coor = np.concatenate(
-        [
-            np.maximum(pred_coor[:, :2], [0, 0]),
-            np.minimum(pred_coor[:, 2:], [src_w - 1, src_h - 1]),
-        ],
-        axis=-1,
-    )
-    return pred_coor
+def decode_outputs(
+    outputs,
+    image_size,
+    num_classes,
+    conf_thre=0.7,
+    nms_thre=0.5,
+    anchors=[
+        [[116, 90], [156, 198], [373, 326]],
+        [[30, 61], [62, 45], [42, 119]],
+        [[10, 13], [16, 30], [33, 23]],
+    ],
+):
+    predictions = [
+        decode_predictions(
+            out,
+            a,
+            image_size,
+            num_classes,
+            len(a),
+            is_train=False,
+        )
+        for out, a in zip(outputs, anchors)
+    ]
+    predictions = torch.cat(predictions, 1)
+    detections = postprocess(predictions, num_classes, conf_thre, nms_thre)
+    return detections
 
 
 if __name__ == "__main__":
