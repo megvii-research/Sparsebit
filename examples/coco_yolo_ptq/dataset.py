@@ -194,6 +194,9 @@ class COCODataset(Dataset):
 
         self.augmentor = Augmentor(image_size, is_train=self.is_train)
         self.to_tensor = tv_transforms.ToTensor()
+        self.normalize = tv_transforms.Normalize(
+            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+        )
 
         self.mosaic = mosaic
         self.mosaic_min_offset = mosaic_min_offset
@@ -337,7 +340,7 @@ class COCODataset(Dataset):
             heights = annotations[:, 3] - annotations[:, 1]
             annotations = annotations[(widths > 0) & (heights > 0)]
             annotations = torch.from_numpy(annotations)
-        dataset_dict["image"] = self.to_tensor(Image.fromarray(image))
+        dataset_dict["image"] = self.normalize(self.to_tensor(Image.fromarray(image)))
         dataset_dict["annotations"] = annotations
         return dataset_dict
 

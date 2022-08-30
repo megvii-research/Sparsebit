@@ -4,7 +4,12 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 
-from model import decode_outputs, postprocess, postprocess_boxes, yolov3 as build_model
+from models.yolov3 import (
+    decode_outputs,
+    postprocess,
+    postprocess_boxes,
+    yolov3 as build_model,
+)
 from dataset import coco_dataset as build_dataset, collate_fn
 from evaluate import coco_evaluate
 
@@ -35,7 +40,6 @@ def main(args):
     qmodel = QuantModel(model, config=qconfig)
     qmodel.eval()
     qmodel = qmodel.to(device)
-
     # Create dataset
     train_dataset = build_dataset(
         dataset_root=args.dataset_root,
@@ -71,7 +75,7 @@ def main(args):
 
     # Calibration
     qmodel.prepare_calibration()
-    calibration_size = 8
+    calibration_size = args.calib_size
     cur_size = 0
     for i, batch_meta in enumerate(train_loader):
         data = batch_meta["data"]
@@ -182,6 +186,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--print-freq", default=100, type=int, help="the frequency of logging"
+    )
+    parser.add_argument(
+        "--calib-size", default=16, type=int, help="the frequency of logging"
     )
     parser.add_argument("--qconfig", default="./qconfig.yaml", type=str)
     args = parser.parse_args()

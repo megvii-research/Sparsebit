@@ -8,7 +8,7 @@ from torchvision.ops import boxes as box_ops
 from torchvision.ops import nms  # BC-compat
 
 
-def conv_bn_relu(ni: int, nf: int, ks: int = 3, stride: int = 1) -> nn.Sequential:
+def conv_bn_lrelu(ni: int, nf: int, ks: int = 3, stride: int = 1) -> nn.Sequential:
     "Create a seuence Conv2d->BatchNorm2d->ReLu layer."
     return nn.Sequential(
         OrderedDict(
@@ -25,7 +25,7 @@ def conv_bn_relu(ni: int, nf: int, ks: int = 3, stride: int = 1) -> nn.Sequentia
                     ),
                 ),
                 ("bn", nn.BatchNorm2d(nf)),
-                ("relu", nn.ReLU(inplace=True)),
+                ("relu", nn.LeakyReLU(negative_slope=0.1, inplace=True)),
             ]
         )
     )
@@ -36,8 +36,8 @@ class ResLayer(nn.Module):
 
     def __init__(self, ni: int):
         super(ResLayer, self).__init__()
-        self.layer1 = conv_bn_relu(ni, ni // 2, ks=1)
-        self.layer2 = conv_bn_relu(ni // 2, ni, ks=3)
+        self.layer1 = conv_bn_lrelu(ni, ni // 2, ks=1)
+        self.layer2 = conv_bn_lrelu(ni // 2, ni, ks=3)
 
     def forward(self, x):
         out = self.layer2(self.layer1(x))
@@ -47,7 +47,7 @@ class ResLayer(nn.Module):
 class Darknet(nn.Module):
     def make_group_layer(self, ch_in: int, num_blocks: int, stride: int = 1):
         "starts with conv layer - `ch_in` channels in - then has `num_blocks` `ResLayer`"
-        return [conv_bn_relu(ch_in, ch_in * 2, stride=stride)] + [
+        return [conv_bn_lrelu(ch_in, ch_in * 2, stride=stride)] + [
             (ResLayer(ch_in * 2)) for i in range(num_blocks)
         ]
 
@@ -61,7 +61,7 @@ class Darknet(nn.Module):
             added.
         """
         super(Darknet, self).__init__()
-        self.stem = conv_bn_relu(ch_in, nf, ks=3, stride=1)
+        self.stem = conv_bn_lrelu(ch_in, nf, ks=3, stride=1)
 
         current_stride = 1
 
@@ -102,14 +102,14 @@ class YOLOv3(nn.Module):
         out_filter_0 = (1 + 4 + num_classes) * num_anchors
         self.out0 = self._make_embedding(in_channels[-1], [512, 1024], out_filter_0)
 
-        self.out1_cbl = conv_bn_relu(512, 256, 1)
+        self.out1_cbl = conv_bn_lrelu(512, 256, 1)
         self.out1_upsample = nn.Upsample(scale_factor=2, mode="nearest")
         out_filter_1 = (1 + 4 + num_classes) * num_anchors
         self.out1 = self._make_embedding(
             in_channels[-2] + 256, [256, 512], out_filter_1
         )
 
-        self.out2_cbl = conv_bn_relu(256, 128, 1)
+        self.out2_cbl = conv_bn_lrelu(256, 128, 1)
         self.out2_upsample = nn.Upsample(scale_factor=2, mode="nearest")
         out_filter_2 = (1 + 4 + num_classes) * num_anchors
         self.out2 = self._make_embedding(
@@ -119,12 +119,12 @@ class YOLOv3(nn.Module):
     def _make_embedding(self, in_filters, filters_list, out_filter):
         m = nn.ModuleList(
             [
-                conv_bn_relu(in_filters, filters_list[0], 1),
-                conv_bn_relu(filters_list[0], filters_list[1], 3),
-                conv_bn_relu(filters_list[1], filters_list[0], 1),
-                conv_bn_relu(filters_list[0], filters_list[1], 3),
-                conv_bn_relu(filters_list[1], filters_list[0], 1),
-                conv_bn_relu(filters_list[0], filters_list[1], 3),
+                conv_bn_lrelu(in_filters, filters_list[0], 1),
+                conv_bn_lrelu(filters_list[0], filters_list[1], 3),
+                conv_bn_lrelu(filters_list[1], filters_list[0], 1),
+                conv_bn_lrelu(filters_list[0], filters_list[1], 3),
+                conv_bn_lrelu(filters_list[1], filters_list[0], 1),
+                conv_bn_lrelu(filters_list[0], filters_list[1], 3),
             ]
         )
         m.add_module(
