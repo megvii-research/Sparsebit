@@ -60,6 +60,37 @@ class QReLU6(QuantOpr):
         return out
 
 
+@register_qmodule(sources=[nn.LeakyReLU, F.leaky_relu])
+class QLeakyReLU(QuantOpr):
+    """量化LeakyReLU层,拥有 ``input_quantizer`` 。
+
+    是QuantOpr的子类。
+
+    Args:
+        input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
+            输入量化器。
+        inplace (bool): 同 ``torch.nn.LeakyReLU`` 。
+    """
+
+    def __init__(self, org_module, config=None):
+        super().__init__()
+        self._repr_info = "Q" + org_module.__repr__()
+        if isinstance(org_module, nn.Module):
+            self.negative_slope = org_module.negative_slope
+            self.inplace = org_module.inplace
+        else:
+            self.negative_slope = org_module.args[1]
+            self.inplace = org_module.args[2]
+
+    def forward(self, x_in):
+        """ReLU6层的前向传播,但加入了input量化。"""
+        x_in = self.input_quantizer(x_in)
+        out = F.leaky_relu(
+            x_in, negative_slope=self.negative_slope, inplace=self.inplace
+        )
+        return out
+
+
 @register_qmodule(sources=[nn.Sigmoid, torch.sigmoid, F.sigmoid])
 class QSigmoid(QuantOpr):
     """量化Sigmoid层,拥有 ``input_quantizer`` 。

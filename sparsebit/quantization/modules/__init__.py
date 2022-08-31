@@ -22,6 +22,7 @@ from .pool import *
 from .shape import *
 from .normalization import *
 from .unary import *
+from .resize import *
 
 
 PASSTHROUGHT_MODULES = (
@@ -30,4 +31,5 @@ PASSTHROUGHT_MODULES = (
     QMaxPool2d,
     QBatchNorm2d,
     QIdentity,
+    Concat,
 )
