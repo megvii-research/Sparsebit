@@ -1,3 +1,5 @@
+import torch
+import copy
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 
@@ -44,12 +46,19 @@ class ReplacePattern(ReplacePatternBase):
         cnn_module.eval()
         bn_module.eval()
         cnn_node = nodes_dict["cnn_layer"]
-        if isinstance(cnn_module, QConv2d):
-            new_cnn_module = fuse_conv_bn_eval(cnn_module, bn_module)
-            op_name = cnn_node.target + "_bn"
+
+        # fuse bn under bn-tuning
+        if cnn_module.weight_quantizer.is_enable:
+            if isinstance(cnn_module, QConv2d):
+                new_cnn_module = fuse_qconv_qbn(cnn_module, bn_module)
+            else:
+                new_cnn_module = fuse_qlinear_qbn(cnn_module, bn_module)
         else:
-            new_cnn_module = fuse_linear_bn_eval(cnn_module, bn_module)
-            op_name = cnn_node.target + "_bn"
+            if isinstance(cnn_module, QConv2d):
+                new_cnn_module = fuse_conv_bn_eval(cnn_module, bn_module)
+            else:
+                new_cnn_module = fuse_linear_bn_eval(cnn_module, bn_module)
+        op_name = cnn_node.target + "_bn"
         # new_cnn_module is QuantOpr copied from cnn_module with new parameters
         # see torch.nn.utils.fusion.fuse_conv_bn_eval / fuse_linear_bn_eval
         model.add_module(op_name, new_cnn_module)
@@ -65,3 +74,33 @@ class ReplacePattern(ReplacePatternBase):
                 name=op_name,
             )
         return new_node
+
+
+def fuse_qconv_qbn(cnn_module, bn_module):
+    #if cnn_module.weight_quantizer.is_symmetric: # zp=0
+    new_cnn_module = copy.deepcopy(cnn_module)
+    bn_rm, bn_rv, bn_w, bn_b = bn_module.running_mean, bn_module.running_var, bn_module.weight, bn_module.bias
+    bn_rstd = torch.rsqrt(bn_rv + bn_module.eps)
+    scale_ratio = (bn_w * bn_rstd).detach().reshape([-1] + [1] * (len(cnn_module.weight.shape) - 1))
+    conv_w = new_cnn_module.weight * scale_ratio
+    new_cnn_module.weight_quantizer.scale *= scale_ratio
+    if cnn_module.bias is None:
+        conv_b = torch.zeros_like(bn_rm)
+    conv_b = (conv_b - bn_rm) * scale_ratio.reshape(-1) + bn_b
+    new_cnn_module.weight = torch.nn.Parameter(conv_w)
+    new_cnn_module.bias = torch.nn.Parameter(conv_b)
+    return new_cnn_module
+
+
+def fuse_qlinear_qbn(linear_module, bn_module):
+    new_linear_module = copy.deepcopy(linear_module)
+    bn_rm, bn_rv, bn_w, bn_b = bn_module.running_mean, bn_module.running_var, bn_module.weight, bn_module.bias
+    scale_ratio = (bn_w * torch.rsqrt(bn_rv + bn_module.eps)).detach().reshape([-1] + [1] * (len(linear_module.weight.shape) - 1))
+    new_linear_module.weight_quantizer.scale *= scale_ratio
+    linear_w = new_linear_module.weight * scale_ratio
+    if new_linear_module.bias is None:
+        linear_b = torch.zeros_like(bn_rm)
+    linear_b = (linear_b - bn_rm) * scale_ratio.reshape(-1) + bn_b
+    new_linear_module.weight = torch.nn.Parameter(linear_w)
+    new_linear_module.bias = torch.nn.Parameter(linear_b)
+    return new_linear_module

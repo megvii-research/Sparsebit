@@ -200,24 +200,33 @@ def main():
     )
 
     # a calibration process
+    calibration_size = 256
     qmodel.prepare_calibration()
-    calibration_size, cur_size = 256, 0
-    model.eval()
-    with torch.no_grad():
-        for images, target in calib_loader:
-            if torch.cuda.is_available():
-                images = images.cuda()
-            res = qmodel(images)
-            cur_size += images.shape[0]
-            if cur_size >= calibration_size:
-                break
+    qmodel.eval()
+    forward_calibration(qmodel, calib_loader, calibration_size)
     qmodel.calc_qparams()
 
-    criterion = nn.CrossEntropyLoss()
+    if qconfig.SCHEDULE.BN_TUNING:
+        with qmodel.batchnorm_tuning():
+            forward_calibration(qmodel, calib_loader, calibration_size)
+
     qmodel.set_quant(w_quant=True, a_quant=True)
+    criterion = nn.CrossEntropyLoss()
     acc1 = validate(val_loader, qmodel, criterion, args)
 
     qmodel.export_onnx(torch.randn(1, 3, 224, 224), name="q{}.onnx".format(args.arch))
+
+
+def forward_calibration(model, calib_loader, calib_size):
+    cur_size = 0
+    with torch.no_grad():
+        for images, _ in calib_loader:
+            if torch.cuda.is_available():
+                images = images.cuda()
+            output = model(images)
+            cur_size += images.shape[0]
+            if cur_size >= calib_size:
+                break
 
 
 def validate(val_loader, model, criterion, args):

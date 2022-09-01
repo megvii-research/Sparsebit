@@ -8,6 +8,7 @@ _C.BACKEND = "virtual"
 
 _C.SCHEDULE = CN()
 _C.SCHEDULE.FUSE_BN = False  # use ``with torch.no_grad()`` if it's enabled
+_C.SCHEDULE.BN_TUNING = False
 _C.SCHEDULE.DISABLE_UNNECESSARY_QUANT = True
 
 _C.W = CN()
@@ -43,6 +44,7 @@ def parse_qconfig(cfg_file):
     # verify config
     verify_bits(qconfig)
     verify_backend(qconfig)
+    verify_schedule(qconfig)
     return qconfig
 
 
@@ -72,4 +74,13 @@ def verify_backend(qconfig):
         ), "the qshema of weight should be specified as per-channel-symmetric in tensorrt"
         assert (
             a_qscheme == torch.per_tensor_symmetric
-        ), "the qshema of activation should be specified as per-tensor-symmetric in tensorrt"
+        ), "the qsheme of activation should be specified as per-tensor-symmetric in tensorrt"
+
+
+def verify_schedule(qconfig):
+    if qconfig.SCHEDULE.BN_TUNING:
+        w_qscheme = get_qscheme(qconfig.W.QSCHEME)
+        assert (
+            w_qscheme == torch.per_channel_symmetric or w_qscheme == torch.per_channel_affine
+        ), "the qsheme of weight must be specified as per-channel when bn-tuning enabled"
+    return qconfig
