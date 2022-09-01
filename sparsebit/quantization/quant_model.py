@@ -1,4 +1,5 @@
 from atexit import register
+from contextlib import contextmanager
 import copy
 import operator
 import importlib
@@ -19,6 +20,7 @@ from sparsebit.quantization.observers import Observer
 from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
 from sparsebit.quantization.converters import simplify, fuse_operations
+
 
 __all__ = ["QuantModel"]
 
@@ -108,8 +110,29 @@ class QuantModel(nn.Module):
         self.model = simplify(self.model)
 
     def _run_fuse_operations(self):
+        if self.cfg.SCHEDULE.BN_TUNING: # first disable fuse bn
+            update_config(self.cfg.SCHEDULE, "FUSE_BN", False)
         self.model = fuse_operations(self.model, self.cfg.SCHEDULE)
         self.model.graph.print_tabular()
+
+    @contextmanager
+    def batchnorm_tuning(self):
+        """
+        We impl a batchnorm tuning algorithm to adjust the stats which will be noisy by quantization.
+        Ref:
+            batchnorm_tuning: https://arxiv.org/pdf/2006.10518.pdf
+        """
+        # prepare batchnorm tuning
+        self.model.train()
+        self.set_quant(w_quant=True, a_quant=True)
+        for n, m in self.model.named_modules():
+            if isinstance(m, QBatchNorm2d):
+                m.module.num_batches_tracked = m.module.num_batches_tracked.zero_()
+        yield
+        self.model.eval()
+        update_config(self.cfg.SCHEDULE, "FUSE_BN", True)
+        self.model = fuse_operations(self.model, self.cfg.SCHEDULE, custom_fuse_list=["fuse_bn"])
+        self.set_quant(w_quant=False, a_quant=False)
 
     def prepare_calibration(self):
         """
