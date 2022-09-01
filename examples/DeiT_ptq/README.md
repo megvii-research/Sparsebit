@@ -1,8 +1,8 @@
-# DEiT example
+# DeiT example
 
 ## preparation
 
-The `DEiT` pretrained model is the checkpoint from https://github.com/facebookresearch/deit . The example will automatically download the checkpoint using `torch.hub.load`.
+The `DeiT` pretrained model is the checkpoint from https://github.com/facebookresearch/deit . The example will automatically download the checkpoint using `torch.hub.load`.
 
 The datasets used in example are calibration dataset and validation dataset.
 
@@ -36,5 +36,5 @@ Use argument `-b batch_size` to assign batch_size if the default batch_size(=128
 
 |model|float32 acc|8w8f acc|
 |-|-|-|
-|DEiT-tiny|72.026|70.778|
-|DEiT-base|81.742|81.152|
+|DeiT-tiny|72.026|70.778|
+|DeiT-base|81.742|81.152|
