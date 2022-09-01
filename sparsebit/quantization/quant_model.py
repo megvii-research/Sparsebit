@@ -99,12 +99,25 @@ class QuantModel(nn.Module):
             return sub_cfg
 
         # build config for every QuantModule
-        for n, m in self.model.named_modules():
-            if isinstance(m, QuantOpr):
-                _config = self.cfg.clone()  # init
-                update_config(_config, "W", _sub_build(self.cfg.W, n))
-                update_config(_config, "A", _sub_build(self.cfg.A, n))
-                m.build_quantizer(_config)
+        original_nodes_cache = list(self.model.graph.nodes)
+        for node in original_nodes_cache:
+            if node.op == "call_module":
+                module = getattr(self.model, node.target)
+                if isinstance(module, QuantOpr):
+                    _config = self.cfg.clone()  # init
+                    update_config(_config, "W", _sub_build(self.cfg.W, node.target))
+                    update_config(_config, "A", _sub_build(self.cfg.A, node.target))
+                    module.build_quantizer(_config)
+                elif (
+                    isinstance(module, MultipleInputsQuantOpr)
+                    and len(node.all_input_nodes) > 1
+                ):
+                    module.prepare_input_quantizer(node, self.model)
+                    for input_node in node.all_input_nodes:
+                        identity_module = getattr(self.model, input_node.target)
+                        _config = self.cfg.clone()  # init
+                        update_config(_config, "A", _sub_build(self.cfg.A, node.target))
+                        identity_module.build_quantizer(_config)
 
     def _run_simplifiers(self):
         self.model = simplify(self.model)

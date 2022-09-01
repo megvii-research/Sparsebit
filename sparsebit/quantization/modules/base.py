@@ -92,3 +92,38 @@ class QuantOpr(nn.Module):
             info += "\n\tinput_quantizer: {}".format(self.input_quantizer.__repr__())
 
         return info
+
+
+class MultipleInputsQuantOpr(nn.Module):
+    """MultipleInputsQuantOpr是torch算子的多输入量化版本。
+    它不会提供 ``input_quantizer`` 和 ``weight_quantizer`` ,
+    而是在build_quantizer时对每个输入插入一个独立 ``QIdentity`` 算子，在算子中包含 ``input_quantizer`` 。
+    请注意本算子自身不做量化。
+    """
+
+    def __init__(self):
+        super(MultipleInputsQuantOpr, self).__init__()
+        self.input_quantizer_generated = False
+
+    def prepare_input_quantizer(self, node, model):
+        from .unary import QIdentity
+
+        if self.input_quantizer_generated:
+            return
+
+        input_nodes_cache = list(node.all_input_nodes)
+        for idx, input_node in enumerate(input_nodes_cache):
+            new_module_name = node.name + "_identity{}".format(idx)
+            new_module = QIdentity()
+            model.add_module(new_module_name, new_module)
+            with model.graph.inserting_before(node):
+                identity_node = model.graph.create_node(
+                    op="call_module",
+                    target=new_module_name,
+                    args=(input_node,),
+                    kwargs={},
+                    name=new_module_name,
+                )
+            node.replace_input_with(input_node, identity_node)
+
+        self.input_quantizer_generated = True

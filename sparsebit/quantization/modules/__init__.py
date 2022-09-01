@@ -13,7 +13,7 @@ def register_qmodule(sources: [nn.Module, str, ...]):
 
 
 # 将需要注册的module文件填写至此
-from .base import QuantOpr
+from .base import QuantOpr, MultipleInputsQuantOpr
 from .activations import *
 from .conv import *
 from .linear import *
@@ -23,13 +23,28 @@ from .shape import *
 from .normalization import *
 from .unary import *
 from .resize import *
+from .matmul import *
+from .python_builtins import *
 
 
 PASSTHROUGHT_MODULES = (
     QAdd,
+    QSubtract,
     QMul,
+    QDivide,
+    QFloorDiv,
     QMaxPool2d,
     QBatchNorm2d,
+    QLayerNorm,
     QIdentity,
     Concat,
+    QGetAttr,
+    QGetItem,
+    QEqual,
+    QDropout,
+    Size,
+    Transpose,
+    Reshape,
+    Permute,
+    Expand,
 )

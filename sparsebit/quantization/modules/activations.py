@@ -138,3 +138,15 @@ class QSiLU(QuantOpr):
         x_in = self.input_quantizer(x_in)
         out = F.silu(x_in, inplace=self.inplace)
         return out
+
+
+@register_qmodule(sources=[nn.GELU])
+class QGELU(QuantOpr):
+    def __init__(self, org_module, config=None):
+        super().__init__()
+        self._repr_info = "Q" + org_module.__repr__()
+
+    def forward(self, x_in):
+        x_in = self.input_quantizer(x_in)
+        out = F.gelu(x_in)
+        return out
