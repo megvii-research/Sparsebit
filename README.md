@@ -11,7 +11,11 @@ Quantization turns full-precision params into low-bit precision params, which ca
 
 ### Results
 - PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
+- PTQ results of Vision Transformer on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/DeiT_ptq)
+- PTQ results of YOLO related works on COCO: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/coco_yolo_ptq)
 - QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
+
+
 
 ## Pruning
 About to released.
