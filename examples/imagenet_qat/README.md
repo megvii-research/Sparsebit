@@ -19,8 +19,8 @@ python3 -m torch.distributed.launch --nproc_per_node=4 --use_env main.py qconfig
 
 |model| float | DoReFa|PACT|LSQ|
 |---|---|---|---|---|
-|ResNet-18| 69.758 |  69.231 |  69.596 | 69.892|
-|ResNet-50| 76.130 |75.552|76.022| 75.618| 
+|ResNet-18| 69.758 |  69.231 | 69.596 | 70.124 |
+|ResNet-50| 76.130 |75.552|76.022| 76.362 | 
 |MobileNetV2| 72.154|  68.660 | -  | 69.125|
 |RegNetX-600MF|75.034|N/C|73.578|-|
 | DeiT-tiny |72.2 | - | - | 71.27 |
