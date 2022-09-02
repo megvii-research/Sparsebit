@@ -21,8 +21,6 @@ class Quantizer(BaseQuantizer):
             )
 
     def _forward(self, x):
-        if self.fake_fused:
-            return x
         lower = (
             -self.alpha if self.qdesc.qmin < 0 else torch.Tensor([0]).to(self.device)
         )

@@ -12,9 +12,8 @@ Tensor QuantizePerTensorForward(
 
 
 std::vector<Tensor> QuantizePerTensorBackward(
-    const Tensor &data, const Tensor &data_fq,
-    const Tensor &scale, const Tensor &zero_point, const Tensor &grad_y,
-    const int qmin, const int qmax);
+    const Tensor &data, const Tensor &scale, const Tensor &zero_point, 
+    const Tensor &grad_y, const int qmin, const int qmax, const Rounding rounding);
 
 
 Tensor QuantizePerChannelForward(
@@ -28,11 +27,11 @@ Tensor QuantizePerChannelForward(
 
 std::vector<Tensor> QuantizePerChannelBackward(
     const Tensor &data,
-    const Tensor &data_fq,
     const Tensor &scale, 
     const Tensor &zero_point,
     const Tensor &grad_y,
     const int qmin, 
     const int qmax, 
-    const int ch_axis);
+    const int ch_axis,
+    const Rounding rounding);
 

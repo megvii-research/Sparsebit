@@ -12,7 +12,7 @@ class Quantizer(BaseQuantizer):
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
 
-    def _forward(self, x):
+    def _forward(self, x, scale, zero_point):
         x_tanhed = x.tanh()
         x_normed = x_tanhed / x_tanhed.detach().abs().max()  # norm to [-1, +1]
         scale, zero_point = self.scale, self.zero_point
