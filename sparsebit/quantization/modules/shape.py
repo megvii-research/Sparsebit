@@ -127,3 +127,28 @@ class Permute(nn.Module):
     def forward(self, x_in, *args):
         out = torch.permute(x_in, dims=self.dims)
         return out
+
+@register_qmodule(sources=[torch.stack])
+class Stack(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Stack, self).__init__()
+
+    def forward(self, x_in, *args, **kwargs):
+        return torch.stack(x_in, *args, **kwargs)
+
+@register_qmodule(sources=[torch.unsqueeze, torch.Tensor.unsqueeze])
+class Unsqueeze(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Unsqueeze, self).__init__()
+        self.dim = org_module.args[1]
+
+    def forward(self, x_in, *args):
+        return x_in.unsqueeze(self.dim)
+
+@register_qmodule(sources=[torch.Tensor.repeat])
+class Repeat(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Repeat, self).__init__()
+
+    def forward(self, x_in, *args):
+        return x_in.repeat(*args)

@@ -74,3 +74,41 @@ class QMean(QuantOpr):
         x_in = self.input_quantizer(x_in)
         out = torch.mean(x_in, dim=self.dim, keepdim=self.keepdim)
         return out
+
+@register_qmodule(sources=[torch.sum,torch.Tensor.sum])
+class QSum(QuantOpr):
+    def __init__(self, org_module=None, config=None):
+        super(QSum, self).__init__()
+        self._repr_info = "QSum "
+
+    def forward(self, x_in, *args, **kwargs):
+        x_in = self.input_quantizer(x_in)
+        return x_in.sum(*args, **kwargs)
+
+@register_qmodule(sources=[torch.cumsum,torch.Tensor.cumsum])
+class QCumsum(QuantOpr):
+    def __init__(self, org_module=None, config=None):
+        super(QCumsum, self).__init__()
+        self._repr_info = "QCumsum "
+
+    def forward(self, x_in, *args, **kwargs):
+        x_in = self.input_quantizer(x_in)
+        return x_in.cumsum(*args, **kwargs)
+
+@register_qmodule(sources=[torch.sin,torch.Tensor.sin])
+class Sin(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Sin, self).__init__()
+        self._repr_info = "Sin "
+
+    def forward(self, x_in):
+        return x_in.sin()
+
+@register_qmodule(sources=[torch.cos,torch.Tensor.cos])
+class Cos(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Cos, self).__init__()
+        self._repr_info = "Cos "
+
+    def forward(self, x_in):
+        return x_in.cos()

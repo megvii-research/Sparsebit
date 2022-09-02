@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import onnx
 
 from sparsebit.utils import update_config
+from sparsebit.quantization.complicated_modules import *
 from sparsebit.quantization.modules import *
 from sparsebit.quantization.observers import Observer
 from sparsebit.quantization.quantizers import Quantizer
@@ -31,6 +32,7 @@ class QuantModel(nn.Module):
         super().__init__()
         self.cfg = config
         self.device = torch.device(config.DEVICE)
+        model = self._replace_complicated_operators(model)
         self.model = self._trace(model)
         self._run_simplifiers()
         self._convert2quantmodule()
@@ -128,10 +130,31 @@ class QuantModel(nn.Module):
                 ):
                     module.prepare_input_quantizer(node, self.model)
                     for input_node in node.all_input_nodes:
-                        identity_module = getattr(self.model, input_node.target)
-                        _config = self.cfg.clone()  # init
-                        update_config(_config, "A", _sub_build(self.cfg.A, node.target))
-                        identity_module.build_quantizer(_config)
+                        input_module = getattr(self.model, input_node.target)
+                        if isinstance(input_module, QIdentity):
+                            _config = self.cfg.clone()  # init
+                            update_config(_config, "A", _sub_build(self.cfg.A, node.target))
+                            input_module.build_quantizer(_config)
+
+    def _replace_complicated_operators(self, model):
+        finished = False
+        while(not finished):
+            finished = self._recurrency_replace_complicated_operators(model)
+        return model
+
+    def _recurrency_replace_complicated_operators(self, module):
+        finished = True
+        for n, m in module.named_children():
+            print(n)
+            if m.__class__ in COMPLICATED_MODULE_MAP:
+                setattr(module, n, COMPLICATED_MODULE_MAP[m.__class__](m))
+                finished = False
+                break
+            else:
+                finished = self._recurrency_replace_complicated_operators(m)
+                if not finished:
+                    break
+        return finished
 
     def _trace(self, model):
         skipped_modules = self.cfg.SKIP_TRACE_MODULES
