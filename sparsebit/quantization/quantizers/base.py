@@ -39,15 +39,19 @@ class Quantizer(nn.Module, abc.ABC):
         self.zero_point = self._broadcast_qparams(zero_point)
         return self.scale, self.zero_point
 
-    def _forward(self, x):
+    def _forward(self, x, scale, zero_point):
         pass
+
+    def _qparams_preprocess(self, x):
+        return self.scale, self.zero_point
 
     def forward(self, x):
         if self.is_enable:
+            scale, zero_point = self._qparams_preprocess(x)
             if self.export_onnx:
-                x_dq = torch_fake_quant(x, self.scale, self.zero_point, self.qdesc)
+                x_dq = torch_fake_quant(x, scale, zero_point, self.qdesc)
             else:
-                x_dq = self._forward(x)
+                x_dq = self._forward(x, scale, zero_point)
         else:
             x_dq = x
         return x_dq

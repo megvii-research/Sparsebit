@@ -97,12 +97,12 @@ __host__ Tensor QuantizePerTensorForward(
 __global__ void QuantizePerTensorBackwardCUDA(
     const int64_t num_elements,
     const float* data, 
-    const float* data_fq,
     const float* scale,
     const float* zero_point,
     const float* grad_y,
     const int qmin,
     const int qmax,
+    const Rounding rounding,
     float* gx,
     float* gs,
     float* gzp,
@@ -110,25 +110,21 @@ __global__ void QuantizePerTensorBackwardCUDA(
     const bool enable_gzp){
     float s = scale[0]; int zp = std::round(zero_point[0]);
     for(int64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < num_elements; i += blockDim.x*gridDim.x){
-        float fqmax = (qmax - zp) * s;
-        float fqmin = (qmin - zp) * s;
         float x = data[i];
         float gy = grad_y[i];
-
+        int vq = _round2int(x / s, rounding) + zp;
         float partial_gx = gy;
-        if(x >= fqmax || x <= fqmin) partial_gx = 0;
+        if (vq > qmax || vq < qmin) partial_gx = 0;
         gx[i] = partial_gx;
-
         if(enable_gs){
-            float partial_gs = ((data_fq[i] - x) / s) * gy;
-            if(x >= fqmax) partial_gs = (qmax - zp) * gy;
-            if(x <= fqmin) partial_gs = (qmin - zp) * gy;
+            float partial_gs = (_round2int(x/s, rounding) - x/s) * gy;
+            if(vq > qmax) partial_gs = (qmax - zp) * gy;
+            if(vq < qmin) partial_gs = (qmin - zp) * gy;
             float reduced_gs = BlockReduceSum<float>(partial_gs); __syncthreads();
             if (threadIdx.x == 0) atomicAdd(gs, reduced_gs);
         }
-
         if(enable_gzp){
-            float partial_gzp = (x < fqmax && x > fqmin) ? 0.0f : (-s * gy);
+            float partial_gzp = (vq <= qmax && vq >= qmin) ? 0.0f : (-s * gy);
             float reduced_gzp = BlockReduceSum<float>(partial_gzp); __syncthreads();
             if (threadIdx.x == 0) atomicAdd(gzp, reduced_gzp);
         }
@@ -137,15 +133,13 @@ __global__ void QuantizePerTensorBackwardCUDA(
 
 
 __host__ std::vector<Tensor> QuantizePerTensorBackward(
-    const Tensor &data, const Tensor &data_fq,
-    const Tensor &scale, const Tensor &zero_point, const Tensor &grad_y,
-    const int qmin, const int qmax){
+    const Tensor &data, const Tensor &scale, const Tensor &zero_point, const Tensor &grad_y,
+    const int qmin, const int qmax, const Rounding rounding){
     /**
      * Gradient Bakcwrad for quantization
      * Solve grad_s, grad_o, grad_v at once.
      */
     CheckTensor(data, at::kFloat, "data(Expect to be FP32)");
-    CheckTensor(data_fq, at::kFloat, "data_fq(Expect to be FP32)");
     CheckTensor(scale, at::kFloat, "scale(Expect to be FP32)");
     CheckTensor(zero_point, at::kFloat, "zero_point(Expect to be FP32)");
     CheckTensor(grad_y, at::kFloat, "Gard(Expect to be FP32)");
@@ -158,12 +152,12 @@ __host__ std::vector<Tensor> QuantizePerTensorBackward(
     QuantizePerTensorBackwardCUDA<<<NUM_OF_BLOCK(num_elements), CUDA_NUM_THREADS, 0, at::cuda::getCurrentCUDAStream()>>>(
         num_elements,
         data.data_ptr<float>(),
-        data_fq.data_ptr<float>(),
         scale.data_ptr<float>(),
         zero_point.data_ptr<float>(),
         grad_y.data_ptr<float>(),
         qmin,
         qmax,
+        rounding,
         grad_x.data_ptr<float>(),
         grad_s.data_ptr<float>(),
         grad_zp.data_ptr<float>(),
@@ -235,12 +229,12 @@ __global__ void QuantizePerChannelBackwardCUDA(
     const int64_t num_elements_perchannel,
     const int num_channels,
     const float* data, 
-    const float* data_fq,
     const float* scale,
     const float* zero_point,
     const float* grad_y,
     const int qmin,
     const int qmax,
+    const Rounding rounding,
     float* gx,
     float* gs,
     float* gzp,
@@ -251,43 +245,41 @@ __global__ void QuantizePerChannelBackwardCUDA(
     for(int64_t i = (c * num_elements_perchannel) + blockIdx.y * CUDA_NUM_THREADS + threadIdx.x; i < num_elements; i += num_elements_persample){
         float partial_gs = 0; float partial_gzp = 0;
         if (blockIdx.y * CUDA_NUM_THREADS + threadIdx.x < num_elements_perchannel){
+            float x = data[i];
             float gy = grad_y[i];
-            float fqmin = (qmin - zp) * s; float fqmax = (qmax - zp) * s;
+            int vq = _round2int(x/s, rounding) + zp;
             // the graident of x
             float partial_gx = gy;
-            if(data[i] >= fqmax || data[i] <= fqmin) partial_gx = 0;
+            if(vq > qmax || vq < qmin) partial_gx = 0;
             gx[i] = partial_gx;
             // the graident of scale
-            //if(enable_gs){
-            partial_gs = (data_fq[i] - data[i]) / s * grad_y[i];
-            if(data[i] <= fqmin) partial_gs = (qmin - zp) * grad_y[i];
-            if(data[i] >= fqmax) partial_gs = (qmax - zp) * grad_y[i];
-            //}
-            //if(enable_gzp) partial_gzp = (data[i] > fqmin && data[i] < fqmax) ? 0.0f : (-s * grad_y[i]);
-            partial_gzp = (data[i] > fqmin && data[i] < fqmax) ? 0.0f : (-s * grad_y[i]);
-        }
-        float reduced_gs = BlockReduceSum<float>(partial_gs); __syncthreads();
-        float reduced_gzp = BlockReduceSum<float>(partial_gzp); __syncthreads();
-        if (threadIdx.x == 0) {
-            atomicAdd(&gs[c], reduced_gs);
-            atomicAdd(&gzp[c], reduced_gzp);
+            if(enable_gs){
+                partial_gs = (_round2int(x/s, rounding) - x/s) * grad_y[i];
+                if(vq < qmin) partial_gs = (qmin - zp) * grad_y[i];
+                if(vq > qmax) partial_gs = (qmax - zp) * grad_y[i];
+                float reduced_gs = BlockReduceSum<float>(partial_gs); __syncthreads();
+                if (threadIdx.x == 0) atomicAdd(&gs[c], reduced_gs);
+            }
+            if(enable_gzp){
+                partial_gzp = (vq >= qmin && vq < qmax) ? 0.0f : (-s * grad_y[i]);
+                float reduced_gzp = BlockReduceSum<float>(partial_gzp); __syncthreads();
+                if (threadIdx.x == 0) atomicAdd(&gzp[c], reduced_gzp);
+            }
         }
     }
 }
 
 
 __host__ std::vector<Tensor> QuantizePerChannelBackward(
-    const Tensor &data, const Tensor &data_fq, const Tensor &scale, 
+    const Tensor &data, const Tensor &scale,
     const Tensor &zero_point, const Tensor &grad_y,
-    const int qmin, const int qmax, const int ch_axis){
+    const int qmin, const int qmax, const int ch_axis, const Rounding rounding){
     CheckTensor(data, at::kFloat, "Data(Expect to be FP32)");
-    CheckTensor(data_fq, at::kFloat, "Data_FakeQuant(Expect to be FP32)");
     CheckTensor(scale, at::kFloat, "Scale(Expect to be FP32)");
     CheckTensor(zero_point, at::kFloat, "ZeroPoint(Expect to be FP32)");
     CheckTensor(grad_y, at::kFloat, "Gard(Expect to be FP32)");
 
     Tensor grad_x = at::zeros_like(data);
-    //Tensor grad_s = at::zeros_like(data);
     Tensor grad_s = at::zeros_like(scale);
     Tensor grad_zp = at::zeros_like(zero_point);
 
@@ -307,12 +299,12 @@ __host__ std::vector<Tensor> QuantizePerChannelBackward(
         num_elements_perchannel,
         num_channels,
         data.data_ptr<float>(),
-        data_fq.data_ptr<float>(),
         scale.data_ptr<float>(),
         zero_point.data_ptr<float>(),
         grad_y.data_ptr<float>(),
         qmin,
         qmax,
+        rounding,
         grad_x.data_ptr<float>(),
         grad_s.data_ptr<float>(),
         grad_zp.data_ptr<float>(),

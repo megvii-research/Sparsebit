@@ -11,6 +11,6 @@ class Quantizer(BaseQuantizer):
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
 
-    def _forward(self, x_f):
-        x_dq = STE.apply(x_f, self.scale, self.zero_point, self.qdesc, self.backend)
+    def _forward(self, x_f, scale, zero_point):
+        x_dq = STE.apply(x_f, scale, zero_point, self.qdesc, self.backend)
         return x_dq

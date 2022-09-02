@@ -42,7 +42,6 @@ class MySTE(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, gout):
-        #x, scale, zero_point = ctx.saved_tensors
         x, scale, zero_point = ctx.saved_tensors
         qmin, qmax = ctx.qdesc.qmin, ctx.qdesc.qmax
         xq_wo_clamp = (x / scale).round() + zero_point
@@ -60,6 +59,7 @@ class MySTE(torch.autograd.Function):
             gz = torch.where(mask, zero, one)
             gz = ((xq_wo_clamp < qmin) * (-scale) + (xq_wo_clamp > qmax) * (-scale)) * gz
             gz = gout * gz
+
         return gin, gs, gz, None, None
 
 
@@ -67,35 +67,36 @@ class STE(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, scale, zero_point, qdesc, backend):
         x_fq = fake_quant_factory[backend](x, scale, zero_point, qdesc)
-        ctx.save_for_backward(x, x_fq, scale, zero_point)
+        ctx.save_for_backward(x, scale, zero_point)
         ctx.qdesc = qdesc
         return x_fq
 
     @staticmethod
     def backward(ctx, gout):
-        x, x_fq, scale, zero_point = ctx.saved_tensors
+        x, scale, zero_point = ctx.saved_tensors
         qdesc = ctx.qdesc
         qmin, qmax = qdesc.qmin, qdesc.qmax
         if torch.cuda.is_available():
             if qdesc.is_perchannel:
                 gx, gs, gzp = fake_quant_kernel.quant_perchannel_backward(
-                    x.contiguous(), x_fq.contiguous(), scale.contiguous(), zero_point.float().contiguous(), gout.contiguous(), qmin, qmax, qdesc.ch_axis
+                    x.contiguous(), scale.contiguous(), zero_point.float().contiguous(), gout.contiguous(), qmin, qmax, qdesc.ch_axis, 0
                 )
             else:
                 gx, gs, gzp = fake_quant_kernel.quant_pertensor_backward(
-                    x.contiguous(), x_fq.contiguous(), scale, zero_point.float(), gout.contiguous(), qmin, qmax
+                    x.contiguous(), scale, zero_point.float(), gout.contiguous(), qmin, qmax, 0
                 )
             gs = gs if scale.requires_grad else None
             gzp = gzp if zero_point.requires_grad else None
         else:
-            min_fq = (qmin - zero_point) * scale
-            max_fq = (qmax - zero_point) * scale
-            zero = gout.new_zeros(1)
-            gx = torch.where((x >= min_fq) * (x <= max_fq), gout, zero)
-            if scale.requires_grad or zero_point.requires_grad:
-                raise NotImplementedError
-            else:
-                gs, gzp = None, None
+            raise NotImplementedError("We recommended that use cuda to speedup when training")
+            #min_fq = (qmin - zero_point) * scale
+            #max_fq = (qmax - zero_point) * scale
+            #zero = gout.new_zeros(1)
+            #gx = torch.where((x >= min_fq) * (x <= max_fq), gout, zero)
+            #if scale.requires_grad or zero_point.requires_grad:
+            #    raise NotImplementedError
+            #else:
+            #    gs, gzp = None, None
         return gx, gs, gzp, None, None
 
 

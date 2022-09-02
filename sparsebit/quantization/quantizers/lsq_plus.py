@@ -15,7 +15,6 @@ class Quantizer(BaseQuantizer):
 
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
-        self.eps = 1e-6
         self.init_params = False
 
     def calc_qparams(self):
@@ -45,21 +44,26 @@ class Quantizer(BaseQuantizer):
                 self.scale = nn.Parameter(self._broadcast_qparams(scale)).to(
                     self.device
                 )
+                zero_point = zero_point.clamp(self.qdesc.qmin, self.qdesc.qmax)
                 self.zero_point = nn.Parameter(self._broadcast_qparams(zero_point)).to(
                     self.device
                 )
             self.init_params = True
         return self.scale, self.zero_point
 
-    def _forward(self, x):
+    def _qparams_preprocess(self, x):
+        scale = self.scale.abs()
+        zero_point = torch.clamp(self.zero_point, self.qdesc.qmin, self.qdesc.qmax)
+        return scale, zero_point
+
+    def _forward(self, x, scale, zero_point):
         if self.is_perchannel:
             num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
             gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qdesc.qmax)
         else:
             gs_ratio = 1.0 / math.sqrt(x.numel() * self.qdesc.qmax)
-        scale = gs_scaling.apply(self.scale.clamp(self.eps), gs_ratio)
-        zero_point = self.zero_point
-        if self.zero_point.requires_grad:
-            zero_point = gs_scaling.apply(self.zero_point, gs_ratio)
+        scale = gs_scaling.apply(scale, gs_ratio)
+        if zero_point.requires_grad:
+            zero_point = gs_scaling.apply(zero_point, gs_ratio)
         x_dq = STE.apply(x, scale, zero_point, self.qdesc, self.backend)
         return x_dq
