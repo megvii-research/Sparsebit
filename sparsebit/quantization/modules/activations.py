@@ -149,6 +149,8 @@ class QGELU(QuantOpr):
     def forward(self, x_in):
         x_in = self.input_quantizer(x_in)
         out = F.gelu(x_in)
+
+
 @register_qmodule(sources=[nn.Mish, F.mish])
 class QMish(QuantOpr):
     """量化Mish层,拥有 ``input_quantizer`` 。
