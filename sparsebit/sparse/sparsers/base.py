@@ -1,7 +1,7 @@
 from abc import ABC
 
 
-class Pruner(ABC):
+class Sparser(ABC):
     def __init__(self, config):
         self.config = config
 

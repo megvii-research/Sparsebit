@@ -13,7 +13,7 @@ def register_pmodule(sources: [nn.Module, str, ...]):
 
 
 # 将需要注册的module文件填写至此
-from .base import PruneOpr
+from .base import SparseOpr
 from .conv import *
 from .linear import *
 from .normalization import *

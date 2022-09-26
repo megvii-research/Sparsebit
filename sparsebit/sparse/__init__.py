@@ -1,2 +1,2 @@
-from .prune_model import *
-from .prune_config import parse_pconfig
+from .sparse_model import *
+from .sparse_config import parse_pconfig

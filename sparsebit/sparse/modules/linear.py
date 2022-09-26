@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sparsebit.sparse.modules import PruneOpr, register_pmodule
+from sparsebit.sparse.modules import SparseOpr, register_pmodule
 
 
 @register_pmodule(sources=[nn.Linear])
-class PLinear(PruneOpr):
+class PLinear(SparseOpr):
     def __init__(self, org_module, config=None):
         assert isinstance(org_module, nn.Linear)
         super().__init__()
@@ -18,9 +18,9 @@ class PLinear(PruneOpr):
         self._repr_info = "P" + org_module.__repr__()
 
     def calc_mask(self):
-        self.w_mask = self.pruner.calc_mask(self.weight)
+        self.w_mask = self.sparser.calc_mask(self.weight)
 
-        if self.pruner.config.PRUNER.TYPE == "structed" and self.bias:
+        if self.sparser.config.SPARSER.TYPE == "structed" and self.bias:
             self.b_mask = self.w_mask[:, 0]
 
     def forward(self, x_in: torch.Tensor):

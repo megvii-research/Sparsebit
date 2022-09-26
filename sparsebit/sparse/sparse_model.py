@@ -17,22 +17,22 @@ from sparsebit.utils import update_config
 from sparsebit.sparse.modules import *
 from sparsebit.quantization.converters import simplify  # FIXME
 
-__all__ = ["PruneModel"]
+__all__ = ["SparseModel"]
 
 
-class PruneModel(nn.Module):
+class SparseModel(nn.Module):
     def __init__(self, model: nn.Module, config):
         super().__init__()
         self.model = model
         self.config = config
         self.device = torch.device(config.DEVICE)
         self._run_simplifiers()
-        self._convert2prunemodule()
-        self._build_pruner()
+        self._convert2sparsemodule()
+        self._build_sparser()
 
-    def _convert2prunemodule(self):
+    def _convert2sparsemodule(self):
         """
-        将网络中部分node转成对应的prune_module
+        将网络中部分node转成对应的sparse_module
         """
         named_modules = dict(self.model.named_modules(remove_duplicate=False))
         traced = fx.symbolic_trace(self.model)
@@ -71,9 +71,9 @@ class PruneModel(nn.Module):
         traced.recompile()
         self.model = fx.GraphModule(traced, traced.graph)
 
-    def _build_pruner(self):
+    def _build_sparser(self):
         """
-        递归对每个PruneModule建立pruner
+        递归对每个SparseModule建立sparser
         """
 
         def _probe(module_name: str, specific_modules: dict):
@@ -94,18 +94,18 @@ class PruneModel(nn.Module):
             update_config(sub_cfg, "SPECIFIC", [])
             return sub_cfg
 
-        # build config for every PruneModule
+        # build config for every SparseModule
         for n, m in self.model.named_modules():
-            if isinstance(m, PruneOpr):
+            if isinstance(m, SparseOpr):
                 _config = self.config.clone()  # init
-                update_config(_config, "PRUNER", _sub_build(self.config.PRUNER, n))
-                m.build_pruner(_config)
+                update_config(_config, "SPARSER", _sub_build(self.config.SPARSER, n))
+                m.build_sparser(_config)
 
     def calc_params(self):
         for node in self.model.graph.nodes:
             if node.op == "call_module":
                 module = getattr(self.model, node.target, None)
-                if isinstance(module, PruneOpr) and getattr(module, "pruner", None):
+                if isinstance(module, SparseOpr) and getattr(module, "sparser", None):
                     module.calc_mask()
 
     def _run_simplifiers(self):

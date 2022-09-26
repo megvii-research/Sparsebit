@@ -2,12 +2,12 @@ from abc import ABC
 
 import torch
 import torch.nn as nn
-from sparsebit.sparse.pruners import build_pruner
+from sparsebit.sparse.sparsers import build_sparser
 
 
-class PruneOpr(nn.Module, ABC):
+class SparseOpr(nn.Module, ABC):
     def __init__(self):
-        super(PruneOpr, self).__init__()
+        super(SparseOpr, self).__init__()
 
     def forward(self, x_in: torch.Tensor):
         raise NotImplementedError(
@@ -19,5 +19,5 @@ class PruneOpr(nn.Module, ABC):
             "no found a calc_mask in {}".format(self.__class__.__name__)
         )
 
-    def build_pruner(self, config):
-        self.pruner = build_pruner(config)
+    def build_sparser(self, config):
+        self.sparser = build_sparser(config)

@@ -1,18 +1,18 @@
-PRUNERS_MAP = {}
+SPARSERS_MAP = {}
 
 
-def register_pruner(pruner):
-    PRUNERS_MAP[pruner.STRATEGY.lower()] = pruner
-    return pruner
+def register_sparser(sparser):
+    SPARSERS_MAP[sparser.STRATEGY.lower()] = sparser
+    return sparser
 
 
-from .base import Pruner
+from .base import Sparser
 from . import l1norm
 
 
-def build_pruner(config):
-    assert config.PRUNER.STRATEGY in PRUNERS_MAP, "no found an implement of {}".format(
-        config.PRUNER.STRATEGY
+def build_sparser(config):
+    assert config.SPARSER.STRATEGY in SPARSERS_MAP, "no found an implement of {}".format(
+        config.SPARSER.STRATEGY
     )
-    pruner = PRUNERS_MAP[config.PRUNER.STRATEGY.lower()](config)
-    return pruner
+    sparser = SPARSERS_MAP[config.SPARSER.STRATEGY.lower()](config)
+    return sparser

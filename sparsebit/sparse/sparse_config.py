@@ -4,12 +4,12 @@ from sparsebit.utils.yaml_utils import _parse_config, update_config
 
 _C = CN()
 
-_C.PRUNER = CN()
-_C.PRUNER.TYPE = ""  # support structed / unstructed
-_C.PRUNER.STRATEGY = ""  # l1norm / slimming
-_C.PRUNER.GRANULARITY = ""  # support layerwise / channelwise
-_C.PRUNER.RATIO = 0.0
-_C.PRUNER.SPECIFIC = []
+_C.SPARSER = CN()
+_C.SPARSER.TYPE = ""  # support structed / unstructed
+_C.SPARSER.STRATEGY = ""  # l1norm / slimming
+_C.SPARSER.GRANULARITY = ""  # support layerwise / channelwise
+_C.SPARSER.RATIO = 0.0
+_C.SPARSER.SPECIFIC = []
 
 
 def parse_pconfig(cfg_file):

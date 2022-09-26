@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from . import PruneOpr, register_pmodule
+from . import SparseOpr, register_pmodule
 
 
 @register_pmodule(sources=[nn.BatchNorm2d])
-class PBatchNorm2d(PruneOpr):
+class PBatchNorm2d(SparseOpr):
     def __init__(self, org_module, config=None):
         super().__init__()
         self.module = org_module
