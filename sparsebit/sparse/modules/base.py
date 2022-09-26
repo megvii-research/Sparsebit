@@ -8,6 +8,7 @@ from sparsebit.sparse.sparsers import build_sparser
 class SparseOpr(nn.Module, ABC):
     def __init__(self):
         super(SparseOpr, self).__init__()
+        self._repr_info = "base"
 
     def forward(self, x_in: torch.Tensor):
         raise NotImplementedError(
@@ -20,4 +21,4 @@ class SparseOpr(nn.Module, ABC):
         )
 
     def build_sparser(self, config):
-        self.sparser = build_sparser(config)
+        self.sparser = build_sparser(config, opr=self._repr_info)

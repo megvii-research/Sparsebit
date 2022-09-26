@@ -8,10 +8,11 @@ from sparsebit.sparse.sparsers import register_sparser
 class Sparser(BaseSparser):
     STRATEGY = "l1norm"
 
-    def __init__(self, config):
-        super(Sparser, self).__init__(config)
+    def __init__(self, config, opr):
+        super(Sparser, self).__init__(config, opr)
         self.ratio = config.SPARSER.RATIO
         self.granularity = config.SPARSER.GRANULARITY
+        self.opr = opr
 
     def calc_mask(self, x):
         if self.granularity == "layerwise":

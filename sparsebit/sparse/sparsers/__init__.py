@@ -10,9 +10,9 @@ from .base import Sparser
 from . import l1norm
 
 
-def build_sparser(config):
-    assert config.SPARSER.STRATEGY in SPARSERS_MAP, "no found an implement of {}".format(
-        config.SPARSER.STRATEGY
-    )
-    sparser = SPARSERS_MAP[config.SPARSER.STRATEGY.lower()](config)
+def build_sparser(config, opr):
+    assert (
+        config.SPARSER.STRATEGY in SPARSERS_MAP
+    ), "no found an implement of {}".format(config.SPARSER.STRATEGY)
+    sparser = SPARSERS_MAP[config.SPARSER.STRATEGY.lower()](config, opr=opr)
     return sparser
