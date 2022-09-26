@@ -1,4 +1,4 @@
-PRUNER:
+SPARSER:
   TYPE: unstructed
   STRATEGY: l1norm
   GRANULARITY: layerwise

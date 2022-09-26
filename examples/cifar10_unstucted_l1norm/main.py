@@ -20,14 +20,14 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from model import resnet20
-from sparsebit.sparse import PruneModel, parse_pconfig
+from sparsebit.sparse import SparseModel, parse_pconfig
 
 
 if not torch.cuda.is_available():
     raise NotImplementedError("This example should run on a GPU device.")  # 确定在GPU上运行
 
 
-config = "pconfig.yaml"  # QAT配置文件——包括量化方式（dorefa/lsq），权重和激活值的量化bit数等
+config = "pconfig.yaml"  # Sparse配置文件
 workers = 4
 epochs = 200
 start_epoch = 0
@@ -81,7 +81,7 @@ testloader = torch.utils.data.DataLoader(
     pin_memory=True,
 )
 
-pmodel = PruneModel(model, pconfig).cuda()  # 将model转化为prune模型
+pmodel = SparseModel(model, pconfig).cuda()  # 将model转化为sparse模型
 
 pmodel.calc_params()
 
