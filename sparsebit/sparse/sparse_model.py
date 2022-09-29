@@ -76,29 +76,10 @@ class SparseModel(nn.Module):
         递归对每个SparseModule建立sparser
         """
 
-        def _probe(module_name: str, specific_modules: dict):
-            for k, v in specific_modules.items():
-                if fnmatch(module_name, k):
-                    return True, v
-            return False, None
-
-        def _sub_build(src, module_name):
-            sub_cfg = src.clone()
-            is_match, specific_config = (
-                _probe(module_name, sub_cfg.SPECIFIC[0])
-                if src.SPECIFIC
-                else (False, None)
-            )
-            if is_match:
-                sub_cfg.merge_from_list(specific_config)
-            update_config(sub_cfg, "SPECIFIC", [])
-            return sub_cfg
-
         # build config for every SparseModule
         for n, m in self.model.named_modules():
             if isinstance(m, SparseOpr):
                 _config = self.config.clone()  # init
-                update_config(_config, "SPARSER", _sub_build(self.config.SPARSER, n))
                 m.build_sparser(_config)
 
     def calc_params(self):

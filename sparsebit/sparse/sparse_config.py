@@ -7,9 +7,7 @@ _C = CN()
 _C.SPARSER = CN()
 _C.SPARSER.TYPE = ""  # support structed / unstructed
 _C.SPARSER.STRATEGY = ""  # l1norm / slimming
-_C.SPARSER.GRANULARITY = ""  # support layerwise / channelwise
 _C.SPARSER.RATIO = 0.0
-_C.SPARSER.SPECIFIC = []
 
 
 def parse_sconfig(cfg_file):
