@@ -1,13 +1,13 @@
 import torch.nn as nn
 
-PMODULE_MAP = {}
+SMODULE_MAP = {}
 
 
-def register_pmodule(sources: [nn.Module, str, ...]):
-    def real_register(pmodule):
+def register_smodule(sources: [nn.Module, str, ...]):
+    def real_register(smodule):
         for src in sources:
-            PMODULE_MAP[src] = pmodule
-        return pmodule
+            SMODULE_MAP[src] = smodule
+        return smodule
 
     return real_register
 

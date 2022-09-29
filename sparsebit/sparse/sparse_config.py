@@ -12,6 +12,6 @@ _C.SPARSER.RATIO = 0.0
 _C.SPARSER.SPECIFIC = []
 
 
-def parse_pconfig(cfg_file):
-    pconfig = _parse_config(cfg_file, default_cfg=_C)
-    return pconfig
+def parse_sconfig(cfg_file):
+    sconfig = _parse_config(cfg_file, default_cfg=_C)
+    return sconfig

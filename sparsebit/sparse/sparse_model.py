@@ -37,17 +37,17 @@ class SparseModel(nn.Module):
         named_modules = dict(self.model.named_modules(remove_duplicate=False))
         traced = fx.symbolic_trace(self.model)
         traced.graph.print_tabular()
-        pnodes = []  # 用于避免重复遍历
+        snodes = []  # 用于避免重复遍历
         for n in traced.graph.nodes:
-            if not isinstance(n, fx.Node) or n in pnodes:
+            if not isinstance(n, fx.Node) or n in snodes:
                 continue
             elif n.op == "call_module":
                 assert n.target in named_modules, "no found {} in model".format(
                     n.target
                 )
-                if type(named_modules[n.target]) in PMODULE_MAP:
+                if type(named_modules[n.target]) in SMODULE_MAP:
                     org_module = named_modules[n.target]
-                    new_module = PMODULE_MAP[type(org_module)](org_module)
+                    new_module = SMODULE_MAP[type(org_module)](org_module)
                 else:
                     new_module = named_modules[n.target]
             elif n.op in [
@@ -62,7 +62,7 @@ class SparseModel(nn.Module):
             with traced.graph.inserting_after(n):
                 traced.add_module(n.name, new_module)
                 new_node = traced.graph.call_module(n.name, n.args, n.kwargs)
-                pnodes.append(new_node)
+                snodes.append(new_node)
                 n.replace_all_uses_with(
                     new_node
                 )  # n的输出全部接到new_node, n成为no user节点(即可删除)

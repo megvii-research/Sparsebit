@@ -20,14 +20,14 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from model import resnet20
-from sparsebit.sparse import SparseModel, parse_pconfig
+from sparsebit.sparse import SparseModel, parse_sconfig
 
 
 if not torch.cuda.is_available():
     raise NotImplementedError("This example should run on a GPU device.")  # 确定在GPU上运行
 
 
-config = "pconfig.yaml"  # Sparse配置文件
+config = "sconfig.yaml"  # Sparse配置文件
 workers = 4
 epochs = 200
 start_epoch = 0
@@ -37,7 +37,7 @@ momentum = 0.9
 weight_decay = 1e-4
 print_freq = 10
 pretrained = ""
-pconfig = parse_pconfig(config)
+sconfig = parse_sconfig(config)
 
 
 model = resnet20(num_classes=10)  # 以resnet20作为基础模型
@@ -81,13 +81,13 @@ testloader = torch.utils.data.DataLoader(
     pin_memory=True,
 )
 
-pmodel = SparseModel(model, pconfig).cuda()  # 将model转化为sparse模型
+smodel = SparseModel(model, sconfig).cuda()  # 将model转化为sparse模型
 
-pmodel.calc_params()
+smodel.calc_params()
 
 criterion = nn.CrossEntropyLoss().cuda()
 optimizer = torch.optim.SGD(
-    pmodel.parameters(),
+    smodel.parameters(),
     lr,
     momentum=momentum,
     weight_decay=weight_decay,
@@ -281,7 +281,7 @@ for epoch in range(start_epoch, epochs):
     # train for one epoch
     train(
         trainloader,
-        pmodel,
+        smodel,
         criterion,
         optimizer,
         epoch,
@@ -310,6 +310,6 @@ for epoch in range(start_epoch, epochs):
 print("Training is Done, best: {}".format(best_acc1))
 
 # export onnx
-pmodel.eval()
+smodel.eval()
 with torch.no_grad():
-    pmodel.export_onnx(torch.randn(1, 3, 32, 32), name="presnet20.onnx")
+    smodel.export_onnx(torch.randn(1, 3, 32, 32), name="presnet20.onnx")
