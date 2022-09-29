@@ -12,8 +12,13 @@ Quantization是一种将full-precision params转化为low-bit precision params�
 - PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
 - QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
 
-## Pruning
-还在开发, 敬请期待.
+## Sparse
+Sparse在深度学习当中常用于指代减少网络参数或者网络计算量等操作,是个较为宽泛的概念. 目前工具箱支持的Sparse主要面向Pruning操作, 具备如下特点:
+- 支持两种剪枝类型: 结构化/非结构化;
+- 支持多种操作对象包括: 权重/激活值/模型块/模型层等; 
+- 支持多种剪枝算法: L1-norm/L0-norm/Fisher-pruning/Hrank/Slimming...
+- 方便用户扩展, 只需要通过定义Sparser即可实现插入自定义剪枝算法的目的
+- 支持导出剪枝后的onnx模型, 导出过程综合考虑了结构化剪枝后对应修改的模型结构
 
 ## Resources
 ### Documentations
