@@ -312,4 +312,4 @@ print("Training is Done, best: {}".format(best_acc1))
 # export onnx
 smodel.eval()
 with torch.no_grad():
-    smodel.export_onnx(torch.randn(1, 3, 32, 32), name="presnet20.onnx")
+    smodel.export_onnx(torch.randn(1, 3, 32, 32), name="sresnet20.onnx")
