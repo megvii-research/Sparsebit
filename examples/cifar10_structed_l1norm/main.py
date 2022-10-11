@@ -82,6 +82,8 @@ testloader = torch.utils.data.DataLoader(
 )
 
 smodel = SparseModel(model, sconfig).cuda()  # 将model转化为sparse模型
+smodel.set_lastmodule_ratio(ratio=0.0)
+smodel.disable_sparse_before_add()
 smodel.calc_params()
 print(smodel)
 
