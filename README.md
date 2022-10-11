@@ -10,15 +10,21 @@ Quantization turns full-precision params into low-bit precision params, which ca
 - Exporting [QDQ-ONNX](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers) is supported, which can be loaded and deployed by backends such as TensorRT and OnnxRuntime.
 
 ### Results
-- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
-- PTQ results of Vision Transformer on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/DeiT_ptq)
-- PTQ results of YOLO related works on COCO: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/coco_yolo_ptq)
-- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
+- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/imagenet1k/basecase/README.md)
+- PTQ results of Vision Transformer on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/imagenet1k/deit/README.md)
+- PTQ results of YOLO related works on COCO: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/coco2017/yolo_series/README.md)
+- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/imagenet1k/README.md)
 
 
+## Sparse 
+Sparse is often used in deep learning to refer to operations such as reducing network parameters or network computation. At present, Sparse supported by the toolbox has the following characteristics:
 
-## Pruning
-About to released.
+- Supports two types of pruning: structured/unstructured;
+- Supports a variety of operation objects including: weights, activations, model-blocks, model-layers, etc.;
+- Supports multiple pruning algorithms: L1-norm/L0-norm/Fisher-pruning/Hrank/Slimming...
+- Users can extend a custom pruning algorithm easily by defining a Sparser
+- Using ONNX as the export format for the pruned model
+
 
 ## Resources
 ### Documentations
