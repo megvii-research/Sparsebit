@@ -27,7 +27,7 @@ if not torch.cuda.is_available():
     raise NotImplementedError("This example should run on a GPU device.")  # 确定在GPU上运行
 
 
-config = "qconfig_pact.yaml"  # QAT配置文件——包括量化方式（dorefa/lsq），权重和激活值的量化bit数等
+config = "qconfig_lsq.yaml"  # QAT配置文件——包括量化方式（dorefa/lsq），权重和激活值的量化bit数等
 workers = 4
 epochs = 200
 start_epoch = 0
@@ -35,10 +35,11 @@ batch_size = 128
 lr = 0.1
 momentum = 0.9
 weight_decay = 1e-4
-print_freq = 10
+print_freq = 100
 pretrained = ""
 qconfig = parse_qconfig(config)
-
+is_pact = qconfig.A.QUANTIZER.TYPE == "pact"
+regularizer_lambda = 1e-4
 
 model = resnet20(num_classes=10)  # 以resnet20作为基础模型
 if pretrained:  # 可以采用pretrained中保存的模型参数
@@ -81,9 +82,7 @@ testloader = torch.utils.data.DataLoader(
     pin_memory=True,
 )
 
-
 model = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
-
 
 model.prepare_calibration()  # 进入calibration状态
 calib_size, cur_size = 256, 0
@@ -110,26 +109,30 @@ scheduler = torch.optim.lr_scheduler.MultiStepLR(
     optimizer, milestones=[100, 150], last_epoch=start_epoch - 1
 )
 
-
 # PACT算法中对 alpha 增加 L2-regularization
-def get_pact_regularizer_loss(model, scale=0.0001):
+def get_pact_regularizer_loss(model):
     loss = 0
     for n, p in model.named_parameters():
         if "alpha" in n:
             loss += (p ** 2).sum()
-    return loss * scale
+    return loss
 
+def get_regularizer_loss(model, scale=0):
+    if is_pact:
+        return get_pact_regularizer_loss(model) * scale
+    else:
+        return torch.tensor(0.).cuda()
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
     ce_losses = AverageMeter("CELoss", ":.4e")
-    pact_regular_losses = AverageMeter("PACTRegularLoss", ":.4e")
+    regular_losses = AverageMeter("RegularLoss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, ce_losses, pact_regular_losses, losses, top1],
+        [batch_time, data_time, ce_losses, regular_losses, losses, top1],
         prefix="Epoch: [{}]".format(epoch),
     )
 
@@ -148,16 +151,13 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute output
         output = model(images)
         ce_loss = criterion(output, target)
-        if qconfig.A.QUANTIZER.TYPE == "pact":
-            pact_regular_loss = get_pact_regularizer_loss(model)
-            loss = ce_loss + pact_regular_loss
-        else:
-            loss = ce_loss
+        regular_loss = get_regularizer_loss(model, scale=regularizer_lambda)
+        loss = ce_loss + regular_loss
 
         # measure accuracy and record loss
         acc1 = accuracy(output, target, topk=(1,))[0]
         ce_losses.update(ce_loss.item(), images.size(0))
-        pact_regular_losses.update(pact_regular_loss.item(), images.size(0))
+        regular_losses.update(regular_loss.item(), images.size(0))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
 
