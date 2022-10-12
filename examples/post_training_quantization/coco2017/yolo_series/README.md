@@ -19,8 +19,8 @@ python3 main.py --arch yolov4 --model-path yolov4.coco.pth --dataset-root ./coco
 ## Pretraind model
 
 - Download float model:
-    - yolov3.darknet53.coco.pth: https://drive.google.com/file/d/1I9J5ftpJRjUfIS1A3mZ5vxNxY4CCgVTS/view?usp=sharing
-    - yolov4.coco.pth: https://drive.google.com/file/d/1863jh81hfnVqBVPstuEalEMGex0fN4Mm/view?usp=sharing
+    - [yolov3.darknet53.coco.pth](https://drive.google.com/file/d/1I9J5ftpJRjUfIS1A3mZ5vxNxY4CCgVTS/view?usp=sharing)
+    - [yolov4.coco.pth](https://drive.google.com/file/d/1863jh81hfnVqBVPstuEalEMGex0fN4Mm/view?usp=sharing)
 
 ## Requirements
 ```
