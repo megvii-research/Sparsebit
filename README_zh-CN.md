@@ -9,8 +9,8 @@ Quantization是一种将full-precision params转化为low-bit precision params�
 - 支持导出[QDQ-ONNX](https://onnxruntime.ai/docs/tutorials/mobile/helpers/#qdq-format-model-helpers), 可以被tensorrt/onnxruntime等后端加载部署.
 
 ### 测试结果
-- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_ptq/README.md)
-- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/imagenet_qat/README.md)
+- PTQ results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/imagenet1k/basecase/README.md)
+- QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/imagenet1k/README.md)
 
 ## Sparse
 Sparse在深度学习当中常用于指代减少网络参数或者网络计算量等操作,是个较为宽泛的概念. 目前工具箱支持的Sparse主要面向Pruning操作, 具备如下特点:
