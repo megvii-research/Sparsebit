@@ -159,6 +159,7 @@ class COCODataset(Dataset):
         dataset_name="coco_2017_val",
         data_format="rgb",
         image_size=(608, 608),
+        input_norm=True,
         mosaic=False,
         mosaic_min_offset=0.2,
         mosaic_image_num=4,
@@ -194,9 +195,13 @@ class COCODataset(Dataset):
 
         self.augmentor = Augmentor(image_size, is_train=self.is_train)
         self.to_tensor = tv_transforms.ToTensor()
-        self.normalize = tv_transforms.Normalize(
-            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-        )
+
+        if input_norm:
+            self.normalize = tv_transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            )
+        else:
+            self.normalize = tv_transforms.Normalize([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
 
         self.mosaic = mosaic
         self.mosaic_min_offset = mosaic_min_offset
@@ -625,6 +630,7 @@ def coco_dataset(
     dataset_names=["coco_2017_val"],
     data_format="rgb",
     image_size=(608, 608),
+    input_norm=True,
     mosaic=False,
     mosaic_min_offset=0.2,
     mosaic_image_num=4,
@@ -636,6 +642,7 @@ def coco_dataset(
             dataset_name=name,
             data_format=data_format,
             image_size=image_size,
+            input_norm=input_norm,
             mosaic=mosaic,
             mosaic_min_offset=mosaic_min_offset,
             mosaic_image_num=mosaic_image_num,

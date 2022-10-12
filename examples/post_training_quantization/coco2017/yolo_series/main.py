@@ -4,7 +4,8 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 
-from models.yolov3 import yolov3 as build_model, decode_outputs
+import models
+from utils import decode_outputs
 from dataset import coco_dataset as build_dataset, collate_fn
 from evaluate import coco_evaluate
 
@@ -17,29 +18,15 @@ def main(args):
     device = torch.device("cpu" if args.cpu else "cuda")
 
     # Build model
-    model = build_model()
-    if args.model_path is not None:
-        state_dict = torch.load(args.model_path, map_location="cpu")
-        if "state_dict" in state_dict.keys():
-            state_dict = checkpoint["state_dict"]
-        new_state_dict = {}
-        for k, v in state_dict.items():
-            if "module." in k:
-                k = k.replace("module.", "")
-            new_state_dict[k] = v
-        model.load_state_dict(new_state_dict)
+    model = models.__dict__[args.arch](model_path=args.model_path)
 
-    # Convert to quant model
-    qconfig = parse_qconfig(args.qconfig)
-    qmodel = QuantModel(model, config=qconfig)
-    qmodel.eval()
-    qmodel = qmodel.to(device)
     # Create dataset
     train_dataset = build_dataset(
         dataset_root=args.dataset_root,
         dataset_names=[args.train_datasets],
         data_format=args.input_format,
         image_size=(args.image_size, args.image_size),
+        input_norm=not args.wo_input_norm,
         is_train=True,
     )
     train_loader = DataLoader(
@@ -56,6 +43,7 @@ def main(args):
         dataset_names=[args.val_datasets],
         data_format=args.input_format,
         image_size=(args.image_size, args.image_size),
+        input_norm=not args.wo_input_norm,
         is_train=False,
     )
     val_loader = DataLoader(
@@ -66,6 +54,12 @@ def main(args):
         pin_memory=True,
         collate_fn=collate_fn,
     )
+
+    # Convert to quant model
+    qconfig = parse_qconfig(args.qconfig)
+    qmodel = QuantModel(model, config=qconfig)
+    qmodel.eval()
+    qmodel = qmodel.to(device)
 
     # Calibration
     qmodel.prepare_calibration()
@@ -81,9 +75,18 @@ def main(args):
     qmodel.calc_qparams()
 
     qmodel.set_quant(w_quant=True, a_quant=True)
-    qmodel.eval()
 
     # Evaluate
+    validate(qmodel, val_loader, val_dataset.meta, device, args)
+
+    # Export onnx
+    qmodel.export_onnx(data, name="q%s.onnx" % (args.arch))
+
+
+def validate(model, val_loader, meta, device, args):
+
+    model.eval()
+
     all_iters = len(val_loader)
     processed_results = []
     for i, batch_meta in enumerate(val_loader):
@@ -92,10 +95,11 @@ def main(args):
         batch_size = batch_meta["images_size"]
 
         with torch.no_grad():
-            outputs = qmodel(batch_data)
+            outputs = model(batch_data)
 
         detections = decode_outputs(
             outputs,
+            args.arch,
             (args.image_size, args.image_size),
             args.num_classes,
             args.conf_threshold,
@@ -124,15 +128,12 @@ def main(args):
             print("{}/{}".format((i + 1), all_iters))
 
     results, results_per_category = coco_evaluate(
-        processed_results, val_dataset.meta, iou_type="bbox"
+        processed_results, meta, iou_type="bbox"
     )
     print(
         "AP:%.4lf, AP50:%.4lf, AP75:%.4lf"
         % (results["AP"], results["AP50"], results["AP75"])
     )
-
-    # Export onnx
-    qmodel.export_onnx(data, name="qyolov3.onnx")
 
 
 def postprocess_boxes(pred_bbox, src_size, eval_size):
@@ -159,6 +160,14 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-a",
+        "--arch",
+        metavar="ARCH",
+        default="yolov3",
+        choices=["yolov3", "yolov4"],
+        help="model architecture",
+    )
     parser.add_argument(
         "--cpu", action="store_true", default=False, help="Use cpu inference"
     )
@@ -194,6 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", default=8, type=int)
     parser.add_argument("--image-size", default=608, type=int)
     parser.add_argument("--num-classes", default=80, type=int)
+    parser.add_argument("--wo-input-norm", action="store_true")
     parser.add_argument(
         "--conf-threshold", default=0.01, type=float, help="confidence threshold"
     )
