@@ -83,7 +83,7 @@ class QLeakyReLU(QuantOpr):
             self.inplace = org_module.args[2]
 
     def forward(self, x_in):
-        """ReLU6层的前向传播,但加入了input量化。"""
+        """LeakyReLU层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.leaky_relu(
             x_in, negative_slope=self.negative_slope, inplace=self.inplace
@@ -172,7 +172,7 @@ class QMish(QuantOpr):
             self.inplace = org_module.args[1]
 
     def forward(self, x_in):
-        """ReLU6层的前向传播,但加入了input量化。"""
+        """Mish层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.mish(x_in, inplace=self.inplace)
         return out
