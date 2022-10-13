@@ -13,7 +13,11 @@ class SBatchNorm2d(SparseOpr):
         self._repr_info = "S" + org_module.__repr__()
 
     def calc_mask(self, pre_mask=None):
-        if pre_mask is not None:
+        if (
+            self.sparser.type == "structed"
+            and self.sparser.strategy == "l1norm"
+            and pre_mask is not None
+        ):
             pre_mask = pre_mask.reshape(self.mask.shape)
             self.mask.data.copy_(pre_mask.data)
 

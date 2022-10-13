@@ -20,11 +20,10 @@ class SLinear(SparseOpr):
     def calc_mask(self, pre_mask=None):
         self.w_mask = self.sparser.calc_mask(self.weight)
 
-        if self.sparser.config.SPARSER.TYPE == "structed":
-            pre_mask = self.w_mask[:, 0]
+        if self.sparser.type == "structed":
+            mask = self.w_mask[:, 0]
             if self.bias is not None:
-                self.b_mask.data.copy_(pre_mask.data)
-            return pre_mask
+                self.b_mask.data.copy_(mask.data)
 
         return None
 
