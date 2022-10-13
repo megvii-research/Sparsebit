@@ -1,4 +1,0 @@
-SPARSER:
-  TYPE: structed
-  STRATEGY: l1norm
-  RATIO: 0.5
