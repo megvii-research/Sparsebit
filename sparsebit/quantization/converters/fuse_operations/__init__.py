@@ -11,7 +11,7 @@ def fuse_operations(model: torch.fx.GraphModule, config, custom_fuse_list=None):
     model = PruneGraph().apply(model)
     fuse_list = custom_fuse_list if custom_fuse_list else default_fuse_list
     for simplify_task in fuse_list:
-        if getattr(config, simplify_task.upper(), None):
+        if getattr(config, simplify_task.upper(), True):
             simplify_module = importlib.import_module(
                 ".{}".format(simplify_task), package=__package__
             )

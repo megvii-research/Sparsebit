@@ -81,6 +81,7 @@ def verify_schedule(qconfig):
     if qconfig.SCHEDULE.BN_TUNING:
         w_qscheme = get_qscheme(qconfig.W.QSCHEME)
         assert (
-            w_qscheme == torch.per_channel_symmetric or w_qscheme == torch.per_channel_affine
+            w_qscheme == torch.per_channel_symmetric
+            or w_qscheme == torch.per_channel_affine
         ), "the qsheme of weight must be specified as per-channel when bn-tuning enabled"
     return qconfig
