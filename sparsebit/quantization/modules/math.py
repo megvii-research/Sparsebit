@@ -1,7 +1,7 @@
 import operator
 import torch
 import torch.nn as nn
-from sparsebit.quantization.modules import QuantOpr, register_qmodule
+from sparsebit.quantization.modules import QuantOpr, MultipleInputsQuantOpr, register_qmodule
 
 
 @register_qmodule(sources=[operator.add, torch.add])
@@ -25,6 +25,17 @@ class QSubtract(nn.Module):
         out = torch.subtract(x_left, x_right)
         return out
 
+
+@register_qmodule(sources=[operator.matmul, torch.matmul])
+class QMatmul(MultipleInputsQuantOpr):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self._repr_info = "QMatmul"
+
+    def forward(self, x_left, x_right):
+        out = torch.matmul(x_left, x_right)
+        return out
+        
 
 @register_qmodule(sources=[operator.mul, torch.mul])
 class QMul(nn.Module):

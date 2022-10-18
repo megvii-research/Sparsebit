@@ -1,9 +1,10 @@
 import torch.nn as nn
+from typing import Union
 
 QMODULE_MAP = {}
 
 
-def register_qmodule(sources: [nn.Module, str, ...]):
+def register_qmodule(sources: Union[nn.Module, str, ]):
     def real_register(qmodule):
         for src in sources:
             QMODULE_MAP[src] = qmodule
@@ -23,7 +24,7 @@ from .shape import *
 from .normalization import *
 from .unary import *
 from .resize import *
-from .matmul import *
+# from .matmul import *
 from .python_builtins import *
 
 
@@ -31,6 +32,7 @@ PASSTHROUGHT_MODULES = (
     QAdd,
     QSubtract,
     QMul,
+    QMatmul,
     QDivide,
     QFloorDiv,
     QMaxPool2d,
