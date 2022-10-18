@@ -1,19 +1,19 @@
 import torch
 import operator
 
-from ..base import ReplacePatternBase, MatcherNode
+from ..utils import ReplacePatternBase, MatchingNode
 
 
 class ReplacePattern(ReplacePatternBase):
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
-    def make_ops(self):
+    def make_nodes(self):
         return [
-            MatcherNode(
+            MatchingNode(
                 "unbind", inputs=[None], op_type=[torch.unbind, torch.Tensor.unbind]
             ),
-            MatcherNode("getitem", inputs=["unbind"], op_type=[operator.getitem]),
+            MatchingNode("getitem", inputs=["unbind"], op_type=[operator.getitem]),
         ]
 
     def get_new_graph(self, nodes_dict, modules_dict, model=None, transform_idx=None):
@@ -40,4 +40,4 @@ class ReplacePattern(ReplacePatternBase):
         new_args = (unbind_node.args[0], new_subtensor_args)
         getitem_node.args = new_args
 
-        return getitem_node
+        return {"getitem": getitem_node}
