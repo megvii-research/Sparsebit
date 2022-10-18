@@ -10,7 +10,6 @@ _C.SCHEDULE = CN()
 _C.SCHEDULE.FUSE_BN = False  # use ``with torch.no_grad()`` if it's enabled
 _C.SCHEDULE.BN_TUNING = False
 _C.SCHEDULE.DISABLE_UNNECESSARY_QUANT = True
-_C.SCHEDULE.DISABLE_NEAREST_UPSAPMLE_QUANT = True
 
 _C.W = CN()
 _C.W.QSCHEME = None  # support per-[channel/tensor]-[affine/symmetric]
