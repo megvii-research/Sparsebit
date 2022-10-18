@@ -5,7 +5,7 @@ from sparsebit.quantization.modules import QUpsample
 
 
 def check_upsample(node, module):
-    return not module.fake_fused and node.mode == "nearest"
+    return not module.fake_fused and module.mode == "nearest"
 
 
 class ReplacePattern(ReplacePatternBase):
@@ -21,5 +21,6 @@ class ReplacePattern(ReplacePatternBase):
 
     def get_new_graph(self, nodes_dict, modules_dict, model=None, transform_idx=None):
         upsample_node = nodes_dict["upsample"]
-        upsample_node.set_fake_fused()
+        upsample_module = modules_dict["upsample"]
+        upsample_module.set_fake_fused()
         return upsample_node

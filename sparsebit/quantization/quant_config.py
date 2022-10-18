@@ -10,6 +10,7 @@ _C.SCHEDULE = CN()
 _C.SCHEDULE.FUSE_BN = False  # use ``with torch.no_grad()`` if it's enabled
 _C.SCHEDULE.BN_TUNING = False
 _C.SCHEDULE.DISABLE_UNNECESSARY_QUANT = True
+_C.SCHEDULE.DISABLE_NEAREST_UPSAPMLE_QUANT = True
 
 _C.W = CN()
 _C.W.QSCHEME = None  # support per-[channel/tensor]-[affine/symmetric]
@@ -81,6 +82,7 @@ def verify_schedule(qconfig):
     if qconfig.SCHEDULE.BN_TUNING:
         w_qscheme = get_qscheme(qconfig.W.QSCHEME)
         assert (
-            w_qscheme == torch.per_channel_symmetric or w_qscheme == torch.per_channel_affine
+            w_qscheme == torch.per_channel_symmetric
+            or w_qscheme == torch.per_channel_affine
         ), "the qsheme of weight must be specified as per-channel when bn-tuning enabled"
     return qconfig
