@@ -149,6 +149,7 @@ class QGELU(QuantOpr):
     def forward(self, x_in):
         x_in = self.input_quantizer(x_in)
         out = F.gelu(x_in)
+        return out
 
 
 @register_qmodule(sources=[nn.Mish, F.mish])
