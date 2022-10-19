@@ -14,10 +14,7 @@ class QDropout(QuantOpr):
         self._repr_info = "Q" + org_module.__repr__()
 
     def forward(self, x_in):
-        if self.training:
-            return F.dropout(x_in, self.p, inplace=self.inplace)
-        else:
-            return x_in
+        return F.dropout(x_in, self.p, training=self.training, inplace=self.inplace)
 
 
 @register_qmodule(sources=[nn.Identity])
