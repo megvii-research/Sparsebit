@@ -41,6 +41,15 @@ class ReplaceStrategy(object):
     APPLY_ONCE = ReplaceStrategyBase(repeat=False)
 
 
+def recursive_getattr(op, name, default_val=None):
+    if name == "":
+        return op
+    pos = name.find(".")
+    if pos == -1:
+        return getattr(op, name, default_val)
+    return recursive_getattr(getattr(op, name[:pos]), name[pos + 1 :], default_val)
+
+
 def get_operators_type(
     ops: List[torch.fx.Node],
     m: torch.fx.GraphModule,
@@ -51,7 +60,7 @@ def get_operators_type(
         if op.op in ["placeholder", "output"]:  # input / output
             real_op = None
         elif op.op == "get_attr":  # parameter or constants
-            real_op = getattr(m, op.target).__class__
+            real_op = recursive_getattr(m, op.target).__class__
         elif op.op == "call_method":  # torch.xxx / torch.Tensor.xxx
             real_op = getattr(torch.Tensor, op.target, None)
         elif isinstance(op.target, str):  # named modules
@@ -72,7 +81,7 @@ def get_operators(
         if op.op in ["placeholder", "output"]:  # input / output
             real_op = None
         elif op.op == "get_attr":  # parameter or constants
-            real_op = getattr(m, op.target)
+            real_op = recursive_getattr(m, op.target)
         elif op.op == "call_method":  # torch.xxx / torch.Tensor.xxx
             real_op = getattr(torch.Tensor, op.target, None)
         elif isinstance(op.target, str):  # named modules
