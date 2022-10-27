@@ -100,7 +100,7 @@ def main():
 
     cudnn.benchmark = True
 
-    transform = transforms.Compose(
+    train_transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(),  # 随机水平翻转
             transforms.RandomCrop(32, 4),  # 随机裁剪
@@ -111,8 +111,17 @@ def main():
         ]
     )
 
+    val_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            ),  # 指定各通道均值和标准差，将数据归一化
+        ]
+    )
+
     trainset = datasets.CIFAR10(
-        root="./data", train=True, download=True, transform=transform
+        root="./data", train=True, download=True, transform=train_transform
     )
     trainloader = torch.utils.data.DataLoader(
         trainset,
@@ -123,7 +132,7 @@ def main():
     )
 
     testset = datasets.CIFAR10(
-        root="./data", train=False, download=True, transform=transform
+        root="./data", train=False, download=True, transform=val_transform
     )
     testloader = torch.utils.data.DataLoader(
         testset,
@@ -139,8 +148,6 @@ def main():
 
     smodel.calc_params()
 
-    start_epoch = 0
-
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(
         smodel.parameters(),
@@ -149,11 +156,11 @@ def main():
         weight_decay=args.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[100, 150], last_epoch=start_epoch - 1
+        optimizer, milestones=[100, 150], last_epoch=args.start_epoch - 1
     )
 
     best_acc1 = 0
-    for epoch in range(start_epoch, args.epochs):
+    for epoch in range(args.start_epoch, args.epochs):
         # train for one epoch
         train(
             trainloader,
