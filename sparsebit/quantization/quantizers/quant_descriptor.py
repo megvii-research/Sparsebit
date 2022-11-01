@@ -48,6 +48,29 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
+    def reset_scheme(self, is_symmetric = None, is_perchannel = None):
+        assert is_symmetric is not None or is_perchannel is not None, "A target must be set for reseting scheme!"
+        if is_symmetric == self.is_symmetric and is_perchannel == self.is_perchannel:
+            return
+        if is_symmetric is None:
+            is_symmetric = self.is_symmetric
+        if is_perchannel is None:
+            is_perchannel = self.is_perchannel
+        self._scheme = {
+            True:{
+                True: torch.per_channel_symmetric,
+                False: torch.per_tensor_symmetric
+            },
+            False:{
+                True: torch.per_channel_affine,
+                False: torch.per_tensor_affine
+            }
+        }[is_symmetric][is_perchannel]
+        self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
+            self._bit, self._scheme
+        )
+        self._ch_axis = self._set_channel_axis()
+
     @property
     def scheme(self):
         return self._scheme

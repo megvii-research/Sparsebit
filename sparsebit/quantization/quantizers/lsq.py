@@ -31,6 +31,8 @@ class Quantizer(BaseQuantizer):
         if self.fake_fused:
             return self.scale, self.zero_point
         x_oc = self.observer.get_calibration_data(c_first=True)
+        if x_oc.min()<0 and not self.qdesc.is_symmetric:
+            self.qdesc.reset_scheme(is_symmetric=True)
         if not self.init_params:
             if self.is_perchannel:
                 scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
