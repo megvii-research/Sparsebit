@@ -83,9 +83,11 @@ class ReplacePatternBase(object):
         """执行单次子图替换。"""
 
         def replace_op(
-            graph: torch.fx.Graph, origin_op: torch.fx.Node, target_op: torch.fx.Node
+            nodes: List[torch.fx.Node],
+            origin_op: torch.fx.Node,
+            target_op: torch.fx.Node,
         ):
-            for node in graph.nodes:
+            for node in nodes:
                 if node != origin_op:
                     node.replace_input_with(origin_op, target_op)
 
@@ -97,6 +99,7 @@ class ReplacePatternBase(object):
         nodes_dict, modules_dict = matcher.apply(m)
         is_transformed = nodes_dict is not None and modules_dict is not None
         if is_transformed:
+            nodes = list(m.graph.nodes)
             replace_dict = self.get_new_graph(
                 nodes_dict=nodes_dict,
                 modules_dict=modules_dict,
@@ -104,7 +107,7 @@ class ReplacePatternBase(object):
                 transform_idx=self.timer.get_idx(),
             )
             for rep_name, new_node in replace_dict.items():
-                replace_op(m.graph, nodes_dict[rep_name], new_node)
+                replace_op(nodes, nodes_dict[rep_name], new_node)
             is_transformed = True
         m = PruneGraph().apply(m)
         return is_transformed

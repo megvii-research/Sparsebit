@@ -177,7 +177,9 @@ class SubgraphMatcher(object):
                 idxs.append(idx)
                 max_dfn = max(max_dfn, self.dfn[idx])
             final_idx = get_idx(max_dfn, self.dfn)
-            self.checkers[final_idx] = idxs, checker_func
+            if final_idx not in self.checkers:
+                self.checkers[final_idx] = []
+            self.checkers[final_idx].append((idxs, checker_func))
 
     def coarse_filtering(
         self,
@@ -329,15 +331,17 @@ class SubgraphMatcher(object):
                 checker_nodes.append([])
                 checker_dicts.append({})
                 checker_funcs.append(checker_func)
-                for idx, checker_idx in enumerate(checker_idxs):
+                for i, checker_idx in enumerate(checker_idxs):
                     if checker_idx != cur_idx:
-                        op = operators[checker_idx]
+                        op = operators[match_dict[checker_idx]]
                         module = get_operators([op], m, named_modules)[0]
                         checker_nodes[-1].append(op)
-                        checker_dicts[-1][op.name] = module
+                        checker_dicts[-1][
+                            self.matching_nodes[checker_idx].name
+                        ] = module
                     else:
                         checker_nodes[-1].append(None)
-                        checker_pos = idx
+                        checker_pos = i
                 checker_poss.append(checker_pos)
 
             # search in candidates, and goto next one recursively
@@ -379,8 +383,8 @@ class SubgraphMatcher(object):
                 ):
                     checker_node[checker_pos] = op
                     module = get_operators([op], m, named_modules)[0]
-                    checker_dict[op.name] = module
-                    if not checker_func(*checker_node, **checker_dict):
+                    checker_dict[self.matching_nodes[checker_pos].name] = module
+                    if not checker_func(*checker_node, modules=checker_dict):
                         checker_mask = True
                         break
                 if checker_mask:
