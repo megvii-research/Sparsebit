@@ -48,17 +48,16 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
-    def reset_scheme(self, is_symmetric = None, is_perchannel = None):
-        if is_symmetric is None:
-            is_symmetric = self.is_symmetric
-        if is_perchannel is None:
-            is_perchannel = self.is_perchannel
+    def set_symmetric(self, is_symmetric:bool):
+        if is_symmetric == self.is_symmetric:
+            return
+        self.is_symmetric = is_symmetric
         self._scheme = {
-            (True, True): torch.per_channel_symmetric,
-            (True, False): torch.per_tensor_symmetric,
-            (False, True): torch.per_channel_affine,
-            (False, False): torch.per_tensor_affine,
-        }[(is_symmetric, is_perchannel)]
+            torch.per_channel_affine: torch.per_channel_symmetric,
+            torch.per_channel_symmetric: torch.per_channel_affine,
+            torch.per_tensor_affine: torch.per_tensor_symmetric,
+            torch.per_tensor_symmetric: torch.per_tensor_affine,
+        }[is_symmetric]
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
