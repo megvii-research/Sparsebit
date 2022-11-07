@@ -23,81 +23,183 @@ from model import resnet20
 from sparsebit.sparse import SparseModel, parse_sconfig
 
 
-if not torch.cuda.is_available():
-    raise NotImplementedError("This example should run on a GPU device.")  # 确定在GPU上运行
-
-
-config = "sconfig.yaml"  # Sparse配置文件
-workers = 4
-epochs = 200
-start_epoch = 0
-batch_size = 128
-lr = 0.1
-momentum = 0.9
-weight_decay = 1e-4
-print_freq = 10
-pretrained = ""
-sconfig = parse_sconfig(config)
-
-
-model = resnet20(num_classes=10)  # 以resnet20作为基础模型
-if pretrained:  # 可以采用pretrained中保存的模型参数
-    ckpt_state_dict = torch.load(pretrained)
-    model.load_state_dict(ckpt_state_dict)
-
-cudnn.benchmark = True
-
-
-transform = transforms.Compose(
-    [
-        transforms.RandomHorizontalFlip(),  # 随机水平翻转
-        transforms.RandomCrop(32, 4),  # 随机裁剪
-        transforms.ToTensor(),
-        transforms.Normalize(
-            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-        ),  # 指定各通道均值和标准差，将数据归一化
-    ]
+parser = argparse.ArgumentParser(description="PyTorch Cifar Training")
+parser.add_argument("config", help="the path of sparse config")
+parser.add_argument(
+    "-j",
+    "--workers",
+    default=16,
+    type=int,
+    metavar="N",
+    help="number of data loading workers (default: 4)",
+)
+parser.add_argument(
+    "--epochs", default=200, type=int, metavar="N", help="number of total epochs to run"
+)
+parser.add_argument(
+    "--start-epoch",
+    default=0,
+    type=int,
+    metavar="N",
+    help="manual epoch number (useful on restarts)",
+)
+parser.add_argument(
+    "-b",
+    "--batch-size",
+    default=128,
+    type=int,
+    metavar="N",
+    help="mini-batch size (default: 256), this is the total "
+    "batch size of all GPUs on the current node when "
+    "using Data Parallel or Distributed Data Parallel",
+)
+parser.add_argument(
+    "--lr",
+    "--learning-rate",
+    default=0.1,
+    type=float,
+    metavar="LR",
+    help="initial learning rate",
+    dest="lr",
+)
+parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+parser.add_argument(
+    "--wd",
+    "--weight-decay",
+    default=1e-4,
+    type=float,
+    metavar="W",
+    help="weight decay (default: 1e-4)",
+    dest="weight_decay",
+)
+parser.add_argument(
+    "-p",
+    "--print-freq",
+    default=10,
+    type=int,
+    metavar="N",
+    help="print frequency (default: 10)",
 )
 
-trainset = datasets.CIFAR10(
-    root="./data", train=True, download=True, transform=transform
-)
-trainloader = torch.utils.data.DataLoader(
-    trainset,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=workers,
-    pin_memory=True,
-)
-
-testset = datasets.CIFAR10(
-    root="./data", train=False, download=True, transform=transform
-)
-testloader = torch.utils.data.DataLoader(
-    testset,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=workers,
-    pin_memory=True,
-)
-
-smodel = SparseModel(model, sconfig).cuda()  # 将model转化为sparse模型
-
-smodel.calc_params()
-
-criterion = nn.CrossEntropyLoss().cuda()
-optimizer = torch.optim.SGD(
-    smodel.parameters(),
-    lr,
-    momentum=momentum,
-    weight_decay=weight_decay,
-)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=[100, 150], last_epoch=start_epoch - 1
+parser.add_argument(
+    "--pretrained", default="", action="store_true", help="use pre-trained model"
 )
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def main():
+    args = parser.parse_args()
+    if not torch.cuda.is_available():
+        raise NotImplementedError(
+            "This example should run on a GPU device."
+        )  # 确定在GPU上运行
+
+    model = resnet20(num_classes=10)  # 以resnet20作为基础模型
+    if args.pretrained:  # 可以采用pretrained中保存的模型参数
+        ckpt_state_dict = torch.load(args.pretrained)
+        model.load_state_dict(ckpt_state_dict)
+
+    cudnn.benchmark = True
+
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomHorizontalFlip(),  # 随机水平翻转
+            transforms.RandomCrop(32, 4),  # 随机裁剪
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            ),  # 指定各通道均值和标准差，将数据归一化
+        ]
+    )
+
+    val_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            ),  # 指定各通道均值和标准差，将数据归一化
+        ]
+    )
+
+    trainset = datasets.CIFAR10(
+        root="./data", train=True, download=True, transform=train_transform
+    )
+    trainloader = torch.utils.data.DataLoader(
+        trainset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
+
+    testset = datasets.CIFAR10(
+        root="./data", train=False, download=True, transform=val_transform
+    )
+    testloader = torch.utils.data.DataLoader(
+        testset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
+
+    sconfig = parse_sconfig(args.config)
+
+    smodel = SparseModel(model, sconfig).cuda()  # 将model转化为sparse模型
+
+    smodel.calc_params()
+
+    criterion = nn.CrossEntropyLoss().cuda()
+    optimizer = torch.optim.SGD(
+        smodel.parameters(),
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+    )
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[100, 150], last_epoch=args.start_epoch - 1
+    )
+
+    best_acc1 = 0
+    for epoch in range(args.start_epoch, args.epochs):
+        # train for one epoch
+        train(
+            trainloader,
+            smodel,
+            criterion,
+            optimizer,
+            epoch,
+            args.print_freq,
+        )
+
+        # evaluate on validation set
+        acc1 = validate(testloader, model, criterion, args.print_freq)
+
+        scheduler.step()
+
+        # remember best acc@1 and save checkpoint
+        is_best = acc1 > best_acc1
+        best_acc1 = max(acc1, best_acc1)
+
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": model.state_dict(),
+                "best_acc1": best_acc1,
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
+            },
+            is_best,
+        )
+
+    print("Training is Done, best: {}".format(best_acc1))
+
+    # export onnx
+    smodel.eval()
+    with torch.no_grad():
+        smodel.export_onnx(torch.randn(1, 3, 32, 32), name="presnet20.onnx")
+
+
+def train(train_loader, model, criterion, optimizer, epoch, print_freq):
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -142,7 +244,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
             progress.display(i)
 
 
-def validate(val_loader, model, criterion):
+def validate(val_loader, model, criterion, print_freq):
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
     top1 = AverageMeter("Acc@1", ":6.2f", Summary.AVERAGE)
@@ -276,40 +378,5 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-best_acc1 = 0
-for epoch in range(start_epoch, epochs):
-    # train for one epoch
-    train(
-        trainloader,
-        smodel,
-        criterion,
-        optimizer,
-        epoch,
-    )
-
-    # evaluate on validation set
-    acc1 = validate(testloader, model, criterion)
-
-    scheduler.step()
-
-    # remember best acc@1 and save checkpoint
-    is_best = acc1 > best_acc1
-    best_acc1 = max(acc1, best_acc1)
-
-    save_checkpoint(
-        {
-            "epoch": epoch + 1,
-            "state_dict": model.state_dict(),
-            "best_acc1": best_acc1,
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-        },
-        is_best,
-    )
-
-print("Training is Done, best: {}".format(best_acc1))
-
-# export onnx
-smodel.eval()
-with torch.no_grad():
-    smodel.export_onnx(torch.randn(1, 3, 32, 32), name="presnet20.onnx")
+if __name__ == "__main__":
+    main()
