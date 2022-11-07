@@ -57,7 +57,7 @@ class QuantDescriptor:
             torch.per_channel_symmetric: torch.per_channel_affine,
             torch.per_tensor_affine: torch.per_tensor_symmetric,
             torch.per_tensor_symmetric: torch.per_tensor_affine,
-        }[is_symmetric]
+        }[self._scheme]
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
