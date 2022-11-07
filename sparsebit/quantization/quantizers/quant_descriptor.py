@@ -49,9 +49,6 @@ class QuantDescriptor:
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
     def reset_scheme(self, is_symmetric = None, is_perchannel = None):
-        assert is_symmetric is not None or is_perchannel is not None, "A target must be set for reseting scheme!"
-        if (is_symmetric, is_perchannel) in [(self.is_symmetric, self.is_perchannel),(self.is_symmetric, None),(None, self.is_perchannel)]:
-            return
         if is_symmetric is None:
             is_symmetric = self.is_symmetric
         if is_perchannel is None:
