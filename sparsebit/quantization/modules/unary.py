@@ -47,3 +47,14 @@ class Softmax(QuantOpr):
             assert self.dim == args[0], "parameter mismatch in softmax"
         out = F.softmax(x_in, dim=self.dim)
         return out
+
+
+@register_qmodule(sources=[torch.Tensor.clone])
+class Clone(nn.Module):
+    """clone can be useful in quantization-aware training"""
+
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+
+    def forward(self, x):
+        return x.clone()

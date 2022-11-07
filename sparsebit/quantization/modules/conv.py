@@ -40,3 +40,28 @@ class QConv2d(QuantOpr):
         weight = self.weight_quantizer(self.weight)
         out = F.conv2d(x_in, weight, self.bias, **self.fwd_kwargs)
         return out
+
+
+@register_qmodule(sources=[nn.ConvTranspose2d])
+class QConvTranspose2d(QuantOpr):
+    def __init__(self, org_module, config=None):
+        assert isinstance(org_module, nn.ConvTranspose2d)
+        super().__init__()
+        self.cfg = config
+        self.fwd_kwargs = dict(
+            stride=org_module.stride,
+            padding=org_module.padding,
+            output_padding=org_module.output_padding,
+            dilation=org_module.dilation,
+            groups=org_module.groups,
+        )
+        self.weight = org_module.weight
+        self.bias = org_module.bias
+        self._repr_info = "Q" + org_module.__repr__()
+
+    def forward(self, x_in: torch.Tensor):
+        """卷积层的前向传播,但加入了input和weight量化。"""
+        x_in = self.input_quantizer(x_in)
+        weight = self.weight_quantizer(self.weight)
+        out = F.conv_transpose2d(x_in, weight, self.bias, **self.fwd_kwargs)
+        return out
