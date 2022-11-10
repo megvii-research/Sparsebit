@@ -108,6 +108,5 @@ class ReplacePatternBase(object):
             )
             for rep_name, new_node in replace_dict.items():
                 replace_op(nodes, nodes_dict[rep_name], new_node)
-            is_transformed = True
         m = PruneGraph().apply(m)
         return is_transformed
