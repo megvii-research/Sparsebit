@@ -80,17 +80,17 @@ class DominatorTree(object):
         sons = [0] * self.n
         masks = [0] * self.n
 
-        def dfs2(x: int):
+        def dfs_get_sons(x: int):
             sons[x] += 1
             for i in self.targets[x]:
-                dfs2(i)
+                dfs_get_sons(i)
                 sons[x] += sons[i]
 
-        def dfs3(x: int):
+        def dfs_sort_subtrees(x: int):
             for i in self.edges[x]:
                 masks[x] |= 1 << i
             for i in self.targets[x]:
-                dfs3(i)
+                dfs_sort_subtrees(i)
                 masks[x] |= masks[i]
             _len = len(self.targets[x])
             # sort self.targets[x] in reversed lambda i: sons[i] order
@@ -122,5 +122,5 @@ class DominatorTree(object):
             x = self.idx[i]
             self.targets[self.idom[x]].append(x)
 
-        dfs2(self.n - 1)
-        dfs3(self.n - 1)
+        dfs_get_sons(self.n - 1)
+        dfs_sort_subtrees(self.n - 1)
