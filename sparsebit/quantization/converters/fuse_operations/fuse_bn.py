@@ -3,7 +3,7 @@ import copy
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 
-from ..utils import ReplacePatternBase, MatchingNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules import QConv2d, QLinear, QBatchNorm2d
 
 

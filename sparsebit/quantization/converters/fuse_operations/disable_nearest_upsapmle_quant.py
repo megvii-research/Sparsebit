@@ -1,6 +1,6 @@
 import torch
 
-from ..utils import ReplacePatternBase, MatchingNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules import QUpsample
 
 

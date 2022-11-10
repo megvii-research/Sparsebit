@@ -1,7 +1,7 @@
 import torch
 import operator
 
-from ..utils import ReplacePatternBase, MatchingNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 
 
 class ReplacePattern(ReplacePatternBase):
