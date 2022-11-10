@@ -61,7 +61,6 @@ class QuantDescriptor:
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
-        self._ch_axis = self._set_channel_axis()
 
     @property
     def scheme(self):
