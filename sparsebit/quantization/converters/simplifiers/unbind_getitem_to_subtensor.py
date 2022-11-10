@@ -22,7 +22,7 @@ class ReplacePattern(ReplacePatternBase):
 
         if isinstance(getitem_node.args[1], slice):  # w/o squeeze
             new_slice = getitem_node.args[1]
-        else:  # w/i squeeze
+        else:  # w/ squeeze
             idx = int(getitem_node.args[1])
             new_slice = idx
 

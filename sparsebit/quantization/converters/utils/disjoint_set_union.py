@@ -3,7 +3,7 @@ from typing import List, Union, Callable
 
 class DSU(object):
     """disjoint-set union, with nodes indexing from 0 to N-1
-    w/i and w/o value is supported
+    w/ and w/o value is supported
     path compression optimization applied
     """
 
@@ -17,21 +17,21 @@ class DSU(object):
             self.value = value
             assert cmp is not None, "Unknown format"
             self.cmp = cmp
-        self.fa = [i for i in range(self.n)]
+        self.parents = [i for i in range(self.n)]
 
     def find(self, x: int) -> int:
-        if self.fa[x] == x:
+        if self.parents[x] == x:
             return x
         if self.with_value:
-            tmp_fa = self.fa[x]
-            self.fa[x] = self.find(self.fa[x])
-            if self.cmp(self.value[tmp_fa], self.value[x]):
-                self.value[x] = self.value[tmp_fa]
+            tmp_parents = self.parents[x]
+            self.parents[x] = self.find(self.parents[x])
+            if self.cmp(self.value[tmp_parents], self.value[x]):
+                self.value[x] = self.value[tmp_parents]
         else:
-            self.fa[x] = self.find(self.fa[x])
-        return self.fa[x]
+            self.parents[x] = self.find(self.parents[x])
+        return self.parents[x]
 
     def merge(self, x: int, y: int):
         x = self.find(x)
         y = self.find(y)
-        self.fa[x] = y
+        self.parents[x] = y
