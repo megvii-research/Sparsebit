@@ -3,7 +3,7 @@ import copy
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 
-from ..base import ReplacePatternBase, MatcherNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules import QConv2d, QLinear, QBatchNorm2d
 
 
@@ -18,15 +18,15 @@ class ReplacePattern(ReplacePatternBase):
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
-    def make_ops(self):
+    def make_nodes(self):
         """匹配 conv-bn / linear-bn 结构。"""
         return [
-            MatcherNode(
+            MatchingNode(
                 "cnn_layer",
                 inputs=[None],
                 op_type=[QConv2d, QLinear],
             ),
-            MatcherNode(
+            MatchingNode(
                 "bn",
                 inputs=["cnn_layer"],
                 op_type=[nn.BatchNorm2d, QBatchNorm2d],
@@ -73,15 +73,24 @@ class ReplacePattern(ReplacePatternBase):
                 args=(x_in,),
                 name=op_name,
             )
-        return new_node
+        return {"bn": new_node}
 
 
 def fuse_qconv_qbn(cnn_module, bn_module):
-    #if cnn_module.weight_quantizer.is_symmetric: # zp=0
+    # if cnn_module.weight_quantizer.is_symmetric: # zp=0
     new_cnn_module = copy.deepcopy(cnn_module)
-    bn_rm, bn_rv, bn_w, bn_b = bn_module.running_mean, bn_module.running_var, bn_module.weight, bn_module.bias
+    bn_rm, bn_rv, bn_w, bn_b = (
+        bn_module.running_mean,
+        bn_module.running_var,
+        bn_module.weight,
+        bn_module.bias,
+    )
     bn_rstd = torch.rsqrt(bn_rv + bn_module.eps)
-    scale_ratio = (bn_w * bn_rstd).detach().reshape([-1] + [1] * (len(cnn_module.weight.shape) - 1))
+    scale_ratio = (
+        (bn_w * bn_rstd)
+        .detach()
+        .reshape([-1] + [1] * (len(cnn_module.weight.shape) - 1))
+    )
     conv_w = new_cnn_module.weight * scale_ratio
     new_cnn_module.weight_quantizer.scale *= scale_ratio
     if cnn_module.bias is None:
@@ -94,8 +103,17 @@ def fuse_qconv_qbn(cnn_module, bn_module):
 
 def fuse_qlinear_qbn(linear_module, bn_module):
     new_linear_module = copy.deepcopy(linear_module)
-    bn_rm, bn_rv, bn_w, bn_b = bn_module.running_mean, bn_module.running_var, bn_module.weight, bn_module.bias
-    scale_ratio = (bn_w * torch.rsqrt(bn_rv + bn_module.eps)).detach().reshape([-1] + [1] * (len(linear_module.weight.shape) - 1))
+    bn_rm, bn_rv, bn_w, bn_b = (
+        bn_module.running_mean,
+        bn_module.running_var,
+        bn_module.weight,
+        bn_module.bias,
+    )
+    scale_ratio = (
+        (bn_w * torch.rsqrt(bn_rv + bn_module.eps))
+        .detach()
+        .reshape([-1] + [1] * (len(linear_module.weight.shape) - 1))
+    )
     new_linear_module.weight_quantizer.scale *= scale_ratio
     linear_w = new_linear_module.weight * scale_ratio
     if new_linear_module.bias is None:

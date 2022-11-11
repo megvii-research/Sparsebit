@@ -1,6 +1,6 @@
 import torch
 
-from ..base import ReplacePatternBase, MatcherNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules import QUpsample
 
 
@@ -12,9 +12,9 @@ class ReplacePattern(ReplacePatternBase):
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
-    def make_ops(self):
+    def make_nodes(self):
         return [
-            MatcherNode(
+            MatchingNode(
                 "upsample", inputs=[None], op_type=[QUpsample], checker=check_upsample
             ),
         ]
@@ -23,4 +23,4 @@ class ReplacePattern(ReplacePatternBase):
         upsample_node = nodes_dict["upsample"]
         upsample_module = modules_dict["upsample"]
         upsample_module.set_fake_fused()
-        return upsample_node
+        return {"upsample": upsample_node}

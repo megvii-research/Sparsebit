@@ -1,6 +1,6 @@
 import torch
 from typing import Callable
-from ..base import ReplacePatternBase, MatcherNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules import (
     QAdd,
     QReLU,
@@ -49,7 +49,7 @@ class ReplacePattern_DisableQuant(ReplacePatternBase):
         self.matcher_ops = matcher_ops
         super(ReplacePattern_DisableQuant, self).__init__()
 
-    def make_ops(self):
+    def make_nodes(self):
         """self.matcher_ops"""
         return self.matcher_ops
 
@@ -71,7 +71,7 @@ class ReplacePattern_DisableQuant(ReplacePatternBase):
         for noninput_node in noninput_node_names:
             op = modules_dict[noninput_node]
             op.set_fake_fused()
-        return nodes_dict[anchor_node_name]
+        return {anchor_node_name: nodes_dict[anchor_node_name]}
 
 
 def make_chain_connection(op_types):
@@ -92,7 +92,7 @@ def make_chain_connection(op_types):
         if idx != 0:
             assert input_nums == 1
         nodes.append(
-            MatcherNode(
+            MatchingNode(
                 name="op_{}".format(idx),
                 inputs=[None] * input_nums if idx == 0 else ["op_{}".format(idx - 1)],
                 op_type=[op_type],

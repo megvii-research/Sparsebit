@@ -1,6 +1,6 @@
 import operator
 
-from ..base import ReplacePatternBase, MatcherNode
+from sparsebit.quantization.converters.utils import ReplacePatternBase, MatchingNode
 from sparsebit.quantization.modules.shape import Size
 
 
@@ -10,7 +10,7 @@ class ReplacePattern(ReplacePatternBase):
     def __init__(self):
         super(ReplacePattern, self).__init__()
 
-    def make_ops(self):
+    def make_nodes(self):
         """匹配
 
         - getattr("shape")
@@ -18,13 +18,13 @@ class ReplacePattern(ReplacePatternBase):
         - getitem(dim)
         """
         return [
-            MatcherNode(
+            MatchingNode(
                 "getattr",
                 inputs=[None],
                 op_type=[getattr],
                 checker=lambda node, module: node.args[1] == "shape",
             ),
-            MatcherNode(
+            MatchingNode(
                 "getitem",
                 inputs=["getattr"],
                 op_type=[operator.getitem],
@@ -44,12 +44,22 @@ class ReplacePattern(ReplacePatternBase):
         model.add_module(op_name, new_module)
 
         old_input = getattr_node.args[0]
+        if isinstance(getitem_node.args[1], int):
+            specific_dim = True
+            dim = getitem_node.args[1]
+        else:
+            specific_dim = False
+            dim = None
         with model.graph.inserting_after(getattr_node):
             new_node = model.graph.create_node(
                 op="call_module",
                 target=op_name,
                 args=(old_input,),
-                kwargs={"dim": getitem_node.args[1]},
+                kwargs=({"dim": dim} if specific_dim else {}),
                 name=op_name,
             )
-        return new_node
+        if specific_dim:
+            return {"getitem": new_node}
+        else:
+            getitem_node.replace_input_with(getattr_node, new_node)
+            return {"getitem": getitem_node}
