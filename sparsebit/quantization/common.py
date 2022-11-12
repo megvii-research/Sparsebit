@@ -2,6 +2,16 @@ import torch
 from enum import Enum
 
 
+class Granularity(Enum):
+    LAYERWISE = 0
+    CHANNELWISE = 1
+
+
+class QuantTarget(Enum):
+    WEIGHT = 0
+    FEATURE = 1
+
+
 class Backend(Enum):
     VIRTUAL = 0
     ONNXRUNTIME = 1

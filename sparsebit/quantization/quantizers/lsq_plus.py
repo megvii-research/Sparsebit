@@ -6,6 +6,7 @@ import torch.distributed as ddp
 
 from sparsebit.quantization.quantizers import Quantizer as BaseQuantizer
 from sparsebit.quantization.quantizers import register_quantizer
+from sparsebit.quantization.common import Granularity
 from .lsq import gs_scaling, STE
 
 
@@ -22,7 +23,9 @@ class Quantizer(BaseQuantizer):
             return self.scale, self.zero_point
         if not self.init_params:
             if self.is_perchannel:
-                x_oc = self.observer.get_calibration_data(c_first=True)
+                x_oc = self.observer.data_cache.get_data_for_calibration(
+                    Granularity.CHANNELWISE
+                )
                 assert (
                     self.is_symmetric
                 ), "LSQ+ only support per-channel-symmetric quant for weight"

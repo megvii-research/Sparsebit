@@ -23,8 +23,8 @@ An observer example is shown below. ``calc_minmax`` should be overwritten by you
             assert (
                 len(self.data_cache) > 0
             ), "Before calculating the quant params, the observation of data should be done"
-            data = torch.cat(self.data_cache, axis=1)
-            self.reset_data_cache()
+            data =self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
+            self.data_cache.reset()
             ...
             return self.min_val, self.max_val
 

@@ -83,7 +83,7 @@ class CalibrationRunner(object):
                     for inp_tensor in inp_tensors:
                         module.input_quantizer.update_observer(inp_tensor)
                 module.input_quantizer.calc_qparams()
-                module.input_quantizer.observer.reset_data_cache()
+                module.input_quantizer.observer.data_cache.reset()
 
             with torch.no_grad():
                 outputs = []

@@ -1,9 +1,9 @@
 import torch
 import math
-from .utils import mse_loss
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
 from sparsebit.quantization.quantizers.quant_tensor import STE
+from sparsebit.quantization.common import Granularity, QuantTarget
 
 
 @register_observer
@@ -13,6 +13,11 @@ class Observer(BaseObserver):
     def __init__(self, config, qdesc):
         super(Observer, self).__init__(config, qdesc)
 
+        self.distribution = config.OBSERVER.ACIQ.DISTRIBUTION.lower()
+        assert self.distribution in [
+            "gaus",
+            "laplace",
+        ], "ACIQ observer only support 'gaus' and 'laplace' mode!"
         self.alpha_gaus_positive = {
             1: 1.71,
             2: 2.15,
@@ -57,11 +62,15 @@ class Observer(BaseObserver):
         }
         self.gaus_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
 
-    def calc_laplace_minmax(self, data, is_half_range):
+    def calc_laplace_minmax(self):
         if self.is_perchannel:
+            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
             b = torch.mean(torch.abs(data - data.mean(1).unsqueeze(1)), dim=1)
         else:
+            data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
             b = torch.mean(torch.abs(data - data.mean()))
+        self.data_cache.reset()
+        is_half_range = data.min() >= 0
         if (
             self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
             and is_half_range
@@ -73,15 +82,22 @@ class Observer(BaseObserver):
             min_val = -max_val
         return min_val, max_val
 
-    def calc_gaus_minmax(self, data, batch_size, is_half_range):
+    def calc_gaus_minmax(self):
+        if self.qdesc.target == QuantTarget.FEATURE:
+            batch_size = self.data_cache.get_batch_size()
         if self.is_perchannel:
+            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
             max_val = data.max(axis=1).values
             min_val = data.min(axis=1).values
         else:
+            data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
             max_val = data.max()
             min_val = data.min()
+            self.data_cache.get_batch_size
+        self.data_cache.reset()
+        is_half_range = data.min() >= 0
         num_elements = data.numel()
-        if self.qdesc.ch_axis > 0:
+        if self.qdesc.target == QuantTarget.FEATURE:
             num_elements /= batch_size
         std = ((max_val - min_val) * self.gaus_const) / (
             (2 * math.log(num_elements)) ** 0.5
@@ -97,71 +113,12 @@ class Observer(BaseObserver):
             min_val = -max_val
         return min_val, max_val
 
-    def calc_naive_minmax(self, data):
-        if self.is_perchannel:
-            max_val = data.max(axis=1).values
-            min_val = data.min(axis=1).values
-        else:
-            max_val = data.max()
-            min_val = data.min()
-        return min_val, max_val
-
     def calc_minmax(self):
-        batch_size = (
-            torch.cat(self._data_cache, axis=0).shape[0]
-            if self.qdesc.ch_axis > 0
-            else 1
-        )
-        data = self.get_calibration_data(c_first=True)
-        is_half_range = data.min() >= 0
-
-        laplace_min_val, laplace_max_val = self.calc_laplace_minmax(data, is_half_range)
-        scale_laplace, zero_point_laplace = self.calc_qparams_with_minmax(
-            laplace_min_val, laplace_max_val
-        )
-        mse_laplace = mse_loss(
-            STE.apply(
-                data, scale_laplace, zero_point_laplace, self.qdesc, self.backend
-            ),
-            data,
-            self.is_perchannel,
-        )
-
-        gaus_min_val, gaus_max_val = self.calc_gaus_minmax(
-            data, batch_size, is_half_range
-        )
-        scale_gaus, zero_point_gaus = self.calc_qparams_with_minmax(
-            gaus_min_val, gaus_max_val
-        )
-
-        mse_gaus = mse_loss(
-            STE.apply(data, scale_gaus, zero_point_gaus, self.qdesc, self.backend),
-            data,
-            self.is_perchannel,
-        )
-
-        naive_min_val, naive_max_val = self.calc_naive_minmax(data)
-        scale_minmax, zero_point_minmax = self.calc_qparams_with_minmax(
-            naive_min_val, naive_max_val
-        )
-        mse_minmax = mse_loss(
-            STE.apply(data, scale_minmax, zero_point_minmax, self.qdesc, self.backend),
-            data,
-            self.is_perchannel,
-        )
-
-        mse_gaus_laplace = torch.minimum(mse_gaus, mse_laplace)
-        self.min_val = torch.where(
-            mse_gaus < mse_laplace, gaus_min_val, laplace_min_val
-        )
-        self.min_val = torch.where(
-            mse_minmax < mse_gaus_laplace, naive_min_val, self.min_val
-        ).to(self.device)
-        self.max_val = torch.where(
-            mse_gaus < mse_laplace, gaus_max_val, laplace_max_val
-        )
-        self.max_val = torch.where(
-            mse_minmax < mse_gaus_laplace, naive_max_val, self.max_val
-        ).to(self.device)
+        if self.distribution == "laplace":
+            min_val, max_val = self.calc_laplace_minmax()
+        else:
+            min_val, max_val = self.calc_gaus_minmax()
+        self.min_val = min_val.to(self.device)
+        self.max_val = max_val.to(self.device)
 
         return self.min_val, self.max_val

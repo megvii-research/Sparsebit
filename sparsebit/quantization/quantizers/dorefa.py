@@ -23,4 +23,4 @@ class Quantizer(BaseQuantizer):
         self.dims = len(x.shape)
         x_tanhed = x.detach().tanh()
         x_normed = x_tanhed / x_tanhed.detach().abs().max()
-        self.observer.update(x_normed)
+        self.observer.data_cache.update(x_normed)

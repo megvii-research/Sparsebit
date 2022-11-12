@@ -60,7 +60,7 @@ class Quantizer(nn.Module, abc.ABC):
 
     def update_observer(self, x):
         self.dims = len(x.shape)
-        self.observer.update(x.detach())
+        self.observer.data_cache.update(x.detach())
 
     def set_backend(self, backend):
         self.backend = backend

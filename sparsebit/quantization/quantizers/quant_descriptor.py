@@ -5,12 +5,14 @@ from sparsebit.quantization.common import get_qscheme
 class QuantDescriptor:
     def __init__(self, cfg):
         self._cfg = cfg
+        self._target = cfg.TARGET[0]
         self._scheme = get_qscheme(cfg.QSCHEME)
         self._bit = cfg.QUANTIZER.BIT
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
         self._ch_axis = self._set_channel_axis()
+        self._bs_axis = self._set_batchsize_axis()
         self.is_perchannel = (
             self._scheme == torch.per_channel_symmetric
             or self._scheme == torch.per_channel_affine
@@ -44,6 +46,17 @@ class QuantDescriptor:
             ch_axis = 0
         return ch_axis
 
+    def _set_batchsize_axis(self):
+        if hasattr(self._cfg.OBSERVER, "LAYOUT"):  # activation
+            layout = self._cfg.OBSERVER.LAYOUT
+            if layout in ["NCHW", "NLC"]:  # for cnn
+                bs_axis = 0
+            else:
+                raise NotImplementedError
+        else:  # weight
+            bs_axis = None
+        return bs_axis
+
     def set_bit(self, bit):
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
@@ -59,6 +72,10 @@ class QuantDescriptor:
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
+
+    @property
+    def target(self):
+        return self._target
 
     @property
     def scheme(self):
@@ -83,6 +100,10 @@ class QuantDescriptor:
     @property
     def ch_axis(self):
         return self._ch_axis
+
+    @property
+    def bs_axis(self):
+        return self._bs_axis
 
     def __repr__(self):
         return self._type + "\t qmin: {}  qmax: {}, qscheme: {}".format(
