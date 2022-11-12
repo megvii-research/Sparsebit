@@ -79,6 +79,16 @@ class SharedData(object):
 
         return args
 
+    def extract_node_kwargs(self, kwargs, batch: int = None):
+        # usage: extract_node_args(node.args, x_in) in forward_hook
+        batch_kwargs = {}
+        for k, v in kwargs.items():
+            if isinstance(v, fx.Node):
+                batch_kwargs[k] = self.get_output(v.target)[batch]
+            else:
+                batch_kwargs[k] = v
+        return batch_kwargs
+
     def extract_value(self, value_name: str):
         return self.values.pop(value_name, {})
 
@@ -102,7 +112,9 @@ class GraphVisitor(object):
             if node.op in ["placeholder", "output"]:  # skip IO empty node
                 continue
             if node.op == "get_attr":  # use model.xxx to get constant nn.Parameter
-                module = getattr(model, node.target)
+                module = model
+                for n in node.target.split("."):
+                    module = getattr(module, n)
             else:
                 module = named_modules[node.target]
 

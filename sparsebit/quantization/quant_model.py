@@ -128,10 +128,13 @@ class QuantModel(nn.Module):
                 ):
                     module.prepare_input_quantizer(node, self.model)
                     for input_node in node.all_input_nodes:
-                        identity_module = getattr(self.model, input_node.target)
-                        _config = self.cfg.clone()  # init
-                        update_config(_config, "A", _sub_build(self.cfg.A, node.target))
-                        identity_module.build_quantizer(_config)
+                        input_module = getattr(self.model, input_node.target)
+                        if isinstance(input_module, QIdentity):
+                            _config = self.cfg.clone()  # init
+                            update_config(
+                                _config, "A", _sub_build(self.cfg.A, node.target)
+                            )
+                            input_module.build_quantizer(_config)
 
     def _trace(self, model):
         skipped_modules = self.cfg.SKIP_TRACE_MODULES

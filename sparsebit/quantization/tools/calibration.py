@@ -75,6 +75,9 @@ class CalibrationRunner(object):
             assert batch_num is not None
 
             module = getattr(self.model, node.target)
+            module = self.model
+            for n in node.target.split("."):
+                module = getattr(module, n)
             if isinstance(module, QuantOpr) and getattr(
                 module, "input_quantizer", None
             ):
@@ -82,6 +85,7 @@ class CalibrationRunner(object):
                     inp_tensors = self.builder.storage.get_output(inp_node.target)
                     for inp_tensor in inp_tensors:
                         module.input_quantizer.update_observer(inp_tensor)
+                    break  # only take first input of operator into consideration
                 module.input_quantizer.calc_qparams()
                 module.input_quantizer.observer.reset_data_cache()
 
@@ -95,8 +99,12 @@ class CalibrationRunner(object):
                         node.args, batch=batch_idx
                     )
                     args = to_device(args, device)
+                    kwargs = self.builder.storage.extract_node_kwargs(
+                        node.kwargs, batch=batch_idx
+                    )
+                    kwargs = to_device(kwargs, device)
                     # more time for less cuda memory occupation
-                    outputs.append(to_cpu(module(*args, **node.kwargs)))
+                    outputs.append(to_cpu(module(*args, **kwargs)))
             self.builder.storage.set_output(node.target, outputs)
             self.builder.storage.finish_node(node.target)
 
