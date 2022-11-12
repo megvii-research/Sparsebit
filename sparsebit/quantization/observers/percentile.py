@@ -31,8 +31,7 @@ class Observer(BaseObserver):
                 ).values
             if neg_length[i] > 0:
                 min_val[i] = torch.kthvalue(
-                    data[i],
-                    max(round(neg_length[i].item() * self.alpha), 1),
+                    data[i], max(round(neg_length[i].item() * self.alpha), 1),
                 ).values
 
         self.min_val = min_val.to(self.device)

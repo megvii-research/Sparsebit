@@ -32,7 +32,7 @@ class Quantizer(BaseQuantizer):
         if self.fake_fused:
             return self.scale, self.zero_point
         x_oc = self.observer.get_calibration_data(c_first=True)
-        if x_oc.min()<0 and not self.qdesc.is_symmetric:
+        if x_oc.min() < 0 and not self.qdesc.is_symmetric:
             warnings.warn("Found data less than 0, reset quantizer scheme as symmetric")
             self.qdesc.set_symmetric(True)
         if not self.init_params:

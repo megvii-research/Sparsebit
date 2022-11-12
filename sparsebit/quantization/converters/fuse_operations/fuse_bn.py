@@ -21,15 +21,9 @@ class ReplacePattern(ReplacePatternBase):
     def make_nodes(self):
         """匹配 conv-bn / linear-bn 结构。"""
         return [
+            MatchingNode("cnn_layer", inputs=[None], op_type=[QConv2d, QLinear],),
             MatchingNode(
-                "cnn_layer",
-                inputs=[None],
-                op_type=[QConv2d, QLinear],
-            ),
-            MatchingNode(
-                "bn",
-                inputs=["cnn_layer"],
-                op_type=[nn.BatchNorm2d, QBatchNorm2d],
+                "bn", inputs=["cnn_layer"], op_type=[nn.BatchNorm2d, QBatchNorm2d],
             ),
         ]
 
@@ -68,10 +62,7 @@ class ReplacePattern(ReplacePatternBase):
         (x_in,) = cnn_node.args
         with model.graph.inserting_after(cnn_node):
             new_node = model.graph.create_node(
-                op="call_module",
-                target=op_name,
-                args=(x_in,),
-                name=op_name,
+                op="call_module", target=op_name, args=(x_in,), name=op_name,
             )
         return {"bn": new_node}
 

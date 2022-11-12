@@ -48,7 +48,7 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
-    def set_symmetric(self, is_symmetric:bool):
+    def set_symmetric(self, is_symmetric: bool):
         self.is_symmetric = is_symmetric
         self._scheme = {
             (True, True): torch.per_channel_symmetric,

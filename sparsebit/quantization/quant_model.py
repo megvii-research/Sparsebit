@@ -123,7 +123,7 @@ class QuantModel(nn.Module):
         self.model = simplify(self.model)
 
     def _run_fuse_operations(self):
-        if self.cfg.SCHEDULE.BN_TUNING: # first disable fuse bn
+        if self.cfg.SCHEDULE.BN_TUNING:  # first disable fuse bn
             update_config(self.cfg.SCHEDULE, "FUSE_BN", False)
         self.model = fuse_operations(self.model, self.cfg.SCHEDULE)
         self.model.graph.print_tabular()
@@ -144,7 +144,9 @@ class QuantModel(nn.Module):
         yield
         self.model.eval()
         update_config(self.cfg.SCHEDULE, "FUSE_BN", True)
-        self.model = fuse_operations(self.model, self.cfg.SCHEDULE, custom_fuse_list=["fuse_bn"])
+        self.model = fuse_operations(
+            self.model, self.cfg.SCHEDULE, custom_fuse_list=["fuse_bn"]
+        )
         self.set_quant(w_quant=False, a_quant=False)
 
     def prepare_calibration(self):

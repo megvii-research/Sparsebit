@@ -24,11 +24,7 @@ class ReplacePattern(ReplacePatternBase):
                 op_type=[getattr],
                 checker=lambda node, module: node.args[1] == "shape",
             ),
-            MatchingNode(
-                "getitem",
-                inputs=["getattr"],
-                op_type=[operator.getitem],
-            ),
+            MatchingNode("getitem", inputs=["getattr"], op_type=[operator.getitem],),
         ]
 
     def get_new_graph(self, nodes_dict, modules_dict, model, transform_idx):

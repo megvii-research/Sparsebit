@@ -113,14 +113,7 @@ class Observer(BaseObserver):
                 total_run_times=channel,
                 use_cpus=24,
                 input_tuples=[
-                    tuple(
-                        [
-                            data[c],
-                            -abs_max[c],
-                            abs_max[c],
-                        ]
-                    )
-                    for c in range(channel)
+                    tuple([data[c], -abs_max[c], abs_max[c],]) for c in range(channel)
                 ],
             )
             for c in range(channel):

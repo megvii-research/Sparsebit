@@ -52,9 +52,7 @@ class QuantizationErrorProfiler(object):
         forward_hook = partial(_forward_hook, checker=checker, is_async=True)
 
         def hook_wrapper(
-            node,
-            module,
-            storage: SharedData,
+            node, module, storage: SharedData,
         ):
             handles = []
             handles.append(module.register_forward_pre_hook(hook=forward_pre_hook))
@@ -92,9 +90,7 @@ class QuantizationErrorProfiler(object):
         forward_hook = partial(_forward_hook, checker=checker, is_async=False)
 
         def hook_wrapper(
-            node,
-            module,
-            storage: SharedData,
+            node, module, storage: SharedData,
         ):
             handles = []
             if (
@@ -106,10 +102,7 @@ class QuantizationErrorProfiler(object):
                 handles.append(
                     module.register_forward_hook(
                         partial(
-                            forward_hook,
-                            node=node,
-                            storage=storage,
-                            check_diff=True,
+                            forward_hook, node=node, storage=storage, check_diff=True,
                         )
                     )
                 )
@@ -117,10 +110,7 @@ class QuantizationErrorProfiler(object):
                 handles.append(
                     module.register_forward_hook(
                         partial(
-                            forward_hook,
-                            node=node,
-                            storage=storage,
-                            check_diff=False,
+                            forward_hook, node=node, storage=storage, check_diff=False,
                         )
                     )
                 )

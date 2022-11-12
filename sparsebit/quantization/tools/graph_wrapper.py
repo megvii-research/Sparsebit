@@ -111,10 +111,6 @@ class GraphVisitor(object):
             ]
             self.storage.add_node(node.target, input_node_targets)
 
-            ret = hook_wrapper(
-                node=node,
-                module=module,
-                storage=self.storage,
-            )
+            ret = hook_wrapper(node=node, module=module, storage=self.storage,)
             if ret is not None:
                 self.handles.extend(ret)
