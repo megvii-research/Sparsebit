@@ -1,17 +1,6 @@
 BACKEND: virtual
 SKIP_TRACE_MODULES: [
-  "blocks.0.drop_path",
-  "blocks.1.drop_path",
-  "blocks.2.drop_path",
-  "blocks.3.drop_path",
-  "blocks.4.drop_path",
-  "blocks.5.drop_path",
-  "blocks.6.drop_path",
-  "blocks.7.drop_path",
-  "blocks.8.drop_path",
-  "blocks.9.drop_path",
-  "blocks.10.drop_path",
-  "blocks.11.drop_path",
+  "blocks.*.drop_path",
 ]
 W:
   QSCHEME: per-channel-symmetric
@@ -23,7 +12,7 @@ A:
   QUANTIZER:
     TYPE: lsq
     BIT: 4
-  SPECIFIC: [{
+  SPECIFIC: [{ # bit=0 is disable_quant
     "*norm1": ["QUANTIZER.BIT", 0],
     "*norm2": ["QUANTIZER.BIT", 0],
     "norm": ["QUANTIZER.BIT", 0],

@@ -41,6 +41,18 @@ class QuantModel(nn.Module):
         """
         将网络中所有node转成对应的quant_module
         """
+
+        def _get_new_qmodule(target, org_module):
+            is_matched = False
+            for p in self.cfg.SKIP_TRACE_MODULES:
+                if fnmatch(target, p):
+                    is_matched = True
+            if is_matched:
+                new_module = copy.deepcopy(org_module)
+            else:
+                new_module = QMODULE_MAP[type(org_module)](org_module)
+            return new_module
+
         named_modules = dict(self.model.named_modules(remove_duplicate=False))
         traced = self.model
         modules_viewed = {}
@@ -56,10 +68,7 @@ class QuantModel(nn.Module):
                 if org_module.__module__.startswith("sparsebit.quantization"):
                     qnodes.append(n)
                     continue
-                if n.target in self.cfg.SKIP_TRACE_MODULES:
-                    new_module = copy.deepcopy(org_module)
-                else:
-                    new_module = QMODULE_MAP[type(org_module)](org_module)
+                new_module = _get_new_qmodule(n.target, org_module)
             elif n.op == "call_function":
                 new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
             elif n.op == "call_method":
