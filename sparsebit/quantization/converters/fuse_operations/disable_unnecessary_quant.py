@@ -11,6 +11,7 @@ from sparsebit.quantization.modules import (
     QLinear,
     QSigmoid,
     QBatchNorm2d,
+    QGELU,
 )
 
 
@@ -119,4 +120,5 @@ ReplacePatterns = [
     ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QMish])),
     ReplacePattern_DisableQuant(make_chain_connection([QAdd, QReLU])),
     ReplacePattern_DisableQuant(make_chain_connection([QAdd, QReLU6])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QGELU])),
 ]

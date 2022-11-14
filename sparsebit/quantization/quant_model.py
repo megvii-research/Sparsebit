@@ -20,6 +20,7 @@ from sparsebit.quantization.observers import Observer
 from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
 from sparsebit.quantization.converters import simplify, fuse_operations
+from sparsebit.quantization.quant_tracer import QTracer
 
 
 __all__ = ["QuantModel"]
@@ -28,9 +29,9 @@ __all__ = ["QuantModel"]
 class QuantModel(nn.Module):
     def __init__(self, model: nn.Module, config):
         super().__init__()
-        self.model = model
         self.cfg = config
         self.device = torch.device(config.DEVICE)
+        self.model = self._trace(model)
         self._run_simplifiers()
         self._convert2quantmodule()
         self._build_quantizer()
@@ -41,8 +42,7 @@ class QuantModel(nn.Module):
         将网络中所有node转成对应的quant_module
         """
         named_modules = dict(self.model.named_modules(remove_duplicate=False))
-        traced = fx.symbolic_trace(self.model)
-        traced.graph.print_tabular()
+        traced = self.model
         modules_viewed = {}
         qnodes = []  # 用于避免重复遍历
         for n in traced.graph.nodes:
@@ -53,7 +53,13 @@ class QuantModel(nn.Module):
                     n.target
                 )
                 org_module = named_modules[n.target]
-                new_module = QMODULE_MAP[type(org_module)](org_module)
+                if org_module.__module__.startswith("sparsebit.quantization"):
+                    qnodes.append(n)
+                    continue
+                if n.target in self.cfg.SKIP_TRACE_MODULES:
+                    new_module = copy.deepcopy(org_module)
+                else:
+                    new_module = QMODULE_MAP[type(org_module)](org_module)
             elif n.op == "call_function":
                 new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
             elif n.op == "call_method":
@@ -68,9 +74,8 @@ class QuantModel(nn.Module):
                 traced.add_module(n.name, new_module)
                 new_node = traced.graph.call_module(n.name, n.args, n.kwargs)
                 qnodes.append(new_node)
-                n.replace_all_uses_with(
-                    new_node
-                )  # n的输出全部接到new_node, n成为no user节点(即可删除)
+                # n的输出全部接到new_node, n成为no user节点(即可删除)
+                n.replace_all_uses_with(new_node)
                 traced.graph.erase_node(n)
         traced.recompile()
         self.model = fx.GraphModule(traced, traced.graph)
@@ -118,6 +123,15 @@ class QuantModel(nn.Module):
                         _config = self.cfg.clone()  # init
                         update_config(_config, "A", _sub_build(self.cfg.A, node.target))
                         identity_module.build_quantizer(_config)
+
+    def _trace(self, model):
+        skipped_modules = self.cfg.SKIP_TRACE_MODULES
+        tracer = QTracer(skipped_modules)
+        graph = tracer.trace(model)
+        name = model.__class__.__name__ if isinstance(model, torch.nn.Module) else model.__name__
+        traced = fx.GraphModule(tracer.root, graph, name)
+        traced.graph.print_tabular()
+        return traced
 
     def _run_simplifiers(self):
         self.model = simplify(self.model)

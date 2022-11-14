@@ -29,7 +29,7 @@ class Quantizer(BaseQuantizer):
         self.init_params = False  # LSQ需要基于calibration做初始化
 
     def calc_qparams(self):
-        if self.fake_fused:
+        if self.fake_fused or self.qdesc.bit == 0:
             return self.scale, self.zero_point
         x_oc = self.observer.get_calibration_data(c_first=True)
         if x_oc.min()<0 and not self.qdesc.is_symmetric:

@@ -6,12 +6,11 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
 @register_qmodule(sources=[nn.Dropout])
-class QDropout(QuantOpr):
+class Dropout(nn.Module):
     def __init__(self, org_module, config=None):
         super().__init__()
         self.inplace = org_module.inplace
         self.p = org_module.p
-        self._repr_info = "Q" + org_module.__repr__()
 
     def forward(self, x_in):
         return F.dropout(x_in, self.p, training=self.training, inplace=self.inplace)

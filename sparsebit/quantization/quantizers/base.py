@@ -24,7 +24,7 @@ class Quantizer(nn.Module, abc.ABC):
         self.fake_fused = False
 
     def calc_qparams(self):
-        if self.fake_fused:
+        if self.fake_fused or self.qdesc.bit==0:
             return self.scale, self.zero_point
         scale, zero_point = self.observer.calc_qparams()
         self.scale = self._broadcast_qparams(scale)
@@ -32,7 +32,7 @@ class Quantizer(nn.Module, abc.ABC):
         return self.scale, self.zero_point
 
     def calc_qparams_with_minmax(self, min_val, max_val):
-        if self.fake_fused:
+        if self.fake_fused or self.qdesc.bit==0:
             return self.scale, self.zero_point
         scale, zero_point = self.observer.calc_qparams_with_minmax(min_val, max_val)
         self.scale = self._broadcast_qparams(scale)
@@ -97,7 +97,7 @@ class Quantizer(nn.Module, abc.ABC):
 
     @property
     def is_enable(self):
-        return self.use_quant and (not self.fake_fused)
+        return self.use_quant and (not self.fake_fused) and (self.qdesc.bit != 0)
 
     @property
     def bit(self):

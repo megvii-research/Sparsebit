@@ -1,0 +1,3 @@
+[submodule "examples/quantization_aware_training/imagenet1k/deit/deit"]
+	path = examples/quantization_aware_training/imagenet1k/deit/deit
+	url = https://github.com/facebookresearch/deit.git
