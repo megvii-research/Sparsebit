@@ -25,29 +25,23 @@ class Quantizer(BaseQuantizer):
                 x_oc = self.observer.get_calibration_data(c_first=True)
                 assert (
                     self.is_symmetric
-                ), "LSQ+ only support per-channel-sysmetric quant for weight"
+                ), "LSQ+ only support per-channel-symmetric quant for weight"
                 mean, std = x_oc.mean(axis=1), x_oc.std(axis=1)
                 scale = (
                     2
                     * torch.maximum((mean - 3 * std).abs(), (mean + 3 * std).abs())
                     / (self.qdesc.qmax - self.qdesc.qmin)
                 )
-                self.scale = nn.Parameter(self._broadcast_qparams(scale)).to(
-                    self.device
-                )
+                self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
                 self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))
             else:
                 assert (
                     not self.is_symmetric
                 ), "LSQ+ only support per-tensor-affine quant for activation"
                 scale, zero_point = self.observer.calc_qparams()
-                self.scale = nn.Parameter(self._broadcast_qparams(scale)).to(
-                    self.device
-                )
+                self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
                 zero_point = zero_point.clamp(self.qdesc.qmin, self.qdesc.qmax)
-                self.zero_point = nn.Parameter(self._broadcast_qparams(zero_point)).to(
-                    self.device
-                )
+                self.zero_point = nn.Parameter(self._broadcast_qparams(zero_point.to(self.device)))
             self.init_params = True
         return self.scale, self.zero_point
 

@@ -40,7 +40,7 @@ class Quantizer(BaseQuantizer):
                 scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
             else:
                 scale = 2 * x_oc.abs().mean() / math.sqrt(self.qdesc.qmax)
-            self.scale = nn.Parameter(self._broadcast_qparams(scale)).to(self.device)
+            self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
             self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))
             self.init_params = True
         return self.scale, self.zero_point
