@@ -5,10 +5,8 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
 @register_qmodule(sources=[nn.MaxPool2d])
-class QMaxPool2d(QuantOpr):
+class QMaxPool2d(nn.Module):
     """量化MaxPool层。认为maxpool不改变运算前后值域范围,所以不做量化。
-
-    是QuantOpr的子类。
 
     Attributes:
         fwd_kwargs (Dict[str, any]): 运行 ``torch.nn.functional.max_pool2d`` 需要的参数。

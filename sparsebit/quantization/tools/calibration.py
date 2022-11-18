@@ -8,7 +8,7 @@ from .tensor_wrapper import to_cpu, to_device, to_detach
 
 class CalibrationRunner(object):
     def __init__(self, model):
-        self.model = fx_symbolic_trace(model)
+        self.model = model
 
     def prepare_calibration(self):
         input_names_cache = set(
@@ -25,10 +25,9 @@ class CalibrationRunner(object):
                     return tuple(out)
                 return (x,)
 
-            pos = 0
             flatten_x_in = flatten(x_in)
             flatten_args = flatten(node.args)
-            for _x_in, _args in zip(flatten_x_in, flatten_args):
+            for pos, (_x_in, _args) in enumerate(zip(flatten_x_in, flatten_args)):
                 if isinstance(_args, torch.fx.Node) and _args.target in record_names:
                     input_name = _args.target
                     datas = storage.get_output(input_name)
@@ -81,7 +80,8 @@ class CalibrationRunner(object):
                 for inp_node in node.all_input_nodes:
                     inp_tensors = self.builder.storage.get_output(inp_node.target)
                     for inp_tensor in inp_tensors:
-                        module.input_quantizer.update_observer(inp_tensor)
+                        if isinstance(inp_tensor, torch.Tensor):
+                            module.input_quantizer.update_observer(inp_tensor)
                 module.input_quantizer.calc_qparams()
                 module.input_quantizer.observer.reset_data_cache()
 
@@ -95,8 +95,10 @@ class CalibrationRunner(object):
                         node.args, batch=batch_idx
                     )
                     args = to_device(args, device)
+                    kwargs = self.builder.storage.extract_node_kwargs(node.kwargs, batch=batch_idx)
+                    kwargs = to_device(kwargs, device)
                     # more time for less cuda memory occupation
-                    outputs.append(to_cpu(module(*args, **node.kwargs)))
+                    outputs.append(to_cpu(module(*args, **kwargs)))
             self.builder.storage.set_output(node.target, outputs)
             self.builder.storage.finish_node(node.target)
 

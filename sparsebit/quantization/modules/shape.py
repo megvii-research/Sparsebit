@@ -54,7 +54,8 @@ class Size(nn.Module):
             self.dim = None
 
     def forward(self, x, *args, **kwargs):
-        return x.size(dim=self.dim)
+        out = x.size(*args, **kwargs)
+        return out
 
 
 @register_qmodule(sources=[torch.reshape, torch.Tensor.reshape, torch.Tensor.view])

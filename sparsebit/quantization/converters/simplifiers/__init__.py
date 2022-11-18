@@ -7,7 +7,6 @@ from sparsebit.quantization.converters.prune import PruneGraph
 
 
 def simplify(model: torch.fx.GraphModule):
-    model = fx_symbolic_trace(model)
     model = PruneGraph().apply(model)
     for task in lists:
         module = importlib.import_module(

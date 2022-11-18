@@ -5,6 +5,7 @@ from sparsebit.quantization.common import *
 
 _C = CN()
 _C.BACKEND = "virtual"
+_C.SKIP_TRACE_MODULES = [] # a list of modules_name
 
 _C.SCHEDULE = CN()
 _C.SCHEDULE.FUSE_BN = False  # use ``with torch.no_grad()`` if it's enabled

@@ -29,7 +29,7 @@ class QIdentity(QuantOpr):
 
 
 @register_qmodule(sources=[nn.Softmax, torch.Tensor.softmax, F.softmax])
-class Softmax(QuantOpr):
+class Softmax(nn.Module):
     def __init__(self, org_module=None, config=None):
         super().__init__()
         assert isinstance(org_module, torch.fx.Node)
