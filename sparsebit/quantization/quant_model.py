@@ -19,8 +19,9 @@ from sparsebit.quantization.modules import *
 from sparsebit.quantization.observers import Observer
 from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
-from sparsebit.quantization.converters import simplify, fuse_operations
+from sparsebit.quantization.converters import simplify, fuse_operations, onnx_modifications
 from sparsebit.quantization.quant_tracer import QTracer
+from sparsebit.quantization.regularizers import build_regularizer
 
 
 __all__ = ["QuantModel"]
@@ -35,6 +36,7 @@ class QuantModel(nn.Module):
         self._run_simplifiers()
         self._convert2quantmodule()
         self._build_quantizer()
+        self._build_regularizer()
         self._run_fuse_operations()
 
     def _convert2quantmodule(self):
@@ -57,13 +59,15 @@ class QuantModel(nn.Module):
         traced = self.model
         modules_viewed = {}
         qnodes = []  # 用于避免重复遍历
-        for n in traced.graph.nodes:
+        for i, n in enumerate(traced.graph.nodes):
             if not isinstance(n, fx.Node) or n in qnodes:
                 continue
             elif n.op == "call_module":
                 assert n.target in named_modules, "no found {} in model".format(
                     n.target
                 )
+                if n.target in self.cfg.SKIP_TRACE_MODULES:
+                    continue
                 org_module = named_modules[n.target]
                 if org_module.__module__.startswith("sparsebit.quantization"):
                     qnodes.append(n)
@@ -142,6 +146,13 @@ class QuantModel(nn.Module):
         traced.graph.print_tabular()
         return traced
 
+    def _build_regularizer(self):
+        if self.cfg.REGULARIZER.ENABLE:
+            self.regularizer = build_regularizer(self.cfg)
+        else:
+            self.regularizer = None
+
+
     def _run_simplifiers(self):
         self.model = simplify(self.model)
 
@@ -198,7 +209,7 @@ class QuantModel(nn.Module):
                 if isinstance(_module, PASSTHROUGHT_MODULES):
                     input_users.extend(list(_user.users))
                 else:
-                    _module.input_quantizer.set_fake_fused()  # 有bug, quant_state会来回切.
+                    pass # no quantizer, that is a skipped module
         self.calc_qparams()
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
@@ -232,6 +243,12 @@ class QuantModel(nn.Module):
         for n, m in self.model.named_modules():
             if isinstance(m, QuantOpr):
                 m.set_quant(w_quant, a_quant)
+
+    def get_regularizer_loss(self):
+        if self.regularizer is None:
+            return torch.tensor(0.).to(self.device)
+        else:
+            return self.regularizer(self.model)
 
     def export_onnx(
         self,
@@ -270,12 +287,20 @@ class QuantModel(nn.Module):
             if isinstance(m, Quantizer):
                 m.disable_export_onnx()
 
+        #Onnx fold constant first, Almost same to graphsurgeon.fold_constant but won't fold QDQ
+        self.modify_onnx(name, ["fold_constant"])
+
         if extra_info:
             self.add_extra_info_to_onnx(name)
 
+    def modify_onnx(self, onnx_path, modification_list = None):
+        onnx_model = onnx.load(onnx_path)
+        onnx_model = onnx_modifications(onnx_model, modification_list)
+        onnx.save(onnx_model, onnx_path)
+
     def add_extra_info_to_onnx(self, onnx_path):
         onnx_model = onnx.load(onnx_path)
-        extra_onnx_path = onnx_path.replace(".onnx", "_extra.onnx")
+        extra_onnx_path = onnx_path
         tensor_inputs = {}
         tensor_outputs = {}
         nodes = {}
@@ -295,7 +320,8 @@ class QuantModel(nn.Module):
         for name, module in self.model.named_modules():
             if (
                 module == self.model
-                or isinstance(module, (Observer, Quantizer, Clone))
+                or isinstance(module, (Observer, Quantizer, Size, QGetItem))
+                or (isinstance(module, Concat) and module.dim == 0)
                 or module in skipped_modules
             ):
                 continue
@@ -304,9 +330,27 @@ class QuantModel(nn.Module):
                     if not isinstance(submodule, QuantOpr):
                         skipped_modules.add(submodule)
 
+            if isinstance(module, QIdentity):
+                input_quant = onnx_model.graph.node[op_pos]
+                input_dequant = onnx_model.graph.node[op_pos+1]
+                assert input_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                assert input_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
+                input_dequant.attribute.append(
+                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                )
+                input_quant.attribute.append(
+                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                )
+                op_pos += 2
+                continue
+
             while op_pos < len(onnx_model.graph.node) and (
                 onnx_model.graph.node[op_pos].op_type
-                in ["QuantizeLinear", "DequantizeLinear", "Constant"]
+                in ["QuantizeLinear", "DequantizeLinear", "Constant", "Slice", "Shape", "Gather", "Unsqueeze", "Cast"]
+                or (
+                    onnx_model.graph.node[op_pos].op_type in ["Concat"] #hack for interpolate shape concat
+                    and onnx_model.graph.node[op_pos].attribute[0].i == 0
+                )
             ):
                 op_pos += 1
             onnx_op = onnx_model.graph.node[op_pos]
@@ -315,20 +359,30 @@ class QuantModel(nn.Module):
             if isinstance(module, QuantOpr) and getattr(
                 module.input_quantizer, "is_enable", False
             ):
-                input_dequant = nodes[tensor_inputs[onnx_op.input[0]][0]]
-                input_quant = nodes[tensor_inputs[input_dequant.input[0]][0]]
-                input_dequant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
-                input_quant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
+                if isinstance(module, (QAdd, Concat)):
+                    input_quant_len = len(onnx_op.input)
+                else:
+                    input_quant_len = 1
+
+                for i in range(input_quant_len):
+                    input_dequant = nodes[tensor_inputs[onnx_op.input[i]][0]]
+                    input_quant = nodes[tensor_inputs[input_dequant.input[0]][0]]
+                    assert input_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                    assert input_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
+                    input_dequant.attribute.append(
+                        onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                    )
+                    input_quant.attribute.append(
+                        onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                    )
 
             if isinstance(module, QuantOpr) and getattr(
                 module.weight_quantizer, "is_enable", False
             ):
                 weight_dequant = nodes[tensor_inputs[onnx_op.input[1]][0]]
                 weight_quant = nodes[tensor_inputs[weight_dequant.input[0]][0]]
+                assert weight_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                assert weight_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
                 weight_dequant.attribute.append(
                     onnx.helper.make_attribute("bits", module.weight_quantizer.bit)
                 )

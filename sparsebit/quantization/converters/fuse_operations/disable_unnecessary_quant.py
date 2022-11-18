@@ -13,6 +13,7 @@ from sparsebit.quantization.modules import (
     QBatchNorm2d,
     QGELU,
     QSiLU,
+    QHardSigmoid,
 )
 
 
@@ -112,6 +113,7 @@ ReplacePatterns = [
     ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QLeakyReLU])),
     ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QMish])),
     ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QSiLU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QConv2d, QHardSigmoid])),
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QBatchNorm2d])),
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QReLU])),
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QReLU6])),
@@ -120,6 +122,7 @@ ReplacePatterns = [
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QMish])),
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QSiLU])),
     ReplacePattern_DisableQuant(make_chain_connection([QLinear, QGELU])),
+    ReplacePattern_DisableQuant(make_chain_connection([QLinear, QHardSigmoid])),
     ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QReLU])),
     ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QReLU6])),
     ReplacePattern_DisableQuant(make_chain_connection([QBatchNorm2d, QSigmoid])),

@@ -49,11 +49,13 @@ class QReLU6(QuantOpr):
         self._repr_info = "Q" + org_module.__repr__()
         if isinstance(org_module, nn.Module):
             inplace = org_module.inplace
-        else:
+        elif len(org_module.args)>1:
             inplace = org_module.args[1]
+        else:
+            inplace = org_module.kwargs["inplace"]
         self.clamp = torch.clamp_ if inplace else torch.clamp
 
-    def forward(self, x_in):
+    def forward(self, x_in, *args, **kwargs):
         """ReLU6层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = self.clamp(x_in, min=0, max=6)
@@ -176,4 +178,30 @@ class QMish(QuantOpr):
         """Mish层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.mish(x_in, inplace=self.inplace)
+        return out
+
+@register_qmodule(sources=[nn.Hardsigmoid, F.hardsigmoid])
+class QHardSigmoid(QuantOpr):
+    """量化HardSigmoid层,拥有 ``input_quantizer`` 。
+
+    是QuantOpr的子类。
+
+    Args:
+        input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
+            输入量化器。
+        inplace (bool): 同 ``torch.nn.HardSigmoid`` 。
+    """
+
+    def __init__(self, org_module, config=None):
+        super().__init__()
+        self._repr_info = "Q" + org_module.__repr__()
+        if isinstance(org_module, nn.Module):
+            self.inplace = org_module.inplace
+        else:
+            self.inplace = org_module.args[1]
+
+    def forward(self, x_in):
+        """ReLU层的前向传播,但加入了input量化。"""
+        x_in = self.input_quantizer(x_in)
+        out = F.hardsigmoid(x_in, inplace=self.inplace)
         return out

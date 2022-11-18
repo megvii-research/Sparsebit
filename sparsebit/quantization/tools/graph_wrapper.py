@@ -79,6 +79,34 @@ class SharedData(object):
 
         return args
 
+    def extract_node_kwargs(self, kwargs, real_input: tuple = None, batch: int = None):
+        # usage: extract_node_args(node.args, x_in) in forward_hook
+        if isinstance(kwargs, fx.Node):
+            input = self.get_output(kwargs.target)
+            if not isinstance(input, torch.Tensor) and not input:
+                input = real_input
+            return input[batch] if batch is not None else input
+
+        if isinstance(kwargs, (list, tuple, dict)):
+            if isinstance(kwargs, dict):
+                keys = list(kwargs.keys())
+                kwargs = list(kwargs.values())
+            else:
+                keys = None
+            inputs = [
+                self.extract_node_kwargs(i, j, batch=batch)
+                for i, j in zip(
+                    kwargs, real_input if real_input else [None] * len(kwargs)
+                )
+            ]
+            if keys is not None:
+                inputs = dict(zip(keys, inputs))
+            elif isinstance(kwargs, tuple):
+                inputs = tuple(inputs)
+            return inputs
+
+        return kwargs
+
     def extract_value(self, value_name: str):
         return self.values.pop(value_name, {})
 

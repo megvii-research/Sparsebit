@@ -6,7 +6,7 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
 @register_qmodule(sources=[nn.Upsample])
-class QUpsample(QuantOpr):
+class QUpsample(nn.Module):
     def __init__(self, org_module=None, config=None):
         super(QUpsample, self).__init__()
         self.scale_factor = org_module.scale_factor
@@ -14,6 +14,20 @@ class QUpsample(QuantOpr):
         self._repr_info = "QUpsample"
 
     def forward(self, x_in, *args):
-        x_in = self.input_quantizer(x_in)
         out = F.interpolate(x_in, scale_factor=self.scale_factor, mode=self.mode)
+        return out
+
+
+@register_qmodule(sources=[F.interpolate])
+class QInterpolate(nn.Module): # hack
+    def __init__(self, org_module=None, config=None):
+        super(QInterpolate, self).__init__()
+        self._repr_info = "QInterpolate"
+        if isinstance(org_module, nn.Module):
+            raise NotImplementedError
+        else:
+            self.mode =org_module.kwargs["mode"]
+
+    def forward(self, x_in, *args, **kwargs):
+        out = F.interpolate(x_in, *args, **kwargs)
         return out
