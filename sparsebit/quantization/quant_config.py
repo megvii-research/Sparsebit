@@ -71,10 +71,10 @@ def verify_backend(qconfig):
     if backend == Backend.TENSORRT:
         assert (
             w_qscheme == torch.per_channel_symmetric
-        ), "the qshema of weight should be specified as per-channel-symmetric in tensorrt"
+        ), "the qscheme of weight should be specified as per-channel-symmetric in tensorrt"
         assert (
             a_qscheme == torch.per_tensor_symmetric
-        ), "the qsheme of activation should be specified as per-tensor-symmetric in tensorrt"
+        ), "the qscheme of activation should be specified as per-tensor-symmetric in tensorrt"
 
 
 def verify_schedule(qconfig):
@@ -83,5 +83,5 @@ def verify_schedule(qconfig):
         assert (
             w_qscheme == torch.per_channel_symmetric
             or w_qscheme == torch.per_channel_affine
-        ), "the qsheme of weight must be specified as per-channel when bn-tuning enabled"
+        ), "the qscheme of weight must be specified as per-channel when bn-tuning enabled"
     return qconfig
