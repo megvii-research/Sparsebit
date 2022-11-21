@@ -44,6 +44,7 @@ class Softmax(QuantOpr):
             assert self.dim == kwargs["dim"], "parameter mismatch in softmax"
         else:
             assert self.dim == args[0], "parameter mismatch in softmax"
+        x_in = self.input_quantizer(x_in)
         out = F.softmax(x_in, dim=self.dim)
         return out
 
