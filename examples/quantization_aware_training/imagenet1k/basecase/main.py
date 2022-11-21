@@ -1,10 +1,13 @@
 import argparse
 import os
 import random
+import numpy as np
 import shutil
 import time
 import warnings
 from enum import Enum
+from pathlib import Path
+import json
 
 import torch
 import torch.nn as nn
@@ -13,14 +16,12 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.optim
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
-import torch.multiprocessing as mp
-import torch.utils.data
-import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
 from sparsebit.quantization import QuantModel, parse_qconfig
+import utils
 
 
 model_names = sorted(
@@ -59,16 +60,7 @@ parser.add_argument(
     metavar="N",
     help="manual epoch number (useful on restarts)",
 )
-parser.add_argument(
-    "-b",
-    "--batch-size",
-    default=256,
-    type=int,
-    metavar="N",
-    help="mini-batch size (default: 256), this is the total "
-    "batch size of all GPUs on the current node when "
-    "using Data Parallel or Distributed Data Parallel",
-)
+parser.add_argument('-b', '--batch-size', default=256, type=int)
 parser.add_argument(
     "--lr",
     "--learning-rate",
@@ -96,98 +88,45 @@ parser.add_argument(
     metavar="N",
     help="print frequency (default: 10)",
 )
-parser.add_argument(
-    "--resume",
-    default="",
-    type=str,
-    metavar="PATH",
-    help="path to latest checkpoint (default: none)",
-)
-parser.add_argument(
-    "-e",
-    "--evaluate",
-    dest="evaluate",
-    action="store_true",
-    help="evaluate model on validation set",
-)
+parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
 parser.add_argument(
     "--pretrained", dest="pretrained", action="store_true", help="use pre-trained model"
 )
-parser.add_argument(
-    "--world-size",
-    default=-1,
-    type=int,
-    help="number of nodes for distributed training",
-)
-parser.add_argument(
-    "--rank", default=-1, type=int, help="node rank for distributed training"
-)
-parser.add_argument(
-    "--dist-url",
-    default="tcp://224.66.41.62:23456",
-    type=str,
-    help="url used to set up distributed training",
-)
-parser.add_argument(
-    "--dist-backend", default="nccl", type=str, help="distributed backend"
-)
-parser.add_argument(
-    "--seed", default=None, type=int, help="seed for initializing training. "
-)
-parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
-parser.add_argument(
-    "--multiprocessing-distributed",
-    action="store_true",
-    help="Use multi-processing distributed training to launch "
-    "N processes per node, which has N GPUs. This is the "
-    "fastest way to use PyTorch for either single node or "
-    "multi node data parallel training",
-)
+parser.add_argument('--resume', default='', help='resume from checkpoint')
+parser.add_argument('--output_dir', required=True, help='path where to save, empty for no saving')
+parser.add_argument('--device', default='cuda',
+                    help='device to use for training / testing')
+parser.add_argument('--seed', default=0, type=int)
+# distributed training parameters
+parser.add_argument('--world_size', default=1, type=int,
+                    help='number of distributed processes')
+parser.add_argument('--dist_url', default='env://',
+                    help='url used to set up distributed training')
 
 
 def main():
     args = parser.parse_args()
+    if args.output_dir:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    utils.init_distributed_mode(args)
 
-    # only support multi-cards in a machine
-    if args.multiprocessing_distributed:
-        RANK = int(os.environ["RANK"])
-        WORLD_SIZE = int(os.environ["WORLD_SIZE"])
-        LOCAL_RANK = int(os.environ["LOCAL_RANK"])
-        args.gpu = LOCAL_RANK
-        torch.cuda.set_device(LOCAL_RANK)
-        ngpus_per_node = torch.cuda.device_count()
-        args.batch_size = int(args.batch_size / ngpus_per_node)
-        args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-        dist_url = "env://"
-        print("| distributed init (rank {}): {}".format(RANK, dist_url), flush=True)
-        torch.distributed.init_process_group(
-            backend="nccl", init_method=dist_url, world_size=WORLD_SIZE, rank=RANK
-        )
-        torch.distributed.barrier()
-        print(args)
-        setup_for_distributed(LOCAL_RANK == 0)
-    else:
-        if args.gpu is None:
-            if not torch.cuda.is_available():
-                raise "no cuda device exist, we assume you have at least one cuda device"
-            else:
-                args.gpu = 0  # default set gpu device 0
+    device = torch.device(args.device)
 
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+    # fix the seed for reproducibility
+    seed = args.seed + utils.get_rank()
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    cudnn.benchmark = True
 
     qconfig = parse_qconfig(args.qconfig)
-    model = QuantModel(model, config=qconfig).cuda()
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
+
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
@@ -212,8 +151,13 @@ def main():
             transforms.ToTensor(),
             normalize,
         ]))
-    if args.multiprocessing_distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    if args.distributed:
+        num_tasks = utils.get_world_size()
+        global_rank = utils.get_rank()
+        train_sampler = torch.utils.data.DistributedSampler(
+            train_dataset, num_replicas=num_tasks, rank=global_rank, shuffle=True
+        )
+        val_sampler = torch.utils.data.SequentialSampler(val_dataset)
     else:
         train_sampler = None
         val_sampler = None
@@ -239,13 +183,24 @@ def main():
         shuffle=False,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=None,
+        sampler=val_sampler,
     )
+
+    if args.pretrained:
+        print("=> using pre-trained model '{}'".format(args.arch))
+        model = models.__dict__[args.arch](pretrained=True)
+    else:
+        print("=> creating model '{}'".format(args.arch))
+        model = models.__dict__[args.arch]()
+
+    model.to(device)
+    model = QuantModel(model, config=qconfig)
 
     # set head and tail of model is 8bit
     model.model.conv1.weight_quantizer.set_bit(bit=8)
     model.model.fc.input_quantizer.set_bit(bit=8)
     model.model.fc.weight_quantizer.set_bit(bit=8)
+    # run calibration
     model.prepare_calibration()
     calib_size, cur_size = 256, 0
     model.eval()
@@ -257,10 +212,18 @@ def main():
                 break
         model.init_QAT()
     print(model.model)
-    if args.multiprocessing_distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    model_without_ddp = model
+    if args.distributed:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('number of params:', n_parameters)
+
+    linear_scaled_lr = args.lr * args.batch_size * utils.get_world_size() / 256.0
+    args.lr = linear_scaled_lr
+
+    criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(
         model.parameters(),
         args.lr,
@@ -268,68 +231,77 @@ def main():
         weight_decay=args.weight_decay,
     )
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    scheduler = CosineAnnealingLR(optimizer, args.epochs)
+    lr_scheduler = CosineAnnealingLR(optimizer, args.epochs)
 
+    output_dir = Path(args.output_dir)
     if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            else:
-                # Map model to be loaded to specified single gpu.
-                loc = "cuda:{}".format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
-            args.start_epoch = checkpoint["epoch"]
-            best_acc1 = checkpoint["best_acc1"]
-            if args.gpu is not None:
-                # best_acc1 may be from a checkpoint from a different GPU
-                best_acc1 = best_acc1.to(args.gpu)
-            model.load_state_dict(checkpoint["state_dict"])
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            scheduler.load_state_dict(checkpoint["scheduler"])
-            print(
-                "=> loaded checkpoint '{}' (epoch {})".format(
-                    args.resume, checkpoint["epoch"]
-                )
-            )
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+        checkpoint = torch.load(args.resume, map_location='cpu')
+        model_without_ddp.load_state_dict(checkpoint['model'])
+        if not args.eval and 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+            args.start_epoch = checkpoint['epoch'] + 1
+        lr_scheduler.step(args.start_epoch)
     else:
         best_acc1 = 0
 
-    cudnn.benchmark = True
+    if args.eval:
+        acc1 = validate(val_loader, model, criterion, args)
+        print(f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%")
+        return
 
+    log_stats = {'n_parameters': n_parameters}
     for epoch in range(args.start_epoch, args.epochs):
-        if args.multiprocessing_distributed:
+        if args.distributed:
             train_sampler.set_epoch(epoch)
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
-        scheduler.step()
+        log_stats.update({
+            'lr': optimizer.param_groups[0]["lr"],
+            'epoch': epoch,
+        })
+        train(train_loader, model, criterion, optimizer, epoch, args, device)
+        lr_scheduler.step()
+        if args.output_dir:
+            checkpoint_paths = [output_dir / 'checkpoint.pth']
+            for checkpoint_path in checkpoint_paths:
+                utils.save_on_master({
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'epoch': epoch,
+                    'args': args,
+                }, checkpoint_path)
 
-        # evaluate on validation set
-        if not args.multiprocessing_distributed or (
-            args.multiprocessing_distributed and dist.get_rank() == 0
-        ):
-            acc1 = validate(val_loader, model, criterion, args)
-            # remember best acc@1 and save checkpoint
-            is_best = acc1 > best_acc1
-            best_acc1 = max(acc1, best_acc1)
+        acc1 = validate(val_loader, model, criterion, args)
+        print(f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%")
 
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "arch": args.arch,
-                    "state_dict": model.state_dict(),
-                    "best_acc1": best_acc1,
-                    "optimizer": optimizer.state_dict(),
-                    "scheduler": scheduler.state_dict(),
-                },
-                is_best,
-            )
+        if best_acc1 < acc1:
+            best_acc1 = acc1
+            if args.output_dir:
+                checkpoint_paths = [output_dir / 'best_checkpoint.pth']
+                for checkpoint_path in checkpoint_paths:
+                    utils.save_on_master({
+                        'model': model_without_ddp.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'lr_scheduler': lr_scheduler.state_dict(),
+                        'epoch': epoch,
+                        'args': args,
+                    }, checkpoint_path)
+
+        print(f'Best accuracy: {best_acc1:.2f}%')
+        log_stats.update({'test_acc1': acc1})
+
+        if args.output_dir and utils.is_main_process():
+            with (output_dir / "log.txt").open("a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+
     print("Training is Done, best: {}".format(best_acc1))
+    if args.output_dir and utils.is_main_process():
+        with (output_dir / "log.txt").open("a") as f:
+            f.write(json.dumps({"best_acc1": best_acc1, "training_args": str(args)}) + "\n")
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, args, device):
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -350,8 +322,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         data_time.update(time.time() - end)
 
         if torch.cuda.is_available():
-            images = images.cuda(args.gpu, non_blocking=True)
-            target = target.cuda(args.gpu, non_blocking=True)
+            images = images.cuda(device, non_blocking=True)
+            target = target.cuda(device, non_blocking=True)
 
         # compute output
         output = model(images)
@@ -375,7 +347,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         if i % args.print_freq == 0:
             progress.display(i)
 
-
+@torch.no_grad()
 def validate(val_loader, model, criterion, args):
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
@@ -416,7 +388,7 @@ def validate(val_loader, model, criterion, args):
         progress.display_summary()
 
     print("Total Time: {}".format(time.time() - start))
-    return top1.avg
+    return top1.avg.item()
 
 
 def save_checkpoint(state, is_best, filename="checkpoint.pth.tar"):
