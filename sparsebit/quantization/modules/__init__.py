@@ -25,6 +25,7 @@ from .unary import *
 from .resize import *
 from .matmul import *
 from .python_builtins import *
+from .torchvision_ops import *
 
 
 PASSTHROUGHT_MODULES = (
@@ -33,7 +34,6 @@ PASSTHROUGHT_MODULES = (
     QMul,
     QDivide,
     QFloorDiv,
-    QMaxPool2d,
     QBatchNorm2d,
     QLayerNorm,
     QIdentity,

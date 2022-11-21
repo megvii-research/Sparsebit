@@ -30,5 +30,6 @@ class QLayerNorm(QuantOpr):
         self._repr_info = "QLayerNorm "
 
     def forward(self, x_in):
+        x_in = self.input_quantizer(x_in)
         out = self.module(x_in)
         return out
