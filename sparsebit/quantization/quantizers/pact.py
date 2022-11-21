@@ -5,6 +5,7 @@ from torch.nn import functional as F
 
 from sparsebit.quantization.quantizers import Quantizer as BaseQuantizer
 from sparsebit.quantization.quantizers import register_quantizer
+from sparsebit.quantization.common import QuantTarget
 from .quant_tensor import STE
 
 
@@ -14,6 +15,9 @@ class Quantizer(BaseQuantizer):
 
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
+        assert (
+            self.qdesc.target == QuantTarget.FEATURE
+        ), "PACT only support feature quantization"
         assert not self.qdesc.is_perchannel, "PACT no yet supports per-channel"
         if not self.fake_fused:
             self.alpha = nn.Parameter(

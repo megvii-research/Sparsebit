@@ -6,6 +6,7 @@ from scipy import stats
 from typing import List, Tuple
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
+from sparsebit.quantization.common import Granularity
 
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -101,9 +102,11 @@ class Observer(BaseObserver):
         self.bins = 2048
 
     def calc_minmax(self):
-        data = self.get_calibration_data(c_first=True).cpu()
-        channel = data.shape[0]
         if self.is_perchannel:
+            data = self.data_cache.get_data_for_calibration(
+                Granularity.CHANNELWISE
+            ).cpu()
+            channel = data.shape[0]
             abs_max = data.abs().max(axis=1).values
             _min = torch.empty(channel)
             _max = torch.empty(channel)
@@ -129,6 +132,7 @@ class Observer(BaseObserver):
             self.max_val = _max.to(self.device)
             self.min_val = _min.to(self.device)
         else:
+            data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE).cpu()
             abs_max = data.abs().max()
             th = get_best_threshold(
                 data=data,
@@ -143,4 +147,5 @@ class Observer(BaseObserver):
                 if data.min() < 0
                 else torch.zeros(1).to(self.device)
             )
+        self.data_cache.reset()
         return self.min_val, self.max_val

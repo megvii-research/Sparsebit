@@ -2,6 +2,7 @@ import torch
 import math
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
+from sparsebit.quantization.common import Granularity
 
 
 @register_observer
@@ -13,11 +14,16 @@ class Observer(BaseObserver):
         self.alpha = config.OBSERVER.PERCENTILE.ALPHA
 
     def calc_minmax(self):
-        data = self.get_calibration_data(c_first=True)
+
+        if self.is_perchannel:
+            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
+        else:
+            data = self.data_cache.get_data_for_calibration(
+                Granularity.LAYERWISE
+            ).reshape(1, -1)
+        self.data_cache.reset()
         channel = data.shape[0]
-        if not self.is_perchannel:
-            data = data.reshape(1, -1)
-            channel = 1
+
         neg_length = (data < 0).sum(-1)
         pos_length = (data >= 0).sum(-1)
 

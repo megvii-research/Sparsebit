@@ -20,8 +20,8 @@ A quantizer example is shown below. ``calc_qparam`` is used for parameter initia
             ...
 
         def calc_qparams(self): # if need calibration
-            x_oc = torch.cat(self.observer.data_cache, axis=1)
-            self.observer.reset_data_cache()
+            x_oc = self.observer.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
+            self.observer.data_cache.reset()
             ...
             return self.scale, self.zero_point
 

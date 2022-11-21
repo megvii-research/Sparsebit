@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from sparsebit.quantization.common import get_backend
 from sparsebit.quantization.quantizers import build_quantizer
+from sparsebit.utils import update_config
+from sparsebit.quantization.common import QuantTarget
 
 
 class QuantOpr(nn.Module):
@@ -44,8 +46,10 @@ class QuantOpr(nn.Module):
         """根据config配置 ``input_quantizer`` 和 ``weight_quantizer`` 。"""
         _backend = get_backend(config.BACKEND)
         if self.weight is not None:
+            update_config(config.W, "TARGET", (QuantTarget.WEIGHT,))
             self.weight_quantizer = build_quantizer(cfg=config.W)
             self.weight_quantizer.set_backend(_backend)
+        update_config(config.A, "TARGET", (QuantTarget.FEATURE,))
         self.input_quantizer = build_quantizer(cfg=config.A)
         self.input_quantizer.set_backend(_backend)
 
