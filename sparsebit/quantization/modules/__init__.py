@@ -41,7 +41,6 @@ PASSTHROUGHT_MODULES = (
     QGetAttr,
     QGetItem,
     QEqual,
-    QDropout,
     Size,
     Transpose,
     Reshape,

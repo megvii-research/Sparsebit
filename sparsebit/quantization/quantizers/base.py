@@ -22,6 +22,8 @@ class Quantizer(nn.Module, abc.ABC):
         self.use_quant = False
         self.export_onnx = False
         self.fake_fused = False
+        if self.qdesc.bit == 0: # a hack impl of float
+            self.set_fake_fused()
 
     def calc_qparams(self):
         if self.fake_fused:

@@ -77,6 +77,8 @@ class STE(torch.autograd.Function):
         qdesc = ctx.qdesc
         qmin, qmax = qdesc.qmin, qdesc.qmax
         if torch.cuda.is_available():
+            if x.dtype == torch.float16: # A workaround
+                x = x.float()
             if qdesc.is_perchannel:
                 gx, gs, gzp = fake_quant_kernel.quant_perchannel_backward(
                     x.contiguous(), scale.contiguous(), zero_point.float().contiguous(), gout.contiguous(), qmin, qmax, qdesc.ch_axis, 0
@@ -109,6 +111,8 @@ def trt_fake_quant(x_f, scale, zero_point, qdesc):
     ), "tensorrt only support symmetric quant, but zp={}".format(zero_point)
     qmin, qmax = qdesc.qrange
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
+        if x_f.dtype == torch.float16: # A workaround
+            x_f = x_f.float()
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f.contiguous(), scale.contiguous(), zero_point.contiguous(), qmin, qmax, qdesc.ch_axis, 0
@@ -129,6 +133,8 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
     ), "input, scale and zero_point of quantizer must be on same device!"
     qmin, qmax = qdesc.qrange
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
+        if x_f.dtype == torch.float16: # A workaround
+            x_f = x_f.float()
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f.contiguous(), scale.contiguous(), zero_point.contiguous(), qmin, qmax, qdesc.ch_axis, 0

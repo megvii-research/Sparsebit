@@ -1,0 +1,22 @@
+BACKEND: virtual
+SKIP_TRACE_MODULES: [
+  "blocks.*.drop_path",
+]
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER: 
+    TYPE: lsq
+    BIT: 4
+A:
+  QSCHEME: per-tensor-affine
+  QUANTIZER:
+    TYPE: lsq
+    BIT: 4
+  SPECIFIC: [{ # bit=0 is disable_quant
+    "*mlp_fc2": ["QUANTIZER.TYPE", "lsq+"],
+    "*norm1": ["QUANTIZER.BIT", 0],
+    "*norm2": ["QUANTIZER.BIT", 0],
+    "norm": ["QUANTIZER.BIT", 0],
+    "*norm": ["QUANTIZER.BIT", 0],
+    "*softmax*": ["QUANTIZER.BIT", 0],
+  }]
