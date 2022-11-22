@@ -1,11 +1,15 @@
 import operator
 import torch
 import torch.nn as nn
-from sparsebit.quantization.modules import QuantOpr, register_qmodule
+from sparsebit.quantization.modules import (
+    QuantOpr,
+    MultipleInputsQuantOpr,
+    register_qmodule,
+)
 
 
 @register_qmodule(sources=[operator.add, torch.add])
-class QAdd(nn.Module):
+class QAdd(MultipleInputsQuantOpr):
     def __init__(self, org_module=None, config=None):
         super().__init__()
         self._repr_info = "QAdd"
