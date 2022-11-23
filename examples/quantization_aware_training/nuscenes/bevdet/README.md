@@ -1,3 +1,6 @@
+### Ref papers
+- [BEVDet](https://arxiv.org/abs/2112.11790)
+
 ### Install
 - clone [bevdet repo](https://github.com/HuangJunJie2017/BEVDet) and install it.
 - link the projects folder to BEVDet folder. 
