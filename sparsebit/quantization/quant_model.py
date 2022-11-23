@@ -194,11 +194,14 @@ class QuantModel(nn.Module):
             input_users = list(input_node.users)
             while len(input_users) > 0:
                 _user = input_users.pop()  # 弹出最后一个元素
+                #if _user.target in self.cfg.SKIP_TRACE_MODULES:
+                #    continue # no quantizer, that is a skipped module
                 _module = named_modules[_user.target]
                 if isinstance(_module, PASSTHROUGHT_MODULES):
                     input_users.extend(list(_user.users))
                 else:
-                    _module.input_quantizer.set_fake_fused()  # 有bug, quant_state会来回切.
+                    pass
+                    #_module.input_quantizer.set_fake_fused()  # 有bug, quant_state会来回切.
         self.calc_qparams()
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用

@@ -1,4 +1,5 @@
 import torch.nn as nn
+from sparsebit.utils import check_torch_version
 
 QMODULE_MAP = {}
 
@@ -25,7 +26,9 @@ from .unary import *
 from .resize import *
 from .matmul import *
 from .python_builtins import *
-from .torchvision_ops import *
+
+if check_torch_version('1.11.0') :
+    from .torchvision_ops import *
 
 
 PASSTHROUGHT_MODULES = (
