@@ -81,7 +81,7 @@ parser.add_argument(
     help="print frequency (default: 10)",
 )
 parser.add_argument(
-    "--pretrained", default="", action="store_true", help="use pre-trained model"
+    "--pretrained", default=None, type=str, help="use pre-trained model"
 )
 parser.add_argument(
     "--regularizer-lambda", default=1e-4, type=float, help="regularizer lambda"
