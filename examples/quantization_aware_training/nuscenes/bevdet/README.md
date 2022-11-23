@@ -1,7 +1,12 @@
 ### Install
 - clone [bevdet repo](https://github.com/HuangJunJie2017/BEVDet) and install it.
-- link the project folder to BEVDet folder. `ln -s ./projects /path/to/bevdet/`
+- link the projects folder to BEVDet folder. 
+  - `cd /path/to/bevdet/`
+  - `ln -s /path/to/sparsebit/examples/quantization_aware_training/nuscenes/bevdet/projects/ .`
 - replace the tools folder in BEVDet with our tools
+  - `cd /path/to/bevdet`
+  - `mv ./tools tools.bak`
+  - `ln -s /path/to/sparsebit/examples/quantization_aware_training/nuscenes/bevdet/tools/ .`
 
 ### Training
 ```

@@ -21,7 +21,6 @@ from mmdet3d.models import build_model
 from mmdet3d.utils import collect_env, get_root_logger
 from mmdet.apis import set_random_seed
 from mmseg import __version__ as mmseg_version
-from mmdet3d.models.detectors import BEVDetTraced, BEVDetForward
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
@@ -238,6 +237,8 @@ def main():
             if hasattr(datasets[0], 'PALETTE') else None)
     # add an attribute for visualization convenience
     model.CLASSES = datasets[0].CLASSES
+
+    from projects.mmdet3d_plugin.models.detectors import BEVDetTraced, BEVDetForward
 
     # build qmodel
     checkpoint = load_checkpoint(model, args.pretrained, map_location='cpu')

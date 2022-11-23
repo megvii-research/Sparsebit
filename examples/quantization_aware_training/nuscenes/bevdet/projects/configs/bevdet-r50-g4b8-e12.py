@@ -1,7 +1,11 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
-_base_ = ['../_base_/datasets/nus-3d.py',
-          '../_base_/default_runtime.py']
+_base_ = ['../../configs/_base_/datasets/nus-3d.py',
+          '../../configs/_base_/default_runtime.py']
+
+plugin=True
+plugin_dir='projects/mmdet3d_plugin/'
+
 # Global
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly

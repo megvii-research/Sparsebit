@@ -17,7 +17,6 @@ from mmdet3d.datasets import build_dataloader, build_dataset
 from mmdet3d.models import build_model
 from mmdet.apis import multi_gpu_test, set_random_seed
 from mmdet.datasets import replace_ImageToTensor
-from mmdet3d.models.detectors import BEVDetTraced, BEVDetForward
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
@@ -191,6 +190,9 @@ def main():
     fp16_cfg = cfg.get('fp16', None)
     if fp16_cfg is not None:
         wrap_fp16_model(model)
+
+    from projects.mmdet3d_plugin.models.detectors import BEVDetTraced, BEVDetForward
+
     model = BEVDetTraced(model)
     qconfig = parse_qconfig(args.qconfig)
     with torch.no_grad():
@@ -223,7 +225,6 @@ def main():
         # segmentation dataset has `PALETTE` attribute
         running_qmodel.PALETTE = dataset.PALETTE
 
-    from IPython import embed; embed()
     running_qmodel = MMDataParallel(running_qmodel, device_ids=[0])
     outputs = single_gpu_test(running_qmodel, data_loader, args.show, args.show_dir)
 
