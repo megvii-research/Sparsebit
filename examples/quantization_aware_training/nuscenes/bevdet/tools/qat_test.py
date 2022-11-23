@@ -210,6 +210,12 @@ def main():
                 break
         qmodel.init_QAT()
 
+    # we set the resize func is float in this example
+    from sparsebit.quantization.modules import QUpsample
+    for n, m in qmodel.model.named_modules():
+        if isinstance(m, QUpsample):
+            m.set_fake_fused()
+
     running_qmodel = BEVDetForward(model, qmodel)
     checkpoint = load_checkpoint(running_qmodel, args.checkpoint, map_location='cpu')
     # old versions did not save class info in checkpoints, this walkaround is

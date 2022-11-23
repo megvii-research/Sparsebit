@@ -267,6 +267,12 @@ def main():
                 break
         qmodel.init_QAT()
 
+    # we set the resize func is float in this example
+    from sparsebit.quantization.modules import QUpsample
+    for n, m in qmodel.model.named_modules():
+        if isinstance(m, QUpsample):
+            m.set_fake_fused()
+
     running_qmodel = BEVDetForward(model, qmodel)
 
     train_model(
