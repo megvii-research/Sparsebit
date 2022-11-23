@@ -34,16 +34,6 @@ parser.add_argument(
     help="number of data loading workers (default: 4)",
 )
 parser.add_argument(
-    "--epochs", default=200, type=int, metavar="N", help="number of total epochs to run"
-)
-parser.add_argument(
-    "--start-epoch",
-    default=0,
-    type=int,
-    metavar="N",
-    help="manual epoch number (useful on restarts)",
-)
-parser.add_argument(
     "-b",
     "--batch-size",
     default=128,
@@ -52,25 +42,6 @@ parser.add_argument(
     help="mini-batch size (default: 256), this is the total "
     "batch size of all GPUs on the current node when "
     "using Data Parallel or Distributed Data Parallel",
-)
-parser.add_argument(
-    "--lr",
-    "--learning-rate",
-    default=0.1,
-    type=float,
-    metavar="LR",
-    help="initial learning rate",
-    dest="lr",
-)
-parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
-parser.add_argument(
-    "--wd",
-    "--weight-decay",
-    default=1e-4,
-    type=float,
-    metavar="W",
-    help="weight decay (default: 1e-4)",
-    dest="weight_decay",
 )
 parser.add_argument(
     "-p",
@@ -150,7 +121,7 @@ def main():
     print(f"Accuracy of the Float Model: {float_acc} %")
 
     qconfig = parse_qconfig(args.config)
-    qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
+    qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续各种量化操作
 
     qmodel.prepare_calibration()  # 进入calibration状态
     calib_size, cur_size = args.calib_size, 0
