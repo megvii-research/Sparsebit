@@ -1,3 +1,3 @@
-from .bevdet_qat import BEVDetTraced, BEVDetForward
+from .qbevdet import BEVDetTraced, BEVDetForward
 
 __all__ = ["BEVDetTraced", "BEVDetForward"]

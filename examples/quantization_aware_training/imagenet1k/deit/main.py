@@ -341,6 +341,7 @@ def main(args):
 
     model.to(device)
     model = QuantModel(model, config=qconfig)
+    model.model.patch_embed_proj.input_quantizer.set_bit(bit=8)
     model.model.patch_embed_proj.weight_quantizer.set_bit(bit=8)
     model.model.head.input_quantizer.set_bit(bit=8)
     model.model.head.weight_quantizer.set_bit(bit=8)

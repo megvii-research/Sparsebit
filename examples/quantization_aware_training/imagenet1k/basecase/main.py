@@ -197,6 +197,7 @@ def main():
     model = QuantModel(model, config=qconfig)
 
     # set head and tail of model is 8bit
+    model.model.conv1.input_quantizer.set_bit(bit=8)
     model.model.conv1.weight_quantizer.set_bit(bit=8)
     model.model.fc.input_quantizer.set_bit(bit=8)
     model.model.fc.weight_quantizer.set_bit(bit=8)
