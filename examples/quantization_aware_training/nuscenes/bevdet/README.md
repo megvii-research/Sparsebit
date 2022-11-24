@@ -36,7 +36,7 @@ python3 ./tools/qat_test.py  ./projects/configs/bevdet-r50-g4b8-e12.py ./project
 experiment | bits | mAP | NDS | Log
 --- | --- | --- | --- | --- |
 bevdet-r50 | float | 29.9 | 37.7 | - | 
-bevdet-r50 | 8w8f | 29.8 | 38.1 | [google]() |
-bevdet-r50 | 4w4f | 29.5 | 37.8 | [google]() |
-bevdet-vov99 | float | 36.3 | 43.6 | [google]() |
-bevdet-vov99 | 4w4f | 36.0 | 43.4  | [google]() | 
+bevdet-r50 | 8w8f | 29.8 | 38.1 | [google](https://drive.google.com/file/d/191UYMFEWaj03cK0TBe_vVnGkoUFKtyg0/view?usp=share_link) |
+bevdet-r50 | 4w4f | 29.5 | 37.8 | [google](https://drive.google.com/file/d/19dkWpkPsSqgAvlHeevELmR15NhtQvKBU/view?usp=share_link) |
+bevdet-vov99 | float | 36.3 | 43.6 | [google](https://drive.google.com/file/d/1cEpwJYNkLJaQkvsqqugBzyiypofPF-eQ/view?usp=share_link) |
+bevdet-vov99 | 4w4f | 36.0 | 43.4  | [google](https://drive.google.com/file/d/1mIK_xWZHY9XWUasRSqOtz3X_exX20roP/view?usp=share_link) | 
