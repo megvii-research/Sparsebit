@@ -1,0 +1,26 @@
+BACKEND: virtual
+SKIP_TRACE_MODULES: [
+  "img_view_transformer",
+]
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER: 
+    TYPE: lsq
+    BIT: 4
+  SPECIFIC: [{
+    "img_backbone_conv1": ["QUANTIZER.BIT", 8],
+    "head_task_heads_*_1": ["QUANTIZER.BIT", 8],
+
+  }]
+A:
+  QSCHEME: per-tensor-affine
+  QUANTIZER:
+    TYPE: lsq
+    BIT: 4
+  SPECIFIC: [{
+    "img_backbone_conv1": ["QUANTIZER.BIT", 8],
+    "img_view_transformer_quant": ["QUANTIZER.BIT", 8],
+    "bev_encoder_backbone_layers_0_0_conv1": ["QUANTIZER.BIT", 8],
+    "bev_encoder_backbone_layers_0_0_downsample": ["QUANTIZER.BIT", 8],
+    "head_task_heads_*_1": ["QUANTIZER.BIT", 8],
+  }]
