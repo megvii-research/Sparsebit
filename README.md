@@ -1,4 +1,8 @@
 ## [中文版](https://github.com/megvii-research/Sparsebit/blob/main/README_zh-CN.md)
+
+## News
+- 2022.11.24: Release a QAT example of [BEVDet](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdet)
+
 ## Introduction
 Sparsebit is a toolkit with pruning and quantization capabilities. It is designed to help researchers compress and accelerate neural network models by modifying only a few codes in existing pytorch project.
 
@@ -14,7 +18,6 @@ Quantization turns full-precision params into low-bit precision params, which ca
 - PTQ results of Vision Transformer on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/imagenet1k/deit/README.md)
 - PTQ results of YOLO related works on COCO: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/coco2017/yolo_series/README.md)
 - QAT results on ImageNet-1k: [link](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/imagenet1k/README.md)
-
 
 ## Sparse 
 Sparse is often used in deep learning to refer to operations such as reducing network parameters or network computation. At present, Sparse supported by the toolbox has the following characteristics:
