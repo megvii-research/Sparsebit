@@ -33,10 +33,10 @@ python3 ./tools/qat_test.py  ./projects/configs/bevdet-r50-g4b8-e12.py ./project
 - experiments setting:
   - in 4w4f, we set the wbit & abit of first conv and head-conv to 8
 
-experiment | bits | mAP | NDS | Model | Log
+experiment | bits | mAP | NDS | Log
 --- | --- | --- | --- | --- | --- |
 bevdet-r50 | float | 29.9 | 37.7 | - | - | 
-bevdet-r50 | 8w8f | 29.8 | 38.1 | [google]() | [google]() |
-bevdet-r50 | 4w4f | 29.5 | 37.8 | [google]() | [google]() |
-bevdet-vov99 | float | 36.3 | 43.6 | [google]() | [google]() |
-bevdet-vov99 | 4w4f | 36.0 | 43.4  | [google]() | [google]() | 
+bevdet-r50 | 8w8f | 29.8 | 38.1 | [google]() |
+bevdet-r50 | 4w4f | 29.5 | 37.8 | [google]() |
+bevdet-vov99 | float | 36.3 | 43.6 | [google]() |
+bevdet-vov99 | 4w4f | 36.0 | 43.4  | [google]() | 
