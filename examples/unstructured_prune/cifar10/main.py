@@ -378,45 +378,5 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-<<<<<<< HEAD
 if __name__ == "__main__":
     main()
-=======
-best_acc1 = 0
-for epoch in range(start_epoch, epochs):
-    # train for one epoch
-    train(
-        trainloader,
-        smodel,
-        criterion,
-        optimizer,
-        epoch,
-    )
-
-    # evaluate on validation set
-    acc1 = validate(testloader, smodel, criterion)
-
-    scheduler.step()
-
-    # remember best acc@1 and save checkpoint
-    is_best = acc1 > best_acc1
-    best_acc1 = max(acc1, best_acc1)
-
-    save_checkpoint(
-        {
-            "epoch": epoch + 1,
-            "state_dict": smodel.state_dict(),
-            "best_acc1": best_acc1,
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-        },
-        is_best,
-    )
-
-print("Training is Done, best: {}".format(best_acc1))
-
-# export onnx
-smodel.eval()
-with torch.no_grad():
-    smodel.export_onnx(torch.randn(1, 3, 32, 32), name="sresnet20.onnx")
->>>>>>> 72e7fa8... fix unstructured prune example
