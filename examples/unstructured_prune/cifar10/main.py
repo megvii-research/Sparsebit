@@ -81,16 +81,10 @@ parser.add_argument(
     help="print frequency (default: 10)",
 )
 
-<<<<<<< HEAD
 parser.add_argument(
     "--pretrained", default="", action="store_true", help="use pre-trained model"
 )
 
-=======
-smodel = SparseModel(model, sconfig).cuda()  # 将model转化为sparse模型
-smodel.calc_params()
-print(smodel)
->>>>>>> 72e7fa8... fix unstructured prune example
 
 def main():
     args = parser.parse_args()
