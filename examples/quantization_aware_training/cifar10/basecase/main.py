@@ -23,91 +23,207 @@ from model import resnet20
 from sparsebit.quantization import QuantModel, parse_qconfig
 
 
-if not torch.cuda.is_available():
-    raise NotImplementedError("This example should run on a GPU device.")  # 确定在GPU上运行
-
-
-config = "qconfig_lsq.yaml"  # QAT配置文件——包括量化方式（dorefa/lsq），权重和激活值的量化bit数等
-workers = 4
-epochs = 200
-start_epoch = 0
-batch_size = 128
-lr = 0.1
-momentum = 0.9
-weight_decay = 1e-4
-print_freq = 100
-pretrained = ""
-qconfig = parse_qconfig(config)
-is_pact = qconfig.A.QUANTIZER.TYPE == "pact"
-regularizer_lambda = 1e-4
-
-model = resnet20(num_classes=10)  # 以resnet20作为基础模型
-if pretrained:  # 可以采用pretrained中保存的模型参数
-    ckpt_state_dict = torch.load(pretrained)
-    model.load_state_dict(ckpt_state_dict)
-
-cudnn.benchmark = True
-
-
-transform = transforms.Compose(
-    [
-        transforms.RandomHorizontalFlip(),  # 随机水平翻转
-        transforms.RandomCrop(32, 4),  # 随机裁剪
-        transforms.ToTensor(),
-        transforms.Normalize(
-            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-        ),  # 指定各通道均值和标准差，将数据归一化
-    ]
+parser = argparse.ArgumentParser(description="PyTorch Cifar Training")
+parser.add_argument("config", help="the path of quant config")
+parser.add_argument(
+    "-j",
+    "--workers",
+    default=16,
+    type=int,
+    metavar="N",
+    help="number of data loading workers (default: 4)",
 )
+parser.add_argument(
+    "--epochs", default=200, type=int, metavar="N", help="number of total epochs to run"
+)
+parser.add_argument(
+    "--start-epoch",
+    default=0,
+    type=int,
+    metavar="N",
+    help="manual epoch number (useful on restarts)",
+)
+parser.add_argument(
+    "-b",
+    "--batch-size",
+    default=128,
+    type=int,
+    metavar="N",
+    help="mini-batch size (default: 256), this is the total "
+    "batch size of all GPUs on the current node when "
+    "using Data Parallel or Distributed Data Parallel",
+)
+parser.add_argument(
+    "--lr",
+    "--learning-rate",
+    default=0.1,
+    type=float,
+    metavar="LR",
+    help="initial learning rate",
+    dest="lr",
+)
+parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+parser.add_argument(
+    "--wd",
+    "--weight-decay",
+    default=1e-4,
+    type=float,
+    metavar="W",
+    help="weight decay (default: 1e-4)",
+    dest="weight_decay",
+)
+parser.add_argument(
+    "-p",
+    "--print-freq",
+    default=10,
+    type=int,
+    metavar="N",
+    help="print frequency (default: 10)",
+)
+parser.add_argument(
+    "--pretrained", default=None, type=str, help="use pre-trained model"
+)
+parser.add_argument(
+    "--regularizer-lambda", default=1e-4, type=float, help="regularizer lambda"
+)
+parser.add_argument("--calib-size", default=256, type=int, help="calibration size")
 
-trainset = datasets.CIFAR10(
-    root="./data", train=True, download=True, transform=transform
-)
-trainloader = torch.utils.data.DataLoader(
-    trainset,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=workers,
-    pin_memory=True,
-)
 
-testset = datasets.CIFAR10(
-    root="./data", train=False, download=True, transform=transform
-)
-testloader = torch.utils.data.DataLoader(
-    testset,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=workers,
-    pin_memory=True,
-)
+def main():
+    args = parser.parse_args()
+    if not torch.cuda.is_available():
+        raise NotImplementedError(
+            "This example should run on a GPU device."
+        )  # 确定在GPU上运行
 
-model = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
+    model = resnet20(num_classes=10)  # 以resnet20作为基础模型
+    if args.pretrained:  # 可以采用pretrained中保存的模型参数
+        ckpt_state_dict = torch.load(args.pretrained)
+        model.load_state_dict(ckpt_state_dict)
 
-model.prepare_calibration()  # 进入calibration状态
-calib_size, cur_size = 256, 0
-# 在eval模式且无需计算梯度的条件下用训练集进行calibrate
-model.eval()
-with torch.no_grad():
-    for data, target in trainloader:
-        model(data.cuda())
-        cur_size += data.shape[0]
-        if cur_size >= calib_size:
-            break
-model.init_QAT()  # 调用API，初始化QAT
-model.set_lastmodule_wbit(bit=8)  # 额外规定最后一层权重的量化bit数
-print(model.model)  # 可以在print出的模型信息中看到网络各层weight和activation的量化scale和zeropoint
+    cudnn.benchmark = True
 
-criterion = nn.CrossEntropyLoss().cuda()
-optimizer = torch.optim.SGD(
-    model.parameters(),
-    lr,
-    momentum=momentum,
-    weight_decay=weight_decay,
-)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=[100, 150], last_epoch=start_epoch - 1
-)
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomHorizontalFlip(),  # 随机水平翻转
+            transforms.RandomCrop(32, 4),  # 随机裁剪
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            ),  # 指定各通道均值和标准差，将数据归一化
+        ]
+    )
+
+    val_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+            ),  # 指定各通道均值和标准差，将数据归一化
+        ]
+    )
+
+    trainset = datasets.CIFAR10(
+        root="./data", train=True, download=True, transform=train_transform
+    )
+    trainloader = torch.utils.data.DataLoader(
+        trainset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
+
+    testset = datasets.CIFAR10(
+        root="./data", train=False, download=True, transform=val_transform
+    )
+    testloader = torch.utils.data.DataLoader(
+        testset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
+
+    qconfig = parse_qconfig(args.config)
+
+    is_pact = qconfig.A.QUANTIZER.TYPE == "pact"
+
+    qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
+
+    # set head and tail of model is 8bit
+    qmodel.model.conv1.input_quantizer.set_bit(bit=8)
+    qmodel.model.conv1.weight_quantizer.set_bit(bit=8)
+    qmodel.model.fc.input_quantizer.set_bit(bit=8)
+    qmodel.model.fc.weight_quantizer.set_bit(bit=8)
+
+    qmodel.prepare_calibration()  # 进入calibration状态
+    calib_size, cur_size = args.calib_size, 0
+    # 在eval模式且无需计算梯度的条件下用训练集进行calibrate
+    qmodel.eval()
+    with torch.no_grad():
+        for data, target in trainloader:
+            qmodel(data.cuda())
+            cur_size += data.shape[0]
+            if cur_size >= calib_size:
+                break
+        qmodel.init_QAT()  # 调用API，初始化QAT
+    print(qmodel.model)  # 可以在print出的模型信息中看到网络各层weight和activation的量化scale和zeropoint
+
+    criterion = nn.CrossEntropyLoss().cuda()
+    optimizer = torch.optim.SGD(
+        qmodel.parameters(),
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+    )
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[100, 150], last_epoch=args.start_epoch - 1
+    )
+
+    best_acc1 = 0
+    for epoch in range(args.start_epoch, args.epochs):
+        # train for one epoch
+        train(
+            trainloader,
+            qmodel,
+            criterion,
+            optimizer,
+            epoch,
+            is_pact,
+            args.regularizer_lambda,
+            args.print_freq,
+        )
+
+        # evaluate on validation set
+        acc1 = validate(testloader, qmodel, criterion, args.print_freq)
+
+        scheduler.step()
+
+        # remember best acc@1 and save checkpoint
+        is_best = acc1 > best_acc1
+        best_acc1 = max(acc1, best_acc1)
+
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": qmodel.state_dict(),
+                "best_acc1": best_acc1,
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
+            },
+            is_best,
+        )
+
+    print("Training is Done, best: {}".format(best_acc1))
+
+    # export onnx
+    qmodel.eval()
+    with torch.no_grad():
+        qmodel.export_onnx(
+            torch.randn(1, 3, 32, 32), name="qresnet20.onnx", extra_info=True
+        )
+
 
 # PACT算法中对 alpha 增加 L2-regularization
 def get_pact_regularizer_loss(model):
@@ -117,13 +233,24 @@ def get_pact_regularizer_loss(model):
             loss += (p ** 2).sum()
     return loss
 
-def get_regularizer_loss(model, scale=0):
+
+def get_regularizer_loss(model, is_pact, scale=0):
     if is_pact:
         return get_pact_regularizer_loss(model) * scale
     else:
-        return torch.tensor(0.).cuda()
+        return torch.tensor(0.0).cuda()
 
-def train(train_loader, model, criterion, optimizer, epoch):
+
+def train(
+    train_loader,
+    model,
+    criterion,
+    optimizer,
+    epoch,
+    is_pact,
+    regularizer_lambda,
+    print_freq,
+):
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -151,7 +278,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute output
         output = model(images)
         ce_loss = criterion(output, target)
-        regular_loss = get_regularizer_loss(model, scale=regularizer_lambda)
+        regular_loss = get_regularizer_loss(model, is_pact, scale=regularizer_lambda)
         loss = ce_loss + regular_loss
 
         # measure accuracy and record loss
@@ -174,7 +301,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
             progress.display(i)
 
 
-def validate(val_loader, model, criterion):
+def validate(val_loader, model, criterion, print_freq):
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
     top1 = AverageMeter("Acc@1", ":6.2f", Summary.AVERAGE)
@@ -308,40 +435,5 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-best_acc1 = 0
-for epoch in range(start_epoch, epochs):
-    # train for one epoch
-    train(
-        trainloader,
-        model,
-        criterion,
-        optimizer,
-        epoch,
-    )
-
-    # evaluate on validation set
-    acc1 = validate(testloader, model, criterion)
-
-    scheduler.step()
-
-    # remember best acc@1 and save checkpoint
-    is_best = acc1 > best_acc1
-    best_acc1 = max(acc1, best_acc1)
-
-    save_checkpoint(
-        {
-            "epoch": epoch + 1,
-            "state_dict": model.state_dict(),
-            "best_acc1": best_acc1,
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-        },
-        is_best,
-    )
-
-print("Training is Done, best: {}".format(best_acc1))
-
-# export onnx
-model.eval()
-with torch.no_grad():
-    model.export_onnx(torch.randn(1, 3, 32, 32), name="qresnet20.onnx", extra_info=True)
+if __name__ == "__main__":
+    main()
