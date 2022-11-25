@@ -151,6 +151,12 @@ def main():
 
     qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
 
+    # set head and tail of model is 8bit
+    qmodel.model.conv1.input_quantizer.set_bit(bit=8)
+    qmodel.model.conv1.weight_quantizer.set_bit(bit=8)
+    qmodel.model.fc.input_quantizer.set_bit(bit=8)
+    qmodel.model.fc.weight_quantizer.set_bit(bit=8)
+
     qmodel.prepare_calibration()  # 进入calibration状态
     calib_size, cur_size = args.calib_size, 0
     # 在eval模式且无需计算梯度的条件下用训练集进行calibrate
@@ -161,8 +167,7 @@ def main():
             cur_size += data.shape[0]
             if cur_size >= calib_size:
                 break
-    qmodel.set_lastmodule_wbit(bit=8)  # 额外规定最后一层权重的量化bit数
-    qmodel.init_QAT()  # 调用API，初始化QAT
+        qmodel.init_QAT()  # 调用API，初始化QAT
     print(qmodel.model)  # 可以在print出的模型信息中看到网络各层weight和activation的量化scale和zeropoint
 
     criterion = nn.CrossEntropyLoss().cuda()
