@@ -82,20 +82,6 @@ class SparseModel(nn.Module):
                 _config = self.config.clone()  # init
                 m.build_sparser(_config)
 
-    def set_lastmodule_ratio(self, ratio=0.0):
-        named_modules = dict(self.model.named_modules())
-        output_nodes = [n for n in self.model.graph.nodes if n.op == "output"]
-        for out_node in output_nodes:
-            inputs_outn = [a for a in out_node.args if isinstance(a, torch.fx.Node)]
-            while len(inputs_outn) > 0:
-                n = inputs_outn.pop()
-                m = named_modules[n.target]
-                if hasattr(m, "sparser") and m.sparser:
-                    m.sparser.set_ratio(ratio)
-                else:
-                    n_list = [a for a in n.args if isinstance(a, torch.fx.Node)]
-                    inputs_outn.extend(n_list)
-
     def disable_sparse_before_add(self):
         named_modules = dict(self.model.named_modules())
         add_nodes = [
@@ -107,7 +93,7 @@ class SparseModel(nn.Module):
             add_inputs = [a for a in add_node.args if isinstance(a, torch.fx.Node)]
             while len(add_inputs) > 0:
                 n = add_inputs.pop()
-                if n.op == "call_module" and n.target in named_modules:  # FIXME
+                if n.op == "call_module" and n.target in named_modules:
                     m = named_modules[n.target]
                 else:
                     m = None
