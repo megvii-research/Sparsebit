@@ -34,16 +34,6 @@ parser.add_argument(
     help="number of data loading workers (default: 4)",
 )
 parser.add_argument(
-    "--epochs", default=200, type=int, metavar="N", help="number of total epochs to run"
-)
-parser.add_argument(
-    "--start-epoch",
-    default=0,
-    type=int,
-    metavar="N",
-    help="manual epoch number (useful on restarts)",
-)
-parser.add_argument(
     "-b",
     "--batch-size",
     default=128,
@@ -52,25 +42,6 @@ parser.add_argument(
     help="mini-batch size (default: 256), this is the total "
     "batch size of all GPUs on the current node when "
     "using Data Parallel or Distributed Data Parallel",
-)
-parser.add_argument(
-    "--lr",
-    "--learning-rate",
-    default=0.1,
-    type=float,
-    metavar="LR",
-    help="initial learning rate",
-    dest="lr",
-)
-parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
-parser.add_argument(
-    "--wd",
-    "--weight-decay",
-    default=1e-4,
-    type=float,
-    metavar="W",
-    help="weight decay (default: 1e-4)",
-    dest="weight_decay",
 )
 parser.add_argument(
     "-p",
@@ -82,9 +53,6 @@ parser.add_argument(
 )
 parser.add_argument(
     "--pretrained", default=None, type=str, help="use pre-trained model"
-)
-parser.add_argument(
-    "--regularizer-lambda", default=1e-4, type=float, help="regularizer lambda"
 )
 parser.add_argument("--calib-size", default=256, type=int, help="calibration size")
 
@@ -145,17 +113,15 @@ def main():
         pin_memory=True,
     )
 
+    criterion = nn.CrossEntropyLoss().cuda()
+
+    model = model.cuda()
+
+    float_acc = validate(testloader, model, criterion, args.print_freq)
+    print(f"Accuracy of the Float Model: {float_acc} %")
+
     qconfig = parse_qconfig(args.config)
-
-    is_pact = qconfig.A.QUANTIZER.TYPE == "pact"
-
-    qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
-
-    # set head and tail of model is 8bit
-    qmodel.model.conv1.input_quantizer.set_bit(bit=8)
-    qmodel.model.conv1.weight_quantizer.set_bit(bit=8)
-    qmodel.model.fc.input_quantizer.set_bit(bit=8)
-    qmodel.model.fc.weight_quantizer.set_bit(bit=8)
+    qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续各种量化操作
 
     qmodel.prepare_calibration()  # 进入calibration状态
     calib_size, cur_size = args.calib_size, 0
@@ -167,55 +133,14 @@ def main():
             cur_size += data.shape[0]
             if cur_size >= calib_size:
                 break
-        qmodel.init_QAT()  # 调用API，初始化QAT
+    qmodel.calc_qparams()
+    qmodel.set_quant(w_quant=True, a_quant=True)
     print(qmodel.model)  # 可以在print出的模型信息中看到网络各层weight和activation的量化scale和zeropoint
 
-    criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(
-        qmodel.parameters(),
-        args.lr,
-        momentum=args.momentum,
-        weight_decay=args.weight_decay,
-    )
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[100, 150], last_epoch=args.start_epoch - 1
-    )
+    # evaluate on validation set
 
-    best_acc1 = 0
-    for epoch in range(args.start_epoch, args.epochs):
-        # train for one epoch
-        train(
-            trainloader,
-            qmodel,
-            criterion,
-            optimizer,
-            epoch,
-            is_pact,
-            args.regularizer_lambda,
-            args.print_freq,
-        )
-
-        # evaluate on validation set
-        acc1 = validate(testloader, qmodel, criterion, args.print_freq)
-
-        scheduler.step()
-
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
-
-        save_checkpoint(
-            {
-                "epoch": epoch + 1,
-                "state_dict": qmodel.state_dict(),
-                "best_acc1": best_acc1,
-                "optimizer": optimizer.state_dict(),
-                "scheduler": scheduler.state_dict(),
-            },
-            is_best,
-        )
-
-    print("Training is Done, best: {}".format(best_acc1))
+    quant_acc = validate(testloader, qmodel, criterion, args.print_freq)
+    print(f"Accuracy of the Quant Model: {quant_acc} %")
 
     # export onnx
     qmodel.eval()
@@ -223,82 +148,6 @@ def main():
         qmodel.export_onnx(
             torch.randn(1, 3, 32, 32), name="qresnet20.onnx", extra_info=True
         )
-
-
-# PACT算法中对 alpha 增加 L2-regularization
-def get_pact_regularizer_loss(model):
-    loss = 0
-    for n, p in model.named_parameters():
-        if "alpha" in n:
-            loss += (p ** 2).sum()
-    return loss
-
-
-def get_regularizer_loss(model, is_pact, scale=0):
-    if is_pact:
-        return get_pact_regularizer_loss(model) * scale
-    else:
-        return torch.tensor(0.0).cuda()
-
-
-def train(
-    train_loader,
-    model,
-    criterion,
-    optimizer,
-    epoch,
-    is_pact,
-    regularizer_lambda,
-    print_freq,
-):
-    batch_time = AverageMeter("Time", ":6.3f")
-    data_time = AverageMeter("Data", ":6.3f")
-    losses = AverageMeter("Loss", ":.4e")
-    ce_losses = AverageMeter("CELoss", ":.4e")
-    regular_losses = AverageMeter("RegularLoss", ":.4e")
-    top1 = AverageMeter("Acc@1", ":6.2f")
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, ce_losses, regular_losses, losses, top1],
-        prefix="Epoch: [{}]".format(epoch),
-    )
-
-    # switch to train mode
-    model.train()
-
-    end = time.time()
-    for i, (images, target) in enumerate(train_loader):
-        # measure data loading time
-        data_time.update(time.time() - end)
-
-        if torch.cuda.is_available():
-            images = images.cuda()
-            target = target.cuda()
-
-        # compute output
-        output = model(images)
-        ce_loss = criterion(output, target)
-        regular_loss = get_regularizer_loss(model, is_pact, scale=regularizer_lambda)
-        loss = ce_loss + regular_loss
-
-        # measure accuracy and record loss
-        acc1 = accuracy(output, target, topk=(1,))[0]
-        ce_losses.update(ce_loss.item(), images.size(0))
-        regular_losses.update(regular_loss.item(), images.size(0))
-        losses.update(loss.item(), images.size(0))
-        top1.update(acc1[0], images.size(0))
-
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        if i % print_freq == 0:
-            progress.display(i)
 
 
 def validate(val_loader, model, criterion, print_freq):
@@ -340,12 +189,6 @@ def validate(val_loader, model, criterion, print_freq):
 
     print("Total Time: {}".format(time.time() - start))
     return top1.avg
-
-
-def save_checkpoint(state, is_best, filename="checkpoint.pth.tar"):
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, "model_best.pth.tar")
 
 
 class Summary(Enum):
