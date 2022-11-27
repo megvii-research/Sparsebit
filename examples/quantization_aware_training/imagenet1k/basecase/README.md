@@ -25,5 +25,5 @@ python3 main.py qconfig.yaml [imagenet-folder with train and val folders] -a [an
 |ResNet-50| 76.130 |75.552|76.022| 76.664 [log](https://drive.google.com/file/d/1C4NSOOmEtpJOOvQ_h6QTUIoC4YCZ5h_x/view?usp=share_link) [ckpt](https://drive.google.com/file/d/1Wcvb4ObVQFKcibxV2BFRy5Vjz1n9jQgM/view?usp=share_link) | - | 
 |MobileNetV2| 72.154|  68.660 | -  | - | - | 
 |RegNetX-600MF|75.034| N/C | 73.578 | - | - | 
-|Efficientnet\_b0 | - | - | 71.97[log](https://drive.google.com/file/d/1iDDq-u-85JFZprvWQL_IzqVdj_sT2Diq/view?usp=share_link) | 73.22 [log](https://drive.google.com/file/d/1be5A1STinyirJMZ63h9cVH95E0d0KYxZ/view?usp=share_link) | 
+|Efficientnet\_b0 | - | - | - | 71.97[log](https://drive.google.com/file/d/1iDDq-u-85JFZprvWQL_IzqVdj_sT2Diq/view?usp=share_link) | 73.22 [log](https://drive.google.com/file/d/1be5A1STinyirJMZ63h9cVH95E0d0KYxZ/view?usp=share_link) | 
 |Efficientnet\_lite0 | - | - | - | - |
