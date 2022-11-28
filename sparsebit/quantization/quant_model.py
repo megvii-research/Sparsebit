@@ -187,37 +187,9 @@ class QuantModel(nn.Module):
         del self.calibration_runner
 
     def init_QAT(self):
-        named_modules = dict(self.model.named_modules())
-        # TODO: disable quant of input, note: not full-test
-        #input_nodes = [n for n in self.model.graph.nodes if n.op == "placeholder"]
-        #for input_node in input_nodes:
-        #    input_users = list(input_node.users)
-        #    while len(input_users) > 0:
-        #        _user = input_users.pop()  # 弹出最后一个元素
-        #        if _user.target in self.cfg.SKIP_TRACE_MODULES:
-        #            continue # no quantizer, that is a skipped module
-        #        _module = named_modules[_user.target]
-        #        if isinstance(_module, PASSTHROUGHT_MODULES):
-        #            input_users.extend(list(_user.users))
-        #        else:
-        #            _module.input_quantizer.set_fake_fused()  # 有bug, quant_state会来回切.
         self.calc_qparams()
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
-
-    def set_lastmodule_wbit(self, bit=8):
-        named_modules = dict(self.model.named_modules())
-        output_nodes = [n for n in self.model.graph.nodes if n.op == "output"]
-        for out_node in output_nodes:
-            inputs_outn = [a for a in out_node.args if isinstance(a, torch.fx.Node)]
-            while len(inputs_outn) > 0:
-                n = inputs_outn.pop()
-                m = named_modules[n.target]
-                if hasattr(m, "weight_quantizer") and m.weight_quantizer:
-                    m.weight_quantizer.set_bit(bit)
-                else:
-                    n_list = [a for a in n.args if isinstance(a, torch.fx.Node)]
-                    inputs_outn.extend(n_list)
 
     def forward(self, *args):
         return self.model.forward(*args)
