@@ -23,7 +23,6 @@ class QuantOpr(nn.Module):
 
         请不要直接修改 ``fake_fused`` 参数,
         因为这样不会对应修改 ``input_quantizer`` 和 ``weight_quantizer`` 。
-        如果需要关闭量化,请调用 ``set_fake_fused()`` 。
     """
 
     def __init__(self):
@@ -52,22 +51,6 @@ class QuantOpr(nn.Module):
         update_config(config.A, "TARGET", (QuantTarget.FEATURE,))
         self.input_quantizer = build_quantizer(cfg=config.A)
         self.input_quantizer.set_backend(_backend)
-
-    def set_fake_fused(self):
-        """关闭 ``input_quantizer`` 和 ``weight_quantizer`` 。
-        转换出的QDQ格式onnx在此算子处将没有quantize-dequantize算子。
-
-        仅在不需要量化的地方调用。
-
-        .. Note::
-
-            该过程不可逆。
-        """
-        self.fake_fused = True
-        if self.weight_quantizer:
-            self.weight_quantizer.set_fake_fused()
-        if self.input_quantizer:
-            self.input_quantizer.set_fake_fused()
 
     def set_quant(self, w_quant: bool = False, a_quant: bool = False):
         """开关本算子的 ``input_quantizer`` 和 ``weight_quantizer`` 。

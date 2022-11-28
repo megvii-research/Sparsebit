@@ -73,7 +73,10 @@ class ReplacePattern_DisableQuant(ReplacePatternBase):
 
         for noninput_node in noninput_node_names:
             op = modules_dict[noninput_node]
-            op.set_fake_fused()
+            if op.weight_quantizer:
+                op.weight_quantizer.set_fake_fused()
+            if op.input_quantizer:
+                op.input_quantizer.set_fake_fused()
         return {anchor_node_name: nodes_dict[anchor_node_name]}
 
 

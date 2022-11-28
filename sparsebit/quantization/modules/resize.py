@@ -19,7 +19,7 @@ class QUpsample(QuantOpr):
         """
         QuantOpr.build_quantizer(self, config)
         if self.mode == "nearest":
-            self.set_fake_fused()
+            self.input_quantizer.set_fake_fused()
         else:
             self.input_quantizer.set_bit(bit=8)
 
@@ -30,13 +30,13 @@ class QUpsample(QuantOpr):
 
 
 @register_qmodule(sources=[F.interpolate])
-class QInterpolate(QuantOpr): # hack
+class QInterpolate(QuantOpr):  # hack
     def __init__(self, org_module=None, config=None):
         super(QInterpolate, self).__init__()
         if isinstance(org_module, nn.Module):
             raise NotImplementedError
         else:
-            self.mode =org_module.kwargs["mode"]
+            self.mode = org_module.kwargs["mode"]
         self._repr_info = "QInterpolate, mode: {} ".format(self.mode)
 
     def build_quantizer(self, config):
@@ -45,7 +45,7 @@ class QInterpolate(QuantOpr): # hack
         """
         QuantOpr.build_quantizer(self, config)
         if self.mode == "nearest":
-            self.set_fake_fused()
+            self.input_quantizer.set_fake_fused()
         else:
             self.input_quantizer.set_bit(bit=8)
 
