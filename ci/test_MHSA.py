@@ -7,7 +7,7 @@ from sparsebit.quantization.quant_config import _C as default_config
 def build_model(model_name: str):
     try:
         configs = {
-            "deit_tiny_patch16_224": {
+            "deit_tiny_patch16_224-attn": {
                 "dim": 192,
                 "num_heads": 3,
                 "qkv_bias": True,
@@ -29,7 +29,7 @@ def build_config(changes_list):
 
 
 def test_deit_tiny():
-    model_name = "deit_tiny_patch16_224"
+    model_name = "deit_tiny_patch16_224-attn"
     # the format of list([k1, v1, k2, v2, ...]), ensure config[::2] is key and config[1::2] is value
     model_config = [
         ("BACKEND", "tensorrt"),
