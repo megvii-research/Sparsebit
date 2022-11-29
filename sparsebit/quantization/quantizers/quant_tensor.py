@@ -35,7 +35,9 @@ class MySTE(torch.autograd.Function):
         try:
             assert diff < 1e-3, "forward large diff"
         except:
-            from IPython import embed; embed()
+            from IPython import embed
+
+            embed()
         ctx.save_for_backward(x, scale, zp)
         ctx.qdesc = qdesc
         return xdq
@@ -52,12 +54,18 @@ class MySTE(torch.autograd.Function):
         gs = None
         if scale.requires_grad:
             gs = torch.where(mask, (x / scale).round() - (x / scale), zero)
-            gs = (xq_wo_clamp < qmin) * (qmin-zero_point) + (xq_wo_clamp > qmax) * (qmax-zero_point) + gs
+            gs = (
+                (xq_wo_clamp < qmin) * (qmin - zero_point)
+                + (xq_wo_clamp > qmax) * (qmax - zero_point)
+                + gs
+            )
             gs = gout * gs
         gz = None
         if zero_point.requires_grad:
             gz = torch.where(mask, zero, one)
-            gz = ((xq_wo_clamp < qmin) * (-scale) + (xq_wo_clamp > qmax) * (-scale)) * gz
+            gz = (
+                (xq_wo_clamp < qmin) * (-scale) + (xq_wo_clamp > qmax) * (-scale)
+            ) * gz
             gz = gout * gz
 
         return gin, gs, gz, None, None
@@ -77,27 +85,42 @@ class STE(torch.autograd.Function):
         qdesc = ctx.qdesc
         qmin, qmax = qdesc.qmin, qdesc.qmax
         if torch.cuda.is_available():
-            if x.dtype == torch.float16: # A workaround
+            if x.dtype == torch.float16:  # A workaround
                 x = x.float()
             if qdesc.is_perchannel:
                 gx, gs, gzp = fake_quant_kernel.quant_perchannel_backward(
-                    x.contiguous(), scale.contiguous(), zero_point.float().contiguous(), gout.contiguous(), qmin, qmax, qdesc.ch_axis, 0
+                    x.contiguous(),
+                    scale.contiguous(),
+                    zero_point.float().contiguous(),
+                    gout.contiguous(),
+                    qmin,
+                    qmax,
+                    qdesc.ch_axis,
+                    0,
                 )
             else:
                 gx, gs, gzp = fake_quant_kernel.quant_pertensor_backward(
-                    x.contiguous(), scale, zero_point.float(), gout.contiguous(), qmin, qmax, 0
+                    x.contiguous(),
+                    scale,
+                    zero_point.float(),
+                    gout.contiguous(),
+                    qmin,
+                    qmax,
+                    0,
                 )
             gs = gs if scale.requires_grad else None
             gzp = gzp if zero_point.requires_grad else None
         else:
-            raise NotImplementedError("We recommended that use cuda to speedup when training")
-            #min_fq = (qmin - zero_point) * scale
-            #max_fq = (qmax - zero_point) * scale
-            #zero = gout.new_zeros(1)
-            #gx = torch.where((x >= min_fq) * (x <= max_fq), gout, zero)
-            #if scale.requires_grad or zero_point.requires_grad:
+            raise NotImplementedError(
+                "We recommended that use cuda to speedup when training"
+            )
+            # min_fq = (qmin - zero_point) * scale
+            # max_fq = (qmax - zero_point) * scale
+            # zero = gout.new_zeros(1)
+            # gx = torch.where((x >= min_fq) * (x <= max_fq), gout, zero)
+            # if scale.requires_grad or zero_point.requires_grad:
             #    raise NotImplementedError
-            #else:
+            # else:
             #    gs, gzp = None, None
         return gx, gs, gzp, None, None
 
@@ -111,11 +134,17 @@ def trt_fake_quant(x_f, scale, zero_point, qdesc):
     ), "tensorrt only support symmetric quant, but zp={}".format(zero_point)
     qmin, qmax = qdesc.qrange
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
-        if x_f.dtype == torch.float16: # A workaround
+        if x_f.dtype == torch.float16:  # A workaround
             x_f = x_f.float()
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
-                x_f.contiguous(), scale.contiguous(), zero_point.contiguous(), qmin, qmax, qdesc.ch_axis, 0
+                x_f.contiguous(),
+                scale.contiguous(),
+                zero_point.contiguous(),
+                qmin,
+                qmax,
+                qdesc.ch_axis,
+                0,
             )
         else:
             x_dq = fake_quant_kernel.quant_pertensor_forward(
@@ -133,11 +162,17 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
     ), "input, scale and zero_point of quantizer must be on same device!"
     qmin, qmax = qdesc.qrange
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
-        if x_f.dtype == torch.float16: # A workaround
+        if x_f.dtype == torch.float16:  # A workaround
             x_f = x_f.float()
         if qdesc.is_perchannel:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
-                x_f.contiguous(), scale.contiguous(), zero_point.contiguous(), qmin, qmax, qdesc.ch_axis, 0
+                x_f.contiguous(),
+                scale.contiguous(),
+                zero_point.contiguous(),
+                qmin,
+                qmax,
+                qdesc.ch_axis,
+                0,
             )
         else:
             x_dq = fake_quant_kernel.quant_pertensor_forward(

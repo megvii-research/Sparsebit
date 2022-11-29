@@ -30,13 +30,13 @@ class QUpsample(QuantOpr):
 
 
 @register_qmodule(sources=[F.interpolate])
-class QInterpolate(QuantOpr): # hack
+class QInterpolate(QuantOpr):  # hack
     def __init__(self, org_module=None, config=None):
         super(QInterpolate, self).__init__()
         if isinstance(org_module, nn.Module):
             raise NotImplementedError
         else:
-            self.mode =org_module.kwargs["mode"]
+            self.mode = org_module.kwargs["mode"]
         self._repr_info = "QInterpolate, mode: {} ".format(self.mode)
 
     def build_quantizer(self, config):

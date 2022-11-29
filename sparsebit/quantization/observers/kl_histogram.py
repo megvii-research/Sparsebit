@@ -47,7 +47,7 @@ def run_distributed(
 def get_best_threshold(data, hist_min, hist_max, bit, bins):
     histogram = torch.histc(data, bins=bins, min=hist_min, max=hist_max)
     bin_width = (hist_max - hist_min) / bins
-    dst_bins = 2 ** bit - 1
+    dst_bins = 2**bit - 1
     new_th = calibrate_entropy(histogram.numpy(), bin_width, bins, dst_bins)
     return new_th
 

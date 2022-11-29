@@ -15,7 +15,7 @@ from tools.misc.fuse_conv_bn import fuse_module
 from mmdet3d.ops import bev_pool
 
 
-#class Model(nn.Module):
+# class Model(nn.Module):
 #    def __init__(self):
 #        super(Model, self).__init__()
 #        self.register_buffer("kept", torch.from_numpy(np.load("/data/githubs/BEVDet/constant_params/kept.npy")))
@@ -30,7 +30,7 @@ from mmdet3d.ops import bev_pool
 #        return y
 #
 #
-#def main():
+# def main():
 #    input_tensor = torch.from_numpy(np.load("/data/githubs/BEVDet/input.npy")).cuda()
 #
 #    model = Model().cuda()
@@ -49,6 +49,7 @@ from mmdet3d.ops import bev_pool
 from mmdet.models import DETECTORS
 from mmdet3d.models import BEVDet
 
+
 @DETECTORS.register_module()
 class BEVDetONNX(BEVDet):
     def onnx_export(self, img_inputs, img_metas=None):
@@ -58,7 +59,7 @@ class BEVDetONNX(BEVDet):
         outs = self.pts_bbox_head(x)
         return outs
 
-    @auto_fp16(apply_to=('img', 'points'))
+    @auto_fp16(apply_to=("img", "points"))
     def forward(self, img_inputs, return_loss=True, **kwargs):
         """Calls either forward_train or forward_test depending on whether
         return_loss=True.
@@ -79,7 +80,5 @@ class BEVDetONNX(BEVDet):
             return self.forward_test(**kwargs)
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

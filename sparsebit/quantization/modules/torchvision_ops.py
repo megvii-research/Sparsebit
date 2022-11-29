@@ -10,10 +10,10 @@ from sparsebit.quantization.modules import QuantOpr, register_qmodule
 class StochasticDepth(nn.Module):
     def __init__(self, org_module, config=None):
         super().__init__()
-        #if isinstance(org_module, torch.fx.Node):
+        # if isinstance(org_module, torch.fx.Node):
         #    self.p = org_module.args[1]
         #    self.mode = org_module.args[2]
-        #else:
+        # else:
         #    raise NotImplementedError
 
     def forward(self, x_in, *args, **kwargs):
