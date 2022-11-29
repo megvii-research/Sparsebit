@@ -29,7 +29,7 @@ class QuantDescriptor:
             _type = "int{}".format(bit)
         elif scheme in [torch.per_channel_affine, torch.per_tensor_affine]:
             qmin = 0
-            qmax = 2 ** bit - 1
+            qmax = 2**bit - 1
             _type = "uint{}".format(bit)
         return qmin, qmax, _type
 
@@ -61,7 +61,7 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
-    def set_symmetric(self, is_symmetric:bool):
+    def set_symmetric(self, is_symmetric: bool):
         self.is_symmetric = is_symmetric
         self._scheme = {
             (True, True): torch.per_channel_symmetric,

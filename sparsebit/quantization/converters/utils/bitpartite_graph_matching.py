@@ -2,7 +2,7 @@ from queue import Queue
 
 
 class Hungary(object):
-    """ bitpartite graph maximum matching for ``InputMatchingType.SUBSET`` type"""
+    """bitpartite graph maximum matching for ``InputMatchingType.SUBSET`` type"""
 
     def __init__(self, n, m):
         self.n = n

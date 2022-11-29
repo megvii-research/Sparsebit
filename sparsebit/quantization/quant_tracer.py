@@ -5,9 +5,7 @@ from fnmatch import fnmatch
 
 
 class QTracer(Tracer):
-    def __init__(
-            self,
-            skipped_module_names: List[str]):
+    def __init__(self, skipped_module_names: List[str]):
         super().__init__()
         self.skipped_module_names = skipped_module_names
 
@@ -17,6 +15,8 @@ class QTracer(Tracer):
                 return True
         return False
 
-    def is_leaf_module(self, m: torch.nn.Module, module_qualified_name : str) -> bool:
-        return (m.__module__.startswith("torch.nn") and
-                not isinstance(m, torch.nn.Sequential)) or self._probe(module_qualified_name, self.skipped_module_names)
+    def is_leaf_module(self, m: torch.nn.Module, module_qualified_name: str) -> bool:
+        return (
+            m.__module__.startswith("torch.nn")
+            and not isinstance(m, torch.nn.Sequential)
+        ) or self._probe(module_qualified_name, self.skipped_module_names)

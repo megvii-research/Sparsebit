@@ -30,8 +30,13 @@ model_names = sorted(
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("qconfig", help="the path of quant config")
-parser.add_argument('data', metavar='DIR', nargs='?', default='imagenet',
-                    help='path to dataset (default: imagenet)')
+parser.add_argument(
+    "data",
+    metavar="DIR",
+    nargs="?",
+    default="imagenet",
+    help="path to dataset (default: imagenet)",
+)
 parser.add_argument(
     "-a",
     "--arch",
@@ -162,26 +167,33 @@ def main():
     cudnn.benchmark = True
 
     # Data loading code
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    traindir = os.path.join(args.data, "train")
+    valdir = os.path.join(args.data, "val")
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
     calib_dataset = datasets.ImageFolder(
         traindir,
-        transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+        transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+    )
     val_dataset = datasets.ImageFolder(
         valdir,
-        transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+        transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+    )
     calib_loader = torch.utils.data.DataLoader(
         calib_dataset,
         batch_size=args.batch_size,

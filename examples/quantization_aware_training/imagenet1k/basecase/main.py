@@ -32,8 +32,13 @@ model_names = sorted(
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("qconfig", help="the path of quant config")
-parser.add_argument('data', metavar='DIR', nargs='?', default='imagenet',
-                    help='path to dataset (default: imagenet)')
+parser.add_argument(
+    "data",
+    metavar="DIR",
+    nargs="?",
+    default="imagenet",
+    help="path to dataset (default: imagenet)",
+)
 parser.add_argument(
     "-a",
     "--arch",
@@ -60,7 +65,7 @@ parser.add_argument(
     metavar="N",
     help="manual epoch number (useful on restarts)",
 )
-parser.add_argument('-b', '--batch-size', default=256, type=int)
+parser.add_argument("-b", "--batch-size", default=256, type=int)
 parser.add_argument(
     "--lr",
     "--learning-rate",
@@ -88,20 +93,25 @@ parser.add_argument(
     metavar="N",
     help="print frequency (default: 10)",
 )
-parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
+parser.add_argument("--eval", action="store_true", help="Perform evaluation only")
 parser.add_argument(
     "--pretrained", dest="pretrained", action="store_true", help="use pre-trained model"
 )
-parser.add_argument('--resume', default='', help='resume from checkpoint')
-parser.add_argument('--output_dir', required=True, help='path where to save, empty for no saving')
-parser.add_argument('--device', default='cuda',
-                    help='device to use for training / testing')
-parser.add_argument('--seed', default=0, type=int)
+parser.add_argument("--resume", default="", help="resume from checkpoint")
+parser.add_argument(
+    "--output_dir", required=True, help="path where to save, empty for no saving"
+)
+parser.add_argument(
+    "--device", default="cuda", help="device to use for training / testing"
+)
+parser.add_argument("--seed", default=0, type=int)
 # distributed training parameters
-parser.add_argument('--world_size', default=1, type=int,
-                    help='number of distributed processes')
-parser.add_argument('--dist_url', default='env://',
-                    help='url used to set up distributed training')
+parser.add_argument(
+    "--world_size", default=1, type=int, help="number of distributed processes"
+)
+parser.add_argument(
+    "--dist_url", default="env://", help="url used to set up distributed training"
+)
 
 
 def main():
@@ -122,35 +132,45 @@ def main():
     qconfig = parse_qconfig(args.qconfig)
 
     # Data loading code
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    traindir = os.path.join(args.data, "train")
+    valdir = os.path.join(args.data, "val")
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
 
     train_dataset = datasets.ImageFolder(
         traindir,
-        transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+        transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+    )
     calib_dataset = datasets.ImageFolder(
         traindir,
-        transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+        transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+    )
     val_dataset = datasets.ImageFolder(
         valdir,
-        transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+        transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+    )
     if args.distributed:
         num_tasks = utils.get_world_size()
         global_rank = utils.get_rank()
@@ -219,7 +239,7 @@ def main():
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         model_without_ddp = model.module
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('number of params:', n_parameters)
+    print("number of params:", n_parameters)
 
     linear_scaled_lr = args.lr * args.batch_size * utils.get_world_size() / 256.0
     args.lr = linear_scaled_lr
@@ -236,61 +256,78 @@ def main():
 
     output_dir = Path(args.output_dir)
     if args.resume:
-        checkpoint = torch.load(args.resume, map_location='cpu')
-        model_without_ddp.load_state_dict(checkpoint['model'])
-        if not args.eval and 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
-            args.start_epoch = checkpoint['epoch'] + 1
+        checkpoint = torch.load(args.resume, map_location="cpu")
+        model_without_ddp.load_state_dict(checkpoint["model"])
+        if (
+            not args.eval
+            and "optimizer" in checkpoint
+            and "lr_scheduler" in checkpoint
+            and "epoch" in checkpoint
+        ):
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            args.start_epoch = checkpoint["epoch"] + 1
         lr_scheduler.step(args.start_epoch)
     else:
         best_acc1 = 0
 
     if args.eval:
         acc1 = validate(val_loader, model, criterion, args)
-        print(f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%")
+        print(
+            f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%"
+        )
         return
 
-    log_stats = {'n_parameters': n_parameters}
+    log_stats = {"n_parameters": n_parameters}
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         # train for one epoch
-        log_stats.update({
-            'lr': optimizer.param_groups[0]["lr"],
-            'epoch': epoch,
-        })
+        log_stats.update(
+            {
+                "lr": optimizer.param_groups[0]["lr"],
+                "epoch": epoch,
+            }
+        )
         train(train_loader, model, criterion, optimizer, epoch, args, device)
         lr_scheduler.step()
         if args.output_dir:
-            checkpoint_paths = [output_dir / 'checkpoint.pth']
+            checkpoint_paths = [output_dir / "checkpoint.pth"]
             for checkpoint_path in checkpoint_paths:
-                utils.save_on_master({
-                    'model': model_without_ddp.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'lr_scheduler': lr_scheduler.state_dict(),
-                    'epoch': epoch,
-                    'args': args,
-                }, checkpoint_path)
+                utils.save_on_master(
+                    {
+                        "model": model_without_ddp.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                        "lr_scheduler": lr_scheduler.state_dict(),
+                        "epoch": epoch,
+                        "args": args,
+                    },
+                    checkpoint_path,
+                )
 
         acc1 = validate(val_loader, model, criterion, args)
-        print(f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%")
+        print(
+            f"Accuracy of the network on the {len(val_dataset)} test images: {acc1:.1f}%"
+        )
 
         if best_acc1 < acc1:
             best_acc1 = acc1
             if args.output_dir:
-                checkpoint_paths = [output_dir / 'best_checkpoint.pth']
+                checkpoint_paths = [output_dir / "best_checkpoint.pth"]
                 for checkpoint_path in checkpoint_paths:
-                    utils.save_on_master({
-                        'model': model_without_ddp.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'lr_scheduler': lr_scheduler.state_dict(),
-                        'epoch': epoch,
-                        'args': args,
-                    }, checkpoint_path)
+                    utils.save_on_master(
+                        {
+                            "model": model_without_ddp.state_dict(),
+                            "optimizer": optimizer.state_dict(),
+                            "lr_scheduler": lr_scheduler.state_dict(),
+                            "epoch": epoch,
+                            "args": args,
+                        },
+                        checkpoint_path,
+                    )
 
-        print(f'Best accuracy: {best_acc1:.2f}%')
-        log_stats.update({'test_acc1': acc1})
+        print(f"Best accuracy: {best_acc1:.2f}%")
+        log_stats.update({"test_acc1": acc1})
 
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
@@ -299,7 +336,9 @@ def main():
     print("Training is Done, best: {}".format(best_acc1))
     if args.output_dir and utils.is_main_process():
         with (output_dir / "log.txt").open("a") as f:
-            f.write(json.dumps({"best_acc1": best_acc1, "training_args": str(args)}) + "\n")
+            f.write(
+                json.dumps({"best_acc1": best_acc1, "training_args": str(args)}) + "\n"
+            )
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args, device):
@@ -347,6 +386,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, device):
 
         if i % args.print_freq == 0:
             progress.display(i)
+
 
 @torch.no_grad()
 def validate(val_loader, model, criterion, args):
