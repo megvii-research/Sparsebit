@@ -1,22 +1,7 @@
 import torch
-from timm.models.vision_transformer import Attention
+from torchvision.models import resnet18
 from sparsebit.quantization.quant_model import QuantModel
 from sparsebit.quantization.quant_config import _C as default_config
-
-
-def build_model(model_name: str):
-    try:
-        configs = {
-            "deit_tiny_patch16_224-attn": {
-                "dim": 192,
-                "num_heads": 3,
-                "qkv_bias": True,
-            }
-        }[model_name]
-    except KeyError:
-        assert False, "unknown model name {}".format(model_name)
-
-    return Attention(**configs)
 
 
 def build_config(changes_list):
@@ -29,7 +14,6 @@ def build_config(changes_list):
 
 
 def test_deit_tiny():
-    model_name = "deit_tiny_patch16_224-attn"
     # the format of list([k1, v1, k2, v2, ...]), ensure config[::2] is key and config[1::2] is value
     model_config = [
         ("BACKEND", "tensorrt"),
@@ -46,11 +30,11 @@ def test_deit_tiny():
     ]
     model_config = [j for i in model_config for j in i]
 
-    model = build_model(model_name)
+    model = resnet18(pretrained=True)
     config = build_config(model_config)
     qmodel = QuantModel(model, config)
 
-    data = torch.randn(1, 197, 192)
+    data = torch.randn(1, 3, 224, 224)
     model.eval()
     qmodel.eval()
     out1 = model(data)

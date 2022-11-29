@@ -1,14 +1,24 @@
 import operator
 import torch
 import torch.nn as nn
-from sparsebit.quantization.modules import QuantOpr, register_qmodule
+from sparsebit.quantization.modules import (
+    QuantOpr,
+    MultipleInputsQuantOpr,
+    register_qmodule,
+)
 
 
 @register_qmodule(sources=[operator.add, torch.add])
-class QAdd(nn.Module):
+class QAdd(MultipleInputsQuantOpr):
     def __init__(self, org_module=None, config=None):
         super().__init__()
         self._repr_info = "QAdd"
+        self.apply_input_quant = config.A.QADD.ENABLE_QUANT
+
+    def prepare_input_quantizer(self, node, model):
+        if not self.apply_input_quant:
+            return
+        super(QAdd, self).prepare_input_quantizer(node, model)
 
     def forward(self, x_left, x_right):
         out = torch.add(x_left, x_right)

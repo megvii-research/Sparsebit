@@ -70,13 +70,13 @@ class QuantModel(nn.Module):
                     continue
                 new_module = _get_new_qmodule(n.target, org_module)
             elif n.op == "call_function":
-                new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
+                new_module = QMODULE_MAP[n.target](n, self.cfg)  # node作为module传入获取相关参数
             elif n.op == "call_method":
                 if isinstance(n.target, str):
                     target_op = getattr(torch.Tensor, n.target)
                 else:
                     raise NotImplementedError
-                new_module = QMODULE_MAP[target_op](n)  # node作为module传入获取相关参数
+                new_module = QMODULE_MAP[target_op](n, self.cfg)  # node作为module传入获取相关参数
             elif n.op in ["placeholder", "get_attr", "output"]:
                 continue
             with traced.graph.inserting_after(n):
@@ -127,11 +127,14 @@ class QuantModel(nn.Module):
                     and len(node.all_input_nodes) > 1
                 ):
                     module.prepare_input_quantizer(node, self.model)
-                    for input_node in node.all_input_nodes:
-                        identity_module = getattr(self.model, input_node.target)
-                        _config = self.cfg.clone()  # init
-                        update_config(_config, "A", _sub_build(self.cfg.A, node.target))
-                        identity_module.build_quantizer(_config)
+                    if module.input_quantizer_generated:
+                        for input_node in node.all_input_nodes:
+                            identity_module = getattr(self.model, input_node.target)
+                            _config = self.cfg.clone()  # init
+                            update_config(
+                                _config, "A", _sub_build(self.cfg.A, node.target)
+                            )
+                            identity_module.build_quantizer(_config)
 
     def _trace(self, model):
         skipped_modules = self.cfg.SKIP_TRACE_MODULES
