@@ -285,7 +285,7 @@ def main():
 
     for n, m in qmodel.model.named_modules():
         if isinstance(m, QUpsample):
-            m.set_fake_fused()
+            m.input_quantizer.set_fake_fused()
 
     running_qmodel = BEVDetForward(model, qmodel)
 

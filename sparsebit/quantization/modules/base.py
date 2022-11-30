@@ -16,14 +16,6 @@ class QuantOpr(nn.Module):
             输入量化器。
         weight_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
             参数量化器。仅在该算子存在 ``weight`` 属性时可启用。
-        fake_fused (bool):
-            一个flag,用于对不需要量化的算子关闭量化。
-
-    .. Warning::
-
-        请不要直接修改 ``fake_fused`` 参数,
-        因为这样不会对应修改 ``input_quantizer`` 和 ``weight_quantizer`` 。
-        如果需要关闭量化,请调用 ``set_fake_fused()`` 。
     """
 
     def __init__(self):
@@ -31,7 +23,6 @@ class QuantOpr(nn.Module):
         self.weight = None
         self.input_quantizer = None
         self.weight_quantizer = None
-        self.fake_fused = False  # a flag 用于表示该算子是否被fake_fused, 若fused则不进行量化
 
     def forward(self, x_in: torch.Tensor):
         """在考虑量化前提下，描述算子前向传播。
@@ -53,22 +44,6 @@ class QuantOpr(nn.Module):
         self.input_quantizer = build_quantizer(cfg=config.A)
         self.input_quantizer.set_backend(_backend)
 
-    def set_fake_fused(self):
-        """关闭 ``input_quantizer`` 和 ``weight_quantizer`` 。
-        转换出的QDQ格式onnx在此算子处将没有quantize-dequantize算子。
-
-        仅在不需要量化的地方调用。
-
-        .. Note::
-
-            该过程不可逆。
-        """
-        self.fake_fused = True
-        if self.weight_quantizer:
-            self.weight_quantizer.set_fake_fused()
-        if self.input_quantizer:
-            self.input_quantizer.set_fake_fused()
-
     def set_quant(self, w_quant: bool = False, a_quant: bool = False):
         """开关本算子的 ``input_quantizer`` 和 ``weight_quantizer`` 。
 
@@ -78,18 +53,18 @@ class QuantOpr(nn.Module):
             如果只设置其中一个,另一个将被默认设置为关闭。
         """
         if self.weight_quantizer:
-            if w_quant and not self.fake_fused:
+            if w_quant and not self.weight_quantizer.fake_fused:
                 self.weight_quantizer.enable_quant()
             else:
                 self.weight_quantizer.disable_quant()
         if self.input_quantizer:
-            if a_quant and not self.fake_fused:
+            if a_quant and not self.input_quantizer.fake_fused:
                 self.input_quantizer.enable_quant()
             else:
                 self.input_quantizer.disable_quant()
 
     def __repr__(self):
-        info = self._repr_info + "fake_fused: {}".format(self.fake_fused)
+        info = self._repr_info
         if self.weight_quantizer and self.weight_quantizer.is_enable:
             info += "\n\tweight_quantizer: {}".format(self.weight_quantizer.__repr__())
         if self.input_quantizer and self.input_quantizer.is_enable:

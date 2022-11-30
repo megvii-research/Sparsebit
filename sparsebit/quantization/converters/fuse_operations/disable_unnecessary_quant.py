@@ -24,7 +24,12 @@ def check(node, module):
         node (torch.fx.Node): 要匹配的node。
         module (torch.nn.Module): node对应的Module。
     """
-    return not module.fake_fused
+    if (module.weight_quantizer and not module.weight_quantizer.fake_fused) or (
+        module.input_quantizer and not module.input_quantizer.fake_fused
+    ):
+        return True
+
+    return False
 
 
 class ReplacePattern_DisableQuant(ReplacePatternBase):
@@ -73,7 +78,10 @@ class ReplacePattern_DisableQuant(ReplacePatternBase):
 
         for noninput_node in noninput_node_names:
             op = modules_dict[noninput_node]
-            op.set_fake_fused()
+            if op.weight_quantizer:
+                op.weight_quantizer.set_fake_fused()
+            if op.input_quantizer:
+                op.input_quantizer.set_fake_fused()
         return {anchor_node_name: nodes_dict[anchor_node_name]}
 
 

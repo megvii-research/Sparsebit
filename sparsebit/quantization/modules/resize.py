@@ -19,7 +19,7 @@ class QUpsample(QuantOpr):
         """
         QuantOpr.build_quantizer(self, config)
         if self.mode == "nearest":
-            self.set_fake_fused()
+            self.input_quantizer.set_fake_fused()
         else:
             self.input_quantizer.set_bit(bit=8)
 
@@ -45,7 +45,7 @@ class QInterpolate(QuantOpr):  # hack
         """
         QuantOpr.build_quantizer(self, config)
         if self.mode == "nearest":
-            self.set_fake_fused()
+            self.input_quantizer.set_fake_fused()
         else:
             self.input_quantizer.set_bit(bit=8)
 
