@@ -33,17 +33,25 @@ class Quantizer(BaseQuantizer):
         if self.fake_fused:
             return self.scale, self.zero_point
         if not self.init_params:
-            x_oc = self.observer.data_cache.get_data_for_calibration(
-                Granularity.CHANNELWISE
-            )
-            if x_oc.min() < 0 and not self.qdesc.is_symmetric:
-                warnings.warn(
-                    "Found data less than 0, reset quantizer scheme as symmetric"
-                )
-                self.qdesc.set_symmetric(True)
             if self.is_perchannel:
+                x_oc = self.observer.data_cache.get_data_for_calibration(
+                    Granularity.CHANNELWISE
+                )
+                if x_oc.min() < 0 and not self.qdesc.is_symmetric:
+                    warnings.warn(
+                        "Found data less than 0, reset quantizer scheme as symmetric"
+                    )
+                    self.qdesc.set_symmetric(True)
                 scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
             else:
+                x_oc = self.observer.data_cache.get_data_for_calibration(
+                    Granularity.LAYERWISE
+                )
+                if x_oc.min() < 0 and not self.qdesc.is_symmetric:
+                    warnings.warn(
+                        "Found data less than 0, reset quantizer scheme as symmetric"
+                    )
+                    self.qdesc.set_symmetric(True)
                 scale = 2 * x_oc.abs().mean() / math.sqrt(self.qdesc.qmax)
             self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
             self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))

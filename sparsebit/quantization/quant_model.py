@@ -145,7 +145,6 @@ class QuantModel(nn.Module):
     def _recurrency_replace_complicated_operators(self, module):
         finished = True
         for n, m in module.named_children():
-            print(n)
             if m.__class__ in COMPLICATED_MODULE_MAP:
                 setattr(module, n, COMPLICATED_MODULE_MAP[m.__class__](m))
                 finished = False

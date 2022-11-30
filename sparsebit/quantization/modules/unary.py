@@ -86,3 +86,13 @@ class Zeros_like(nn.Module):
 
     def forward(self, x_in, *args):
         return torch.zeros_like(x_in, *args)
+
+@register_qmodule(sources=[torch.Tensor.masked_fill])
+class Masked_fill(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self._repr_info = "Masked_fill "
+
+    def forward(self, x_in, *args, **kwargs):
+        out = x_in.masked_fill(args[0], args[1])
+        return out
