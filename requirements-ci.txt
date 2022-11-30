@@ -5,4 +5,4 @@ yacs
 tabulate
 onnx>=1.8
 timm
-
+scipy
