@@ -23,11 +23,18 @@ class SConv2d(SparseOpr):
         self.register_buffer("b_mask", b_mask)
         self._repr_info = "S" + org_module.__repr__()
 
-    def calc_mask(self):
+    def calc_mask(self, pre_mask=None):
         self.w_mask = self.sparser.calc_mask(self.weight)
 
-        if self.sparser.config.SPARSER.TYPE == "structed" and self.bias:
-            self.b_mask = self.w_mask[:, 0, 0, 0]
+        if self.sparser.type == "structed":
+            mask = self.w_mask[:, 0, 0, 0]
+            if self.bias is not None:
+                self.b_mask.data.copy_(mask.data)
+
+            if self.sparser.strategy == "l1norm":
+                return mask
+
+        return None
 
     def forward(self, x_in: torch.Tensor):
         weight = self.weight * self.w_mask

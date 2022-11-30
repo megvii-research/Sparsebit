@@ -15,7 +15,7 @@ class SparseOpr(nn.Module, ABC):
             "no found a forward in {}".format(self.__class__.__name__)
         )
 
-    def build_mask(self):
+    def build_mask(self, pre_mask=None):
         raise NotImplementedError(
             "no found a calc_mask in {}".format(self.__class__.__name__)
         )

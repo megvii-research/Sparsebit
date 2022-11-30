@@ -82,12 +82,34 @@ class SparseModel(nn.Module):
                 _config = self.config.clone()  # init
                 m.build_sparser(_config)
 
+    def disable_sparse_before_add(self):
+        named_modules = dict(self.model.named_modules())
+        add_nodes = [
+            n
+            for n in self.model.graph.nodes
+            if n.op == "call_function" and n.target in [operator.add, torch.add]
+        ]
+        for add_node in add_nodes:
+            add_inputs = [a for a in add_node.args if isinstance(a, torch.fx.Node)]
+            while len(add_inputs) > 0:
+                n = add_inputs.pop()
+                if n.op == "call_module" and n.target in named_modules:
+                    m = named_modules[n.target]
+                else:
+                    m = None
+                if hasattr(m, "sparser") and m.sparser:
+                    m.sparser.set_ratio(0.0)
+                if not (isinstance(m, SConv2d)):
+                    n_list = [a for a in n.args if isinstance(a, torch.fx.Node)]
+                    add_inputs.extend(n_list)
+
     def calc_params(self):
+        pre_mask = None
         for node in self.model.graph.nodes:
             if node.op == "call_module":
                 module = getattr(self.model, node.target, None)
                 if isinstance(module, SparseOpr) and getattr(module, "sparser", None):
-                    module.calc_mask()
+                    pre_mask = module.calc_mask(pre_mask)
 
     def _run_simplifiers(self):
         self.model = simplify(self.model)
