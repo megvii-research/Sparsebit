@@ -7,8 +7,8 @@ from sparsebit.quantization.quant_config import _C as default_config
 class ConvAdd(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3,3,3)
-        self.conv2 = nn.Conv2d(3,3,3)
+        self.conv1 = nn.Conv2d(3, 3, 3)
+        self.conv2 = nn.Conv2d(3, 3, 3)
 
     def forward(self, x):
         x_left = self.conv1(x)
