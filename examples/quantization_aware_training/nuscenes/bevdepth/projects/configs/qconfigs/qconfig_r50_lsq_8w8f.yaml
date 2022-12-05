@@ -1,0 +1,14 @@
+BACKEND: virtual
+SKIP_TRACE_MODULES: [
+  "img_view_transformer",
+]
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER: 
+    TYPE: lsq
+    BIT: 8
+A:
+  QSCHEME: per-tensor-affine
+  QUANTIZER:
+    TYPE: lsq
+    BIT: 8

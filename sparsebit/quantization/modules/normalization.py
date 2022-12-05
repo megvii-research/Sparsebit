@@ -21,6 +21,20 @@ class QBatchNorm2d(QuantOpr):
         out = self.module(x_in)
         return out
 
+@register_qmodule(sources=[nn.BatchNorm1d])
+class QBatchNorm1d(nn.Module):
+    """未量化的BN1d层。"""
+
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        self.module = org_module
+        self._repr_info = "QBatchNorm1d "
+
+    def forward(self, x_in):
+        """BN层的前向传播,不做量化。"""
+        out = self.module(x_in)
+        return out
+
 
 @register_qmodule(sources=[nn.LayerNorm])
 class QLayerNorm(QuantOpr):
