@@ -130,7 +130,9 @@ class GraphVisitor(object):
             if node.op in ["placeholder", "output"]:  # skip IO empty node
                 continue
             if node.op == "get_attr":  # use model.xxx to get constant nn.Parameter
-                module = getattr(model, node.target)
+                module = model
+                for n in node.target.split("."):
+                    module = getattr(module, n)
             else:
                 module = named_modules[node.target]
 

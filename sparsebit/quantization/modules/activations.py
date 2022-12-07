@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from functools import partial
 from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
@@ -20,15 +19,11 @@ class QReLU(QuantOpr):
     def __init__(self, org_module, config=None):
         super().__init__()
         self._repr_info = "Q" + org_module.__repr__()
-        if isinstance(org_module, nn.Module):
-            self.inplace = org_module.inplace
-        else:
-            self.inplace = org_module.args[1]
 
-    def forward(self, x_in):
+    def forward(self, x_in, *args, **kwargs):
         """ReLU层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
-        out = F.relu(x_in, inplace=self.inplace)
+        out = F.relu(x_in, *args, **kwargs)
         return out
 
 
@@ -91,7 +86,7 @@ class QLeakyReLU(QuantOpr):
         return out
 
 
-@register_qmodule(sources=[nn.Sigmoid, torch.sigmoid, F.sigmoid])
+@register_qmodule(sources=[nn.Sigmoid, torch.sigmoid, torch.Tensor.sigmoid, F.sigmoid])
 class QSigmoid(QuantOpr):
     """量化Sigmoid层,拥有 ``input_quantizer`` 。
 

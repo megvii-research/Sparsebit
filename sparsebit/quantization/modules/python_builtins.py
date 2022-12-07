@@ -11,15 +11,10 @@ class QGetAttr(nn.Module):
         super(QGetAttr, self).__init__()
         assert isinstance(org_module, torch.fx.Node)
         self.target_attr = org_module.args[1]
-        if self.target_attr != "shape":  # dynamic shape needs forward
-            self.output = getattr(org_module.args[0], org_module.args[1])
         self._repr_info = "QGetAttr "
 
     def forward(self, x_in, *args):
-        if self.target_attr == "shape":
-            return x_in.shape()
-        else:
-            return self.output
+        return getattr(x_in, self.target_attr)
 
 
 @register_qmodule(sources=[operator.getitem])
@@ -41,3 +36,13 @@ class QEqual(nn.Module):
 
     def forward(self, x_left, x_right):
         return x_left == x_right
+
+
+@register_qmodule(sources=[operator.invert])
+class Invert(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Invert, self).__init__()
+        self._repr_info = "Invert "
+
+    def forward(self, x_in):
+        return ~x_in

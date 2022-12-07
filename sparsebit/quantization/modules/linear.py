@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from sparsebit.quantization.modules import QuantOpr, register_qmodule
 
 
-@register_qmodule(sources=[nn.Linear])
+@register_qmodule(sources=[nn.Linear, nn.modules.linear.NonDynamicallyQuantizableLinear])
 class QLinear(QuantOpr):
     """量化全连接层,拥有 ``input_quantizer`` 和 ``weight_quantizer`` 。
 

@@ -13,7 +13,7 @@ class MatMul(MultipleInputsQuantOpr):
 
     def __init__(self, org_module=None, config=None):
         super().__init__()
-        self._repr_info = "QMatmul "
+        self._repr_info = "QMatmul"
 
     def forward(self, x_left: torch.Tensor, x_right: torch.Tensor):
         out = torch.matmul(x_left, x_right)

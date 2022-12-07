@@ -1,3 +1,9 @@
 [submodule "examples/quantization_aware_training/imagenet1k/deit/deit"]
 	path = examples/quantization_aware_training/imagenet1k/deit/deit
 	url = https://github.com/facebookresearch/deit.git
+[submodule "examples/post_training_quantization/coco2017/DETR/detr"]
+	path = examples/post_training_quantization/coco2017/DETR/detr
+	url = https://github.com/facebookresearch/detr.git
+[submodule "examples/quantization_aware_training/coco2017/DETR/detr"]
+	path = examples/quantization_aware_training/coco2017/DETR/detr
+	url = https://github.com/facebookresearch/detr.git

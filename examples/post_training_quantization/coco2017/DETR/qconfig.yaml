@@ -1,0 +1,22 @@
+BACKEND: tensorrt
+SCHEDULE:
+  FUSE_BN: True
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MINMAX
+  SPECIFIC: [{
+    "bbox_embed_layers_1": ["OBSERVER.TYPE", "aciq", "OBSERVER.ACIQ.DISTRIBUTION", "laplace"],
+    "bbox_embed_layers_2": ["OBSERVER.TYPE", "aciq", "OBSERVER.ACIQ.DISTRIBUTION", "laplace"]
+  }]
+A:
+  QSCHEME: per-tensor-symmetric
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MINMAX
+    LAYOUT: NCHW

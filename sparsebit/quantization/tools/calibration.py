@@ -73,7 +73,9 @@ class CalibrationRunner(object):
 
             assert batch_num is not None
 
-            module = getattr(self.model, node.target)
+            module = self.model
+            for n in node.target.split("."):
+                module = getattr(module, n)
             if isinstance(module, QuantOpr) and getattr(
                 module, "input_quantizer", None
             ):
