@@ -26,7 +26,7 @@ class Quantizer(BaseQuantizer):
 
     def _qparams_preprocess(self, x):
         lower = (
-            -self.alpha if self.qdesc.qmin < 0 else torch.Tensor([0]).to(self.device)
+            -self.alpha if self.qdesc.qmin < 0 else torch.Tensor([0]).to(self.alpha.device)
         )
         self.lower = lower
         scale, zero_point = self.calc_qparams_with_minmax(lower, self.alpha.detach())
