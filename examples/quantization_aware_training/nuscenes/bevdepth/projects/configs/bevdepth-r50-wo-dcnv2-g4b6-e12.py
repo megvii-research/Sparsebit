@@ -229,7 +229,7 @@ input_modality = dict(
     use_external=False)
 
 data = dict(
-    samples_per_gpu=4,
+    samples_per_gpu=6,
     workers_per_gpu=4,
     train=dict(
         type='CBGSDataset',
