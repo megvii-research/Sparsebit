@@ -17,7 +17,6 @@ from mmdet3d.datasets import build_dataloader, build_dataset
 from mmdet3d.models import build_model
 from mmdet.apis import multi_gpu_test, set_random_seed
 from mmdet.datasets import replace_ImageToTensor
-from mmdet3d.models.detectors import BEVDetTraced, BEVDetForward
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
@@ -191,10 +190,15 @@ def main():
     fp16_cfg = cfg.get('fp16', None)
     if fp16_cfg is not None:
         wrap_fp16_model(model)
-    model = BEVDetTraced(model)
+
+    from projects.mmdet3d_plugin.models.detectors import BEVDepthTraced, BEVDepthForward
+
+    model = BEVDepthTraced(model)
     qconfig = parse_qconfig(args.qconfig)
     with torch.no_grad():
         qmodel = QuantModel(model, config=qconfig).cuda()
+    qmodel.model.se_module_fc_1.weight_quantizer.set_fake_fused()
+    qmodel.model.se_module_fc_1.input_quantizer.set_fake_fused()
 
     # fake calibration
     qmodel.prepare_calibration()
@@ -208,7 +212,7 @@ def main():
                 break
         qmodel.init_QAT()
 
-    running_qmodel = BEVDetForward(model, qmodel)
+    running_qmodel = BEVDepthForward(model, qmodel)
     checkpoint = load_checkpoint(running_qmodel, args.checkpoint, map_location='cpu')
     # old versions did not save class info in checkpoints, this walkaround is
     # for backward compatibility
