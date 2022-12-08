@@ -261,3 +261,31 @@ lr_config = dict(
     warmup_ratio=0.001,
     step=[7, 10])
 runner = dict(type='EpochBasedRunner', max_epochs=12)
+
+'''
+float performance:
+mAP:0.3365, NDS:0.4089
+
+4w4f performance:
+mAP: 0.3327                                                                                                                                                                            
+mATE: 0.6638                                                                                                                                                                           
+mASE: 0.2729                                                                                                                                                                           
+mAOE: 0.5532                                                                                                                                                                           
+mAVE: 0.8726                                                                                                                                                                           
+mAAE: 0.2290                                                                                                                                                                           
+NDS: 0.4072                                                                                                                                                                            
+Eval time: 153.8s                                                                                                                                                                      
+                                                                                                                                                                                       
+Per-class results:                                                                                                                                                                     
+Object Class    AP      ATE     ASE     AOE     AVE     AAE                                                                                                                            
+car     0.531   0.522   0.159   0.121   0.923   0.217                                                                                                                                  
+truck   0.260   0.675   0.216   0.118   0.829   0.231                                                                                                                                  
+bus     0.379   0.712   0.187   0.104   1.528   0.358                                                                                                                                  
+trailer 0.187   0.889   0.233   0.404   0.821   0.133                                                                                                                                  
+construction_vehicle    0.079   0.893   0.476   0.991   0.191   0.371                                                                                                                  
+pedestrian      0.354   0.737   0.302   1.378   0.901   0.437                                                                                                                          
+motorcycle      0.284   0.697   0.262   0.903   1.413   0.069                                                                                                                          
+bicycle 0.259   0.497   0.278   0.839   0.375   0.016                                                                                                                                  
+traffic_cone    0.498   0.522   0.336   nan     nan     nan                                                                                                                            
+barrier 0.496   0.495   0.280   0.121   nan     nan
+'''
