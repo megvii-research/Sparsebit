@@ -53,4 +53,5 @@ def test_deit_tiny():
     qmodel.eval()
     out1 = model(data)
     out2 = qmodel(data)
+    assert hasattr(qmodel.model, "add_1_identity0") and hasattr(qmodel.model, "add_1_identity1"), "Qadd quantizers not founded!"
     torch.testing.assert_allclose(out1, out2, atol=1e-4, rtol=1e-4)
