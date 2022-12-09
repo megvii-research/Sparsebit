@@ -26,6 +26,7 @@ class SparseModel(nn.Module):
         self.model = model
         self.config = config
         self.device = torch.device(config.DEVICE)
+        self.model = fx.symbolic_trace(model)
         self._run_simplifiers()
         self._convert2sparsemodule()
         self._build_sparser()
@@ -35,7 +36,7 @@ class SparseModel(nn.Module):
         将网络中部分node转成对应的sparse_module
         """
         named_modules = dict(self.model.named_modules(remove_duplicate=False))
-        traced = fx.symbolic_trace(self.model)
+        traced = self.model
         traced.graph.print_tabular()
         snodes = []  # 用于避免重复遍历
         for n in traced.graph.nodes:
@@ -117,8 +118,8 @@ class SparseModel(nn.Module):
     def prepare_calibration(self):
         pass
 
-    def forward(self, *args):
-        return self.model.forward(*args)
+    def forward(self, *args, **kwargs):
+        return self.model.forward(*args, **kwargs)
 
     def export_onnx(
         self,
