@@ -1,7 +1,9 @@
+from sparsebit.quantization.modules.unary import QIdentity
 import torch
 import torch.nn as nn
 from sparsebit.quantization.quant_model import QuantModel
 from sparsebit.quantization.quant_config import _C as default_config
+from sparsebit.quantization.modules.math import QAdd
 
 
 class ConvAdd(nn.Module):
@@ -53,5 +55,14 @@ def test_deit_tiny():
     qmodel.eval()
     out1 = model(data)
     out2 = qmodel(data)
-    assert hasattr(qmodel.model, "add_1_identity0") and hasattr(qmodel.model, "add_1_identity1"), "Qadd quantizers not founded!"
+    for node in qmodel.model.graph.nodes:
+        module = getattr(qmodel.model, node.target, None)
+        if module is not None:
+            if isinstance(module, QAdd):
+                counter = 0
+                for prev_node in node.all_input_nodes:
+                    input_module =  getattr(qmodel.model, prev_node.target, None)
+                    if isinstance(input_module, QIdentity):
+                        counter+=1
+                assert counter>0, "Qadd quantizers not build successfully!"
     torch.testing.assert_allclose(out1, out2, atol=1e-4, rtol=1e-4)
