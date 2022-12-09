@@ -61,8 +61,8 @@ def test_deit_tiny():
             if isinstance(module, QAdd):
                 counter = 0
                 for prev_node in node.all_input_nodes:
-                    input_module =  getattr(qmodel.model, prev_node.target, None)
+                    input_module = getattr(qmodel.model, prev_node.target, None)
                     if isinstance(input_module, QIdentity):
-                        counter+=1
-                assert counter>0, "Qadd quantizers not build successfully!"
+                        counter += 1
+                assert counter > 0, "Qadd quantizers not build successfully!"
     torch.testing.assert_allclose(out1, out2, atol=1e-4, rtol=1e-4)
