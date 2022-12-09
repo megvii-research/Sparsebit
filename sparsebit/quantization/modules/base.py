@@ -83,6 +83,7 @@ class MultipleInputsQuantOpr(nn.Module):
     def __init__(self):
         super(MultipleInputsQuantOpr, self).__init__()
         self.input_quantizer_generated = False
+        self.apply_input_quant = True
 
     def prepare_input_quantizer(self, node, model):
         from .unary import QIdentity
