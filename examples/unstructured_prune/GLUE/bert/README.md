@@ -1,10 +1,10 @@
 ## Introduction 
-- We instroduce a CoLA demo to demostrate how to apply L1-norm weight sparser to BERT.
+- We introduced a CoLA demo to demonstrate how to apply L1-norm weight sparser to BERT.
 
 ## Run
 
 ### DownLoad CoLA dataset
-- CoLA:The Corpus of Linguistic Acceptability consists of English acceptability judgments drawn from books and journal articles on linguistic theory. Each example is a sequence of words annotated with whether it is a grammatical English sentence. More details can be get from [paper](https://arxiv.org/abs/1805.12471)
+- CoLA: The Corpus of Linguistic Acceptability consists of English acceptability judgments drawn from books and journal articles on linguistic theory. Each example is a sequence of words annotated with whether it is a grammatical English sentence. More details can be get from [paper](https://arxiv.org/abs/1805.12471)
 - how to get?
   - `python download.py`
   - `unzip ./cola_public_1.1.zip`
@@ -17,7 +17,7 @@
 
 ## Results
 - sratio = #zeros / #totol\_params
-- Only bert encoder be sparsed, excludes embedding & heads
+- Only BERT-Encoder be sparsed, excludes embedding & heads
 - For convenience, we use accuracy as the metric here
 
 model | sparser | sratio=0.25 | sratio=0.5 | sratio=0.75 | sratio=1.0 |
