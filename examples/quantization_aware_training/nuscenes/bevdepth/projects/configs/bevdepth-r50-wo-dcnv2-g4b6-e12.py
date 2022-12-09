@@ -263,10 +263,37 @@ lr_config = dict(
 runner = dict(type='EpochBasedRunner', max_epochs=12)
 
 '''
-float performance:
-mAP:0.3365, NDS:0.4089
+checkpoint:
+float mAP: 0.336
+float NDS: 0.409
 
-4w4f performance:
+**************************** 8w8f *************************
+qconfig: qconfig_r50_lsq_8w8f.yaml
+
+mAP: 0.3352                                                                                                                                                                            
+mATE: 0.6531                                                                                                                                                                           
+mASE: 0.2731                                                                                                                                                                           
+mAOE: 0.5399                                                                                                                                                                           
+mAVE: 0.8655                                                                                                                                                                           
+mAAE: 0.2322                                                                                                                                                                           
+NDS: 0.4112                                                                                                                                                                            
+Eval time: 191.4s                                                                                                                                                                                                                                                                                                                                                             
+Per-class results:                                                                                                                                                                     
+Object Class    AP      ATE     ASE     AOE     AVE     AAE                                                                                                                            
+car     0.535   0.522   0.158   0.116   0.935   0.219                                                                                                                                  
+truck   0.259   0.667   0.216   0.114   0.813   0.220                                                                                                                                  
+bus     0.377   0.668   0.188   0.084   1.436   0.379                                                                                                                                  
+trailer 0.195   0.913   0.225   0.435   0.736   0.144                                                                                                                                  
+construction_vehicle    0.078   0.856   0.493   0.951   0.139   0.388                                                                                                                  
+pedestrian      0.358   0.721   0.302   1.351   0.908   0.427                                                                                                                          
+motorcycle      0.287   0.695   0.265   0.869   1.519   0.062                                                                                                                          
+bicycle 0.259   0.507   0.273   0.827   0.437   0.019                                                                                                                                  
+traffic_cone    0.510   0.499   0.332   nan     nan     nan                                                                                                                            
+barrier 0.495   0.483   0.279   0.112   nan     nan
+
+**************************** 4w4f *************************
+qconfig: qconfig_r50_lsq_4w4f.yaml
+
 mAP: 0.3327                                                                                                                                                                            
 mATE: 0.6638                                                                                                                                                                           
 mASE: 0.2729                                                                                                                                                                           
