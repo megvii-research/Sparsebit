@@ -22,6 +22,6 @@ python3 main.py qconfig_lsq.yaml [imagenet-folder with train and val folders] -a
 - First Layer: 8w8f
 - Last Layer: 8w8f
 
-|model| float | DoReFa|PACT|LSQ| 
-|---|---|---|---|---| --- | 
+|model| float | DoReFa|PACT|LSQ|
+|---|---|---|---|---| --- |
 |Efficientnet\_lite0 | 75.1 | - | 65.76 | 72.89 |
