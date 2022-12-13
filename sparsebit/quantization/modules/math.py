@@ -54,7 +54,7 @@ class QDivide(nn.Module):
         self._repr_info = "QDivide "
 
     def forward(self, x_left, x_right):
-        out = x_left / x_right   # x / y
+        out = x_left / x_right  # x / y
         return out
 
 

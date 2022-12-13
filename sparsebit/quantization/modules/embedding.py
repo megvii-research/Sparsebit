@@ -34,5 +34,11 @@ class QEmbedding(QuantOpr):
     def forward(self, x_in, *args, **kwargs):
         weight = self.weight_quantizer(self.weight)
         return F.embedding(
-            x_in, weight, self.padding_idx, self.max_norm,
-            self.norm_type, self.scale_grad_by_freq, self.sparse)
+            x_in,
+            weight,
+            self.padding_idx,
+            self.max_norm,
+            self.norm_type,
+            self.scale_grad_by_freq,
+            self.sparse,
+        )

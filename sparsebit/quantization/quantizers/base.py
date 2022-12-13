@@ -26,7 +26,9 @@ class Quantizer(nn.Module, abc.ABC):
         if self.cfg.QUANTIZER.DISABLE:
             self.set_fake_fused()
         if self.qdesc.bit == 0:
-            warnings.warn("used bit==0 to disable quantizer is deprecated, please use a flag: QUANTIZER.DISABLE")
+            warnings.warn(
+                "used bit==0 to disable quantizer is deprecated, please use a flag: QUANTIZER.DISABLE"
+            )
 
     def calc_qparams(self):
         if self.fake_fused:
