@@ -21,6 +21,7 @@ class QBatchNorm2d(QuantOpr):
         out = self.module(x_in)
         return out
 
+
 @register_qmodule(sources=[nn.BatchNorm1d])
 class QBatchNorm1d(nn.Module):
     """未量化的BN1d层。"""

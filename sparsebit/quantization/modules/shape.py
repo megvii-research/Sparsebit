@@ -105,6 +105,7 @@ class Expand(nn.Module):
         out = x_in.expand(sz)
         return out
 
+
 @register_qmodule(sources=[torch.Tensor.expand_as])
 class Expand_as(nn.Module):
     def __init__(self, org_module=None, config=None):

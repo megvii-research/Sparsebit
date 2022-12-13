@@ -10,9 +10,10 @@ from mmdet3d.models import build_detector
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='MMDet3D upgrade model version(before v0.6.0) of VoteNet')
-    parser.add_argument('checkpoint', help='checkpoint file')
-    parser.add_argument('--out', help='path of the output checkpoint file')
+        description="MMDet3D upgrade model version(before v0.6.0) of VoteNet"
+    )
+    parser.add_argument("checkpoint", help="checkpoint file")
+    parser.add_argument("--out", help="path of the output checkpoint file")
     args = parser.parse_args()
     return args
 
@@ -27,37 +28,37 @@ def parse_config(config_strings):
         Config: model config
     """
     temp_file = tempfile.NamedTemporaryFile()
-    config_path = f'{temp_file.name}.py'
-    with open(config_path, 'w') as f:
+    config_path = f"{temp_file.name}.py"
+    with open(config_path, "w") as f:
         f.write(config_strings)
 
     config = Config.fromfile(config_path)
 
     # Update backbone config
-    if 'pool_mod' in config.model.backbone:
-        config.model.backbone.pop('pool_mod')
+    if "pool_mod" in config.model.backbone:
+        config.model.backbone.pop("pool_mod")
 
-    if 'sa_cfg' not in config.model.backbone:
-        config.model.backbone['sa_cfg'] = dict(
-            type='PointSAModule',
-            pool_mod='max',
-            use_xyz=True,
-            normalize_xyz=True)
+    if "sa_cfg" not in config.model.backbone:
+        config.model.backbone["sa_cfg"] = dict(
+            type="PointSAModule", pool_mod="max", use_xyz=True, normalize_xyz=True
+        )
 
-    if 'type' not in config.model.bbox_head.vote_aggregation_cfg:
-        config.model.bbox_head.vote_aggregation_cfg['type'] = 'PointSAModule'
+    if "type" not in config.model.bbox_head.vote_aggregation_cfg:
+        config.model.bbox_head.vote_aggregation_cfg["type"] = "PointSAModule"
 
     # Update bbox_head config
-    if 'pred_layer_cfg' not in config.model.bbox_head:
-        config.model.bbox_head['pred_layer_cfg'] = dict(
-            in_channels=128, shared_conv_channels=(128, 128), bias=True)
+    if "pred_layer_cfg" not in config.model.bbox_head:
+        config.model.bbox_head["pred_layer_cfg"] = dict(
+            in_channels=128, shared_conv_channels=(128, 128), bias=True
+        )
 
-    if 'feat_channels' in config.model.bbox_head:
-        config.model.bbox_head.pop('feat_channels')
+    if "feat_channels" in config.model.bbox_head:
+        config.model.bbox_head.pop("feat_channels")
 
-    if 'vote_moudule_cfg' in config.model.bbox_head:
-        config.model.bbox_head['vote_module_cfg'] = config.model.bbox_head.pop(
-            'vote_moudule_cfg')
+    if "vote_moudule_cfg" in config.model.bbox_head:
+        config.model.bbox_head["vote_module_cfg"] = config.model.bbox_head.pop(
+            "vote_moudule_cfg"
+        )
 
     if config.model.bbox_head.vote_aggregation_cfg.use_xyz:
         config.model.bbox_head.vote_aggregation_cfg.mlp_channels[0] -= 3
@@ -76,41 +77,48 @@ def main():
     """
     args = parse_args()
     checkpoint = torch.load(args.checkpoint)
-    cfg = parse_config(checkpoint['meta']['config'])
+    cfg = parse_config(checkpoint["meta"]["config"])
     # Build the model and load checkpoint
     model = build_detector(
-        cfg.model,
-        train_cfg=cfg.get('train_cfg'),
-        test_cfg=cfg.get('test_cfg'))
-    orig_ckpt = checkpoint['state_dict']
+        cfg.model, train_cfg=cfg.get("train_cfg"), test_cfg=cfg.get("test_cfg")
+    )
+    orig_ckpt = checkpoint["state_dict"]
     converted_ckpt = orig_ckpt.copy()
 
-    if cfg['dataset_type'] == 'ScanNetDataset':
+    if cfg["dataset_type"] == "ScanNetDataset":
         NUM_CLASSES = 18
-    elif cfg['dataset_type'] == 'SUNRGBDDataset':
+    elif cfg["dataset_type"] == "SUNRGBDDataset":
         NUM_CLASSES = 10
     else:
         raise NotImplementedError
 
     RENAME_PREFIX = {
-        'bbox_head.conv_pred.0': 'bbox_head.conv_pred.shared_convs.layer0',
-        'bbox_head.conv_pred.1': 'bbox_head.conv_pred.shared_convs.layer1'
+        "bbox_head.conv_pred.0": "bbox_head.conv_pred.shared_convs.layer0",
+        "bbox_head.conv_pred.1": "bbox_head.conv_pred.shared_convs.layer1",
     }
 
     DEL_KEYS = [
-        'bbox_head.conv_pred.0.bn.num_batches_tracked',
-        'bbox_head.conv_pred.1.bn.num_batches_tracked'
+        "bbox_head.conv_pred.0.bn.num_batches_tracked",
+        "bbox_head.conv_pred.1.bn.num_batches_tracked",
     ]
 
     EXTRACT_KEYS = {
-        'bbox_head.conv_pred.conv_cls.weight':
-        ('bbox_head.conv_pred.conv_out.weight', [(0, 2), (-NUM_CLASSES, -1)]),
-        'bbox_head.conv_pred.conv_cls.bias':
-        ('bbox_head.conv_pred.conv_out.bias', [(0, 2), (-NUM_CLASSES, -1)]),
-        'bbox_head.conv_pred.conv_reg.weight':
-        ('bbox_head.conv_pred.conv_out.weight', [(2, -NUM_CLASSES)]),
-        'bbox_head.conv_pred.conv_reg.bias':
-        ('bbox_head.conv_pred.conv_out.bias', [(2, -NUM_CLASSES)])
+        "bbox_head.conv_pred.conv_cls.weight": (
+            "bbox_head.conv_pred.conv_out.weight",
+            [(0, 2), (-NUM_CLASSES, -1)],
+        ),
+        "bbox_head.conv_pred.conv_cls.bias": (
+            "bbox_head.conv_pred.conv_out.bias",
+            [(0, 2), (-NUM_CLASSES, -1)],
+        ),
+        "bbox_head.conv_pred.conv_reg.weight": (
+            "bbox_head.conv_pred.conv_out.weight",
+            [(2, -NUM_CLASSES)],
+        ),
+        "bbox_head.conv_pred.conv_reg.bias": (
+            "bbox_head.conv_pred.conv_out.bias",
+            [(2, -NUM_CLASSES)],
+        ),
     }
 
     # Delete some useless keys
@@ -122,8 +130,7 @@ def main():
     for old_key in converted_ckpt.keys():
         for rename_prefix in RENAME_PREFIX.keys():
             if rename_prefix in old_key:
-                new_key = old_key.replace(rename_prefix,
-                                          RENAME_PREFIX[rename_prefix])
+                new_key = old_key.replace(rename_prefix, RENAME_PREFIX[rename_prefix])
                 RENAME_KEYS[new_key] = old_key
     for new_key, old_key in RENAME_KEYS.items():
         converted_ckpt[new_key] = converted_ckpt.pop(old_key)
@@ -144,9 +151,9 @@ def main():
 
     # Check the converted checkpoint by loading to the model
     load_state_dict(model, converted_ckpt, strict=True)
-    checkpoint['state_dict'] = converted_ckpt
+    checkpoint["state_dict"] = converted_ckpt
     torch.save(checkpoint, args.out)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

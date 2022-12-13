@@ -6,22 +6,24 @@ from mmdet3d.models.detectors import Base3DDetector
 from mmdet3d.core import bbox3d2result
 from mmdet.core import multi_apply
 
+
 class SELikeModule(nn.Module):
     def __init__(self, module):
         super(SELikeModule, self).__init__()
         self.module = module
         self.feat_quant = nn.Identity()
-        self.feat_quant.remove = False # a hack impl of quant the input of LSS
+        self.feat_quant.remove = False  # a hack impl of quant the input of LSS
         self.attn_quant = nn.Identity()
-        self.attn_quant.remove = False # a hack impl of quant the input of LSS
+        self.attn_quant.remove = False  # a hack impl of quant the input of LSS
 
     def forward(self, x, cam_params):
         x = self.module.input_conv(x)
-        b,c,_,_ = x.shape
+        b, c, _, _ = x.shape
         y = self.module.fc(cam_params).view(b, c, 1, 1)
         x = self.feat_quant(x)
         y = self.attn_quant(y.expand_as(x))
         return x * y
+
 
 class ViewTransformerLSSBEVDepthForward(nn.Module):
     def __init__(self, model):
@@ -41,11 +43,14 @@ class ViewTransformerLSSBEVDepthForward(nn.Module):
 
         # Splat
         if self.model.accelerate:
-            bev_feat = self.model.voxel_pooling_accelerated(rots, trans, intrins, post_rots, post_trans, volume)
+            bev_feat = self.model.voxel_pooling_accelerated(
+                rots, trans, intrins, post_rots, post_trans, volume
+            )
         else:
             geom = self.model.get_geometry(rots, trans, intrins, post_rots, post_trans)
             bev_feat = self.model.voxel_pooling(geom, volume)
         return bev_feat
+
 
 class BEVDepthTraced(nn.Module):
     def __init__(self, model):
@@ -57,22 +62,28 @@ class BEVDepthTraced(nn.Module):
         self.se = SELikeModule(_model.img_view_transformer.se)
         self.extra_depthnet = _model.img_view_transformer.extra_depthnet
         self.dcn = _model.img_view_transformer.dcn
-        self.depthnet =_model.img_view_transformer.depthnet
+        self.depthnet = _model.img_view_transformer.depthnet
         _model.img_view_transformer.featnet = nn.Identity()
         _model.img_view_transformer.se = nn.Identity()
         _model.img_view_transformer.extra_depthnet = nn.Identity()
         _model.img_view_transformer.dcn = nn.Identity()
         _model.img_view_transformer.depthnet = nn.Identity()
-        self.img_view_transformer = ViewTransformerLSSBEVDepthForward(_model.img_view_transformer)
+        self.img_view_transformer = ViewTransformerLSSBEVDepthForward(
+            _model.img_view_transformer
+        )
         self.bev_encoder_backbone = _model.img_bev_encoder_backbone
         self.bev_encoder_neck = _model.img_bev_encoder_neck
         self.head = _model.pts_bbox_head
         self.head_shared_conv = _model.pts_bbox_head.shared_conv
         self.head_task_heads = _model.pts_bbox_head.task_heads
         self.img_view_transformer_featnet_quant = nn.Identity()
-        self.img_view_transformer_featnet_quant.remove = False # a hack impl of quant the input of LSS
+        self.img_view_transformer_featnet_quant.remove = (
+            False  # a hack impl of quant the input of LSS
+        )
         self.img_view_transformer_depth_quant = nn.Identity()
-        self.img_view_transformer_depth_quant.remove = False # a hack impl of quant the input of LSS
+        self.img_view_transformer_depth_quant.remove = (
+            False  # a hack impl of quant the input of LSS
+        )
         self.loss = _model.pts_bbox_head.loss
         self.get_bboxes = _model.pts_bbox_head.get_bboxes
 
@@ -88,17 +99,22 @@ class BEVDepthTraced(nn.Module):
 
     def image_view_transformer_encoder(self, input):
         x, rots, trans, intrins, post_rots, post_trans = input
-        B, N, oldC, H, W = x.shape # 512
+        B, N, oldC, H, W = x.shape  # 512
         x = x.view(B * N, oldC, H, W)
         img_feat = self.img_view_transformer_featnet(x)
         img_feat = self.img_view_transformer_featnet_quant(img_feat)
 
         depth_feat = x
-        cam_params = torch.cat([intrins.reshape(B*N,-1),
-                               post_rots.reshape(B*N,-1),
-                               post_trans.reshape(B*N,-1),
-                               rots.reshape(B*N,-1),
-                               trans.reshape(B*N,-1)],dim=1)
+        cam_params = torch.cat(
+            [
+                intrins.reshape(B * N, -1),
+                post_rots.reshape(B * N, -1),
+                post_trans.reshape(B * N, -1),
+                rots.reshape(B * N, -1),
+                trans.reshape(B * N, -1),
+            ],
+            dim=1,
+        )
         depth_feat = self.se(depth_feat, cam_params)
         depth_feat = self.extra_depthnet(depth_feat)[0]
         depth_feat = self.dcn(depth_feat)
@@ -143,8 +159,12 @@ class BEVDepthTraced(nn.Module):
         """
         img, rots, trans, intrins, post_rots, post_trans, depth_gt = img_inputs
         x = self.image_encoder(img)
-        img_feat, depth_digit = self.image_view_transformer_encoder([x, rots, trans, intrins, post_rots, post_trans])
-        x = self.img_view_transformer([x, rots, trans, intrins, post_rots, post_trans], img_feat, depth_digit)
+        img_feat, depth_digit = self.image_view_transformer_encoder(
+            [x, rots, trans, intrins, post_rots, post_trans]
+        )
+        x = self.img_view_transformer(
+            [x, rots, trans, intrins, post_rots, post_trans], img_feat, depth_digit
+        )
         x = self.bev_encoder(x)
         x = self.forward_pts_head([x])
         return x
@@ -160,16 +180,18 @@ class BEVDepthForward(Base3DDetector):
     def extract_feat(self):
         pass
 
-    def forward_train(self,
-                      points=None,
-                      img_metas=None,
-                      gt_bboxes_3d=None,
-                      gt_labels_3d=None,
-                      gt_labels=None,
-                      gt_bboxes=None,
-                      img_inputs=None,
-                      proposals=None,
-                      gt_bboxes_ignore=None):
+    def forward_train(
+        self,
+        points=None,
+        img_metas=None,
+        gt_bboxes_3d=None,
+        gt_labels_3d=None,
+        gt_labels=None,
+        gt_bboxes=None,
+        img_inputs=None,
+        proposals=None,
+        gt_bboxes_ignore=None,
+    ):
         outs = self.graph_module(img_inputs)
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
         losses = self.loss(*loss_inputs)
@@ -189,18 +211,19 @@ class BEVDepthForward(Base3DDetector):
                 torch.Tensor should have a shape NxCxHxW, which contains
                 all images in the batch. Defaults to None.
         """
-        for var, name in [(img_inputs, 'img_inputs'), (img_metas, 'img_metas')]:
+        for var, name in [(img_inputs, "img_inputs"), (img_metas, "img_metas")]:
             if not isinstance(var, list):
-                raise TypeError('{} must be a list, but got {}'.format(
-                    name, type(var)))
+                raise TypeError("{} must be a list, but got {}".format(name, type(var)))
 
         num_augs = len(img_inputs)
         if num_augs != len(img_metas):
             raise ValueError(
-                'num of augmentations ({}) != num of image meta ({})'.format(
-                    len(img_inputs), len(img_metas)))
+                "num of augmentations ({}) != num of image meta ({})".format(
+                    len(img_inputs), len(img_metas)
+                )
+            )
 
-        if not isinstance(img_inputs[0][0],list):
+        if not isinstance(img_inputs[0][0], list):
             img_inputs = [img_inputs] if img_inputs is None else img_inputs
             points = [points] if points is None else points
             return self.simple_test(points[0], img_metas[0], img_inputs[0], **kwargs)
@@ -209,10 +232,10 @@ class BEVDepthForward(Base3DDetector):
 
     def aug_test(self, points, img_metas, img=None, rescale=False):
         """Test function without augmentaiton."""
-        combine_type = self.test_cfg.get('combine_type','output')
-        if combine_type=='output':
+        combine_type = self.test_cfg.get("combine_type", "output")
+        if combine_type == "output":
             return self.aug_test_combine_output(points, img_metas, img, rescale)
-        elif combine_type=='feature':
+        elif combine_type == "feature":
             return self.aug_test_combine_feature(points, img_metas, img, rescale)
         else:
             assert False
