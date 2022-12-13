@@ -140,7 +140,7 @@ class QSiLU(QuantOpr):
         return out
 
 
-@register_qmodule(sources=[nn.GELU])
+@register_qmodule(sources=[nn.GELU, F.gelu])
 class QGELU(QuantOpr):
     def __init__(self, org_module, config=None):
         super().__init__()
@@ -201,4 +201,25 @@ class QHardSigmoid(QuantOpr):
         """ReLU层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.hardsigmoid(x_in, inplace=self.inplace)
+        return out
+
+
+@register_qmodule(sources=[nn.Tanh])
+class QTanh(QuantOpr):
+    """量化Tanh层,拥有 ``input_quantizer`` 。
+
+    是QuantOpr的子类。
+
+    Args:
+        input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
+            输入量化器。
+    """
+
+    def __init__(self, org_module, config=None):
+        super().__init__()
+        self._repr_info = "Q" + org_module.__repr__()
+
+    def forward(self, x_in):
+        x_in = self.input_quantizer(x_in)
+        out = torch.tanh(x_in)
         return out

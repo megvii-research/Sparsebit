@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import abc
 from sparsebit.quantization.observers import build_observer
+import warnings
 from .quant_tensor import torch_fake_quant
 from .quant_descriptor import QuantDescriptor
 
@@ -22,8 +23,12 @@ class Quantizer(nn.Module, abc.ABC):
         self.use_quant = False
         self.export_onnx = False
         self.fake_fused = False
-        if self.qdesc.bit == 0:  # a hack impl of float
+        if self.cfg.QUANTIZER.DISABLE:
             self.set_fake_fused()
+        if self.qdesc.bit == 0:
+            warnings.warn(
+                "used bit==0 to disable quantizer is deprecated, please use a flag: QUANTIZER.DISABLE"
+            )
 
     def calc_qparams(self):
         if self.fake_fused:
