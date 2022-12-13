@@ -260,8 +260,8 @@ runner = dict(type='EpochBasedRunner', max_epochs=12)
 
 '''
 checkpoint:
-float mAP: 0.363
-float NDS: 0.413
+float mAP: 0.3784
+float NDS: 0.4405
 
 **************************** 4w4f *************************
 qconfig: qconfig_vov_lsq_4w4f.yaml
