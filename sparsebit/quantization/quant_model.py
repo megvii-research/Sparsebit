@@ -278,7 +278,7 @@ class QuantModel(nn.Module):
         for name, module in self.model.named_modules():
             if (
                 module == self.model
-                or isinstance(module, (Observer, Quantizer, Clone))
+                or isinstance(module, (Observer, Quantizer, QIdentity, Clone))
                 or module in skipped_modules
             ):
                 continue

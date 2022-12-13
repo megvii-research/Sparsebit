@@ -30,4 +30,4 @@ jobs:
         black --check .
     - name: Test with pytest
       run: |
-        cd ci/ && ln -s ../sparsebit && pytest .
+        cd ci/ && ln -s ../sparsebit && ln -s ../examples && pytest . --ignore=./sparsebit/ --ignore=./examples/
