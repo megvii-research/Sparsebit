@@ -143,7 +143,9 @@ def finetuning(args):
 
             model.zero_grad()
             logits = model(b_input_ids, b_input_mask, dummy_token_type_ids)
-            loss = criterion(logits.view(-1, model.config.num_labels), b_labels.view(-1))
+            loss = criterion(
+                logits.view(-1, model.config.num_labels), b_labels.view(-1)
+            )
 
             total_train_loss += loss.item()
             loss.backward()
@@ -157,12 +159,15 @@ def finetuning(args):
         print("\n  Average training loss: {0:.2f}".format(avg_train_loss))
         print("  Training epcoh took: {:}".format(training_time))
 
-        torch.save({
-            "model": model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "lr_scheduler": lr_scheduler.state_dict(),
-            "epoch": epoch_i,
-        }, "checkpoint.pth.tar")
+        torch.save(
+            {
+                "model": model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "lr_scheduler": lr_scheduler.state_dict(),
+                "epoch": epoch_i,
+            },
+            "checkpoint.pth.tar",
+        )
 
         validation(model, validation_dataloader, criterion, device)
 
@@ -196,7 +201,9 @@ def postquant(args):
     for batch in calib_dataloader:
         b_input_ids = batch[0].to(device)
         b_input_mask = batch[1].to(device)
-        dummy_token_type_ids = torch.zeros_like(b_input_ids, dtype=torch.long).to(device)
+        dummy_token_type_ids = torch.zeros_like(b_input_ids, dtype=torch.long).to(
+            device
+        )
         with torch.no_grad():
             qmodel(b_input_ids, b_input_mask, dummy_token_type_ids)
         cur_size += b_input_ids.shape[0]
@@ -261,9 +268,9 @@ def format_time(elapsed):
     return str(datetime.timedelta(seconds=elapsed_rounded))
 
 
-
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
@@ -278,8 +285,8 @@ if __name__ == "__main__":
         "postquant", help="the entrance of BERT post training quantization"
     )
     parser_postquant.set_defaults(func=postquant)
-    parser_postquant.add_argument('qconfig')
-    parser_postquant.add_argument('checkpoint')
+    parser_postquant.add_argument("qconfig")
+    parser_postquant.add_argument("checkpoint")
 
     args = parser.parse_args()
     args.func(args)

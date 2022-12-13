@@ -50,7 +50,7 @@ class BertEmbeddings(nn.Module):
         self.seq_length = 0  # a workaround for traced
 
     def forward(self, input_ids, token_type_ids):
-        position_ids = self.position_ids[:, :self.seq_length]
+        position_ids = self.position_ids[:, : self.seq_length]
         inputs_embeds = self.word_embeddings(input_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
         embeddings = inputs_embeds + token_type_embeddings
@@ -191,9 +191,9 @@ class BertModel(BertPreTrainedModel):
         # positions we want to attend and -10000.0 for masked positions.
         # Since we are adding it to the raw scores before the softmax, this is
         # effectively the same as removing these entirely.
-        #extended_attention_mask = extended_attention_mask.to(
+        # extended_attention_mask = extended_attention_mask.to(
         #    dtype=self.dtype
-        #)  # fp16 compatibility
+        # )  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         return extended_attention_mask
 

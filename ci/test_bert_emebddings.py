@@ -5,7 +5,7 @@ from sparsebit.quantization.quant_config import _C as default_config
 from examples.post_training_quantization.GLUE.CoLA.model import BertEmbeddings
 
 
-class BertConfig():
+class BertConfig:
     def __init__(self):
         self.vocab_size = 30522
         self.hidden_size = 768
@@ -51,7 +51,20 @@ def test_bert_embeddings():
     qmodel = QuantModel(model, qconfig)
 
     input_ids = torch.zeros(1, 32)
-    input_ids[:, :10] = torch.tensor([101,  3533,  2003, 12283,  2084,  1045,  2228,  2984,  1012, 102,])
+    input_ids[:, :10] = torch.tensor(
+        [
+            101,
+            3533,
+            2003,
+            12283,
+            2084,
+            1045,
+            2228,
+            2984,
+            1012,
+            102,
+        ]
+    )
     input_ids = input_ids.long()
     token_type_ids = torch.zeros_like(input_ids, dtype=torch.long)
 
@@ -60,4 +73,3 @@ def test_bert_embeddings():
     out1 = model(input_ids, token_type_ids)
     out2 = qmodel(input_ids, token_type_ids)
     torch.testing.assert_allclose(out1, out2, atol=1e-4, rtol=1e-4)
-
