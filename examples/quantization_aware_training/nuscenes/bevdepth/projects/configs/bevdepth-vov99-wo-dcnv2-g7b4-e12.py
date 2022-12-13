@@ -265,6 +265,25 @@ float NDS: 0.4405
 
 **************************** 4w4f *************************
 qconfig: qconfig_vov_lsq_4w4f.yaml
-
-
+mAP: 0.3834                                                                                                                                                                            
+mATE: 0.6176                                                                                                                                                                           
+mASE: 0.2647                                                                                                                                                                           
+mAOE: 0.4918                                                                                                                                                                           
+mAVE: 0.8532                                                                                                                                                                           
+mAAE: 0.2218                                                                                                                                                                           
+NDS: 0.4468                                                                                                                                                                            
+Eval time: 128.5s                                                                                                                                                                      
+                                                                                                                                                                                       
+Per-class results:                                                                                                                                                                     
+Object Class    AP      ATE     ASE     AOE     AVE     AAE                                                                                                                            
+car     0.589   0.478   0.155   0.090   0.890   0.216                                                                                                                                  
+truck   0.333   0.637   0.197   0.096   0.719   0.221                                                                                                                                  
+bus     0.473   0.569   0.181   0.090   1.533   0.347                                                                                                                                  
+trailer 0.222   0.826   0.227   0.435   0.798   0.145                                                                                                                                  
+construction_vehicle    0.073   0.920   0.469   0.920   0.145   0.332                                                                                                                  
+pedestrian      0.419   0.673   0.300   1.389   0.911   0.413                                                                                                                          
+motorcycle      0.356   0.612   0.260   0.485   1.425   0.089                                                                                                                          
+bicycle 0.293   0.532   0.251   0.808   0.405   0.011                                                                                                                                  
+traffic_cone    0.537   0.501   0.321   nan     nan     nan                                                                                                                            
+barrier 0.536   0.426   0.287   0.113   nan     nan
 '''
