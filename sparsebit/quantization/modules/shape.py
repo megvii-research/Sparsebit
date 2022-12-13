@@ -139,3 +139,13 @@ class Permute(nn.Module):
     def forward(self, x_in, *args):
         out = torch.permute(x_in, dims=self.dims)
         return out
+
+
+@register_qmodule(sources=[torch.split])
+class Split(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Split, self).__init__()
+
+    def forward(self, x_in, *args, **kwargs):
+        out = torch.split(x_in, *args, **kwargs)
+        return out
