@@ -112,7 +112,7 @@ class Expand_as(nn.Module):
         super(Expand_as, self).__init__()
 
     def forward(self, x_in, *args):
-        out = x_in.expand_as(args[0])
+        out = x_in.expand_as(*args)
         return out
 
 

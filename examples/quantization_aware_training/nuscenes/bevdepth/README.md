@@ -36,8 +36,8 @@ python3 ./tools/qat_test.py ./projects/configs/bevdepth-r50-wo-dcnv2-g4b6-e12.py
 
 experiment | bits | mAP | NDS | Log
 --- | --- | --- | --- | --- |
-bevdepth-r50-wo-dcnv2 | float | 33.6 | 40.9 | [google]() | 
-bevdepth-r50-wo-dcnv2 | 8w8f | 33.52 | 41.12 | [google]() |
-bevdepth-r50-wo-dcnv2 | 4w4f | 33.27 | 40.72 | [google]() |
-bevdepth-vov99-wo-dcnv2 | float | 37.84 | 44.05 | [google]() |
-bevdepth-vov99-wo-dcnv2 | 4w4f | 38.34 | 44.68  | [google]() | 
+bevdepth-r50-wo-dcnv2 | float | 33.6 | 40.9 | [google](https://drive.google.com/file/d/1dgVHVEfMv38lDHnzbVWuC6AMLM6hbCA6/view?usp=share_link) |
+bevdepth-r50-wo-dcnv2 | 8w8f | 33.52 | 41.12 | [google](https://drive.google.com/file/d/1WkfI8RHb1Pt6NbmS8irJ6o1ulJSE_HrU/view?usp=share_link) |
+bevdepth-r50-wo-dcnv2 | 4w4f | 33.27 | 40.72 | [google](https://drive.google.com/file/d/1Fy76UMwuRSijmPwMCyAz_eXkk3Qngm_u/view?usp=share_link) |
+bevdepth-vov99-wo-dcnv2 | float | 37.84 | 44.05 | [google](https://drive.google.com/file/d/1g0qapk9XIfECfqb6iYXsC1Xx_gmwH2t1/view?usp=share_link) |
+bevdepth-vov99-wo-dcnv2 | 4w4f | 38.34 | 44.68  | [google](https://drive.google.com/file/d/1HgVWKrVeHzKwTb-Ee3JcURa09vcRfvg8/view?usp=share_link) |
