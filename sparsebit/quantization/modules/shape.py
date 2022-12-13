@@ -64,7 +64,7 @@ class Reshape(nn.Module):
         super(Reshape, self).__init__()
 
     def forward(self, x_in, *args):
-        return torch.reshape(x_in, args)
+        return torch.reshape(x_in, *args)
 
 
 @register_qmodule(sources=[torch.cat])
