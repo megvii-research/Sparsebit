@@ -58,3 +58,12 @@ class Clone(nn.Module):
 
     def forward(self, x):
         return x.clone()
+
+
+@register_qmodule(sources=[torch.Tensor.contiguous])
+class Contiguous(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+
+    def forward(self, x):
+        return x.contiguous()

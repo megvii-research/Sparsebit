@@ -26,6 +26,7 @@ from .unary import *
 from .resize import *
 from .matmul import *
 from .python_builtins import *
+from .embedding import *
 
 if check_torch_version("1.11.0"):
     from .torchvision_ops import *

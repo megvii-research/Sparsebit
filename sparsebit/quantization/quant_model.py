@@ -146,7 +146,6 @@ class QuantModel(nn.Module):
             else model.__name__
         )
         traced = fx.GraphModule(tracer.root, graph, name)
-        traced.graph.print_tabular()
         return traced
 
     def _run_simplifiers(self):
@@ -200,8 +199,8 @@ class QuantModel(nn.Module):
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
 
-    def forward(self, *args):
-        return self.model.forward(*args)
+    def forward(self, *args, **kwargs):
+        return self.model.forward(*args, **kwargs)
 
     def get_quantization_error(
         self, data: torch.Tensor, checker=F.mse_loss, is_async: bool = True
@@ -241,7 +240,7 @@ class QuantModel(nn.Module):
 
         torch.onnx.export(
             self.model.cpu(),
-            dummy_data.cpu(),
+            dummy_data,
             name,
             opset_version=opset_version,
             input_names=input_names,
