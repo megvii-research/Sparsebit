@@ -64,6 +64,8 @@ class Reshape(nn.Module):
         super(Reshape, self).__init__()
 
     def forward(self, x_in, *args):
+        if isinstance(args, tuple) and len(args) != 1:
+            args = (args,)
         return torch.reshape(x_in, *args)
 
 
