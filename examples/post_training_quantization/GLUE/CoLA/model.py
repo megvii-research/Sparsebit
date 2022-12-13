@@ -49,10 +49,8 @@ class BertEmbeddings(nn.Module):
         )
         self.seq_length = 0  # a workaround for traced
 
-    def forward(self, input_ids, token_type_ids, past_key_values_length=0):
-        position_ids = self.position_ids[
-            :, past_key_values_length : self.seq_length + past_key_values_length
-        ]
+    def forward(self, input_ids, token_type_ids):
+        position_ids = self.position_ids[:, :self.seq_length]
         inputs_embeds = self.word_embeddings(input_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
         embeddings = inputs_embeds + token_type_embeddings
@@ -237,16 +235,6 @@ class BertModel(BertPreTrainedModel):
         batch_size, seq_length = input_shape
         device = input_ids.device
 
-        # past_key_values_length
-        past_key_values_length = 0
-
-        # if token_type_ids is None:
-        #    if hasattr(self.embeddings, "token_type_ids"):
-        #        buffered_token_type_ids = self.embeddings.token_type_ids[:, :seq_length]
-        #        buffered_token_type_ids_expanded = buffered_token_type_ids.expand(batch_size, seq_length)
-        #        token_type_ids = buffered_token_type_ids_expanded
-        #    else:
-
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
         extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(
@@ -263,10 +251,7 @@ class BertModel(BertPreTrainedModel):
 
         embedding_output = self.embeddings(
             input_ids=input_ids,
-            # position_ids=position_ids,
             token_type_ids=token_type_ids,
-            # inputs_embeds=None,
-            past_key_values_length=past_key_values_length,
         )
 
         encoder_outputs = self.encoder(
@@ -330,38 +315,3 @@ class BertForSequenceClassification(nn.Module):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         return logits
-
-        #loss = None
-        #if labels is not None:
-        #    if self.config.problem_type is None:
-        #        if self.num_labels == 1:
-        #            self.config.problem_type = "regression"
-        #        elif self.num_labels > 1 and (
-        #            labels.dtype == torch.long or labels.dtype == torch.int
-        #        ):
-        #            self.config.problem_type = "single_label_classification"
-        #        else:
-        #            self.config.problem_type = "multi_label_classification"
-        #
-        #    if self.config.problem_type == "regression":
-        #        loss_fct = MSELoss()
-        #        if self.num_labels == 1:
-        #            loss = loss_fct(logits.squeeze(), labels.squeeze())
-        #        else:
-        #            loss = loss_fct(logits, labels)
-        #    elif self.config.problem_type == "single_label_classification":
-        #        loss_fct = CrossEntropyLoss()
-        #        loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-        #    elif self.config.problem_type == "multi_label_classification":
-        #        loss_fct = BCEWithLogitsLoss()
-        #        loss = loss_fct(logits, labels)
-        #if not return_dict:
-        #    output = (logits,) + outputs[2:]
-        #    return ((loss,) + output) if loss is not None else output
-        #
-        #return SequenceClassifierOutput(
-        #    loss=loss,
-        #    logits=logits,
-        #    hidden_states=None,
-        #    attentions=None,
-        #)
