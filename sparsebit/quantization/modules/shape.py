@@ -108,6 +108,16 @@ class Expand(nn.Module):
         return out
 
 
+@register_qmodule(sources=[torch.Tensor.expand_as])
+class Expand_as(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Expand_as, self).__init__()
+
+    def forward(self, x_in, *args):
+        out = x_in.expand_as(*args)
+        return out
+
+
 @register_qmodule(sources=[torch.transpose, torch.Tensor.transpose])
 class Transpose(nn.Module):
     def __init__(self, org_module=None, config=None):
