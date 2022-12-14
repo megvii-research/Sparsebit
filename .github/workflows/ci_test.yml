@@ -20,14 +20,41 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements-ci.txt
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements-ci.txt; fi
-        python -m pip install black pytest
+        pip install -r requirements-ci.txt
     - name: Lint with Black
       run: |
         black --check .
-    - name: Test with pytest
+    - name: Test regular cases
       run: |
-        cd ci/ && ln -s ../sparsebit && ln -s ../examples && pytest . --ignore=./sparsebit/ --ignore=./examples/
+        cd ci/regular_tests && ln -s ../../sparsebit && ln -s ../../examples && pytest . --ignore=./sparsebit/ --ignore=./examples/
+
+  extra_test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements-ci.txt
+          examples/post_training_quantization/GLUE/CoLA/requirements.txt
+    - name: Install dependencies
+      run: |
+        pip install -r requirements-ci.txt
+        pip install -r examples/post_training_quantization/GLUE/CoLA/requirements.txt
+    - name: Test Huggingface cases
+      run: |
+        cd ci/huggingface_tests && ln -s ../../sparsebit && ln -s ../../examples && pytest . --ignore=./sparsebit/ --ignore=./examples/
