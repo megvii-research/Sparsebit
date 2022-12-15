@@ -16,5 +16,5 @@ class Regularizer(BaseRegularizer):
         loss = 0.0
         for n, p in model.named_parameters():
             if "alpha" in n:
-                loss += (p ** 2).sum()
+                loss += (p**2).sum()
         return loss
