@@ -218,14 +218,6 @@ def main(args):
         # training
         model.train()
         for step, batch in enumerate(train_dataloader):
-        #for step in range(100):
-        #    batch = {
-        #        "input_ids": torch.from_numpy(np.load("./inputs/input_ids.npy")),
-        #        "token_type_ids": torch.from_numpy(np.load("./inputs/token_type_ids.npy")),
-        #        "attention_mask": torch.from_numpy(np.load("./inputs/attention_mask.npy")),
-        #        "start_positions": torch.from_numpy(np.load("./inputs/start_positions.npy")),
-        #        "end_positions": torch.from_numpy(np.load("./inputs/end_positions.npy")),
-        #    }
             batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
@@ -234,15 +226,6 @@ def main(args):
             lr_scheduler.step()
             optimizer.zero_grad()
             progress_bar.update(1)
-        #torch.save(
-        #    {
-        #        "model": model.state_dict(),
-        #        "optimizer": optimizer.state_dict(),
-        #        "lr_scheduler": lr_scheduler.state_dict(),
-        #        "epoch": epoch,
-        #    },
-        #    "checkpoint.pth.tar",
-        #)
         # evaluation
         model.eval()
         start_logits, end_logits = [], []
