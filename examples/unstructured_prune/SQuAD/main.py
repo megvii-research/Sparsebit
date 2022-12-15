@@ -16,6 +16,7 @@ from sparsebit.sparse import parse_sconfig, SparseModel
 
 MAX_LENGTH = 384
 
+
 def build_dataloader(args, raw_datasets):
     STRIDE = 128
     tokenizer = BertTokenizerFast.from_pretrained(args.architecture, do_lower_case=True)
@@ -56,7 +57,10 @@ def build_dataloader(args, raw_datasets):
             context_end = idx - 1
 
             # If the answer is not fully inside the context, label is (0, 0)
-            if offset[context_start][0] > start_char or offset[context_end][1] < end_char:
+            if (
+                offset[context_start][0] > start_char
+                or offset[context_end][1] < end_char
+            ):
                 start_positions.append(0)
                 end_positions.append(0)
             else:
@@ -127,7 +131,9 @@ def build_dataloader(args, raw_datasets):
     )
 
     eval_dataloader = DataLoader(
-        validation_set, collate_fn=default_data_collator, batch_size=2 * args.batch_size,
+        validation_set,
+        collate_fn=default_data_collator,
+        batch_size=2 * args.batch_size,
     )
 
     return train_dataloader, eval_dataloader, validation_dataset
@@ -167,7 +173,9 @@ def compute_metrics(start_logits, end_logits, features, examples):
                         continue
 
                     answer = {
-                        "text": context[offsets[start_index][0] : offsets[end_index][1]],
+                        "text": context[
+                            offsets[start_index][0] : offsets[end_index][1]
+                        ],
                         "logit_score": start_logit[start_index] + end_logit[end_index],
                     }
                     answers.append(answer)
@@ -181,7 +189,9 @@ def compute_metrics(start_logits, end_logits, features, examples):
         else:
             predicted_answers.append({"id": example_id, "prediction_text": ""})
 
-    theoretical_answers = [{"id": ex["id"], "answers": ex["answers"]} for ex in examples]
+    theoretical_answers = [
+        {"id": ex["id"], "answers": ex["answers"]} for ex in examples
+    ]
     metric = evaluate.load("squad")
     return metric.compute(predictions=predicted_answers, references=theoretical_answers)
 
@@ -189,13 +199,15 @@ def compute_metrics(start_logits, end_logits, features, examples):
 def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    raw_datasets = load_dataset('squad')
-    train_dataloader, eval_dataloader, validation_dataset = build_dataloader(args, raw_datasets)
+    raw_datasets = load_dataset("squad")
+    train_dataloader, eval_dataloader, validation_dataset = build_dataloader(
+        args, raw_datasets
+    )
 
     bert_model = BertModel.from_pretrained("bert-base-uncased", add_pooling_layer=False)
     bert_model.embeddings.seq_length = MAX_LENGTH
     bert_model.config.num_labels = 2
-    #model = BertForQuestionAnswering(bert_model, bert_model.config)
+    # model = BertForQuestionAnswering(bert_model, bert_model.config)
     sconfig = parse_sconfig(args.sconfig)
     sbert = SparseModel(bert_model, sconfig)
     sbert.calc_params()
@@ -246,12 +258,17 @@ def main(args):
     print(sconfig)
 
 
-
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("sconfig")
-    parser.add_argument("--architecture", type=str, help="the architecture of BERT", default="bert-base-uncased")
+    parser.add_argument(
+        "--architecture",
+        type=str,
+        help="the architecture of BERT",
+        default="bert-base-uncased",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--lr", type=int, default=2e-5)

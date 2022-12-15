@@ -65,7 +65,9 @@ class BertEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList(
+            [BertLayer(config) for _ in range(config.num_hidden_layers)]
+        )
         self.gradient_checkpointing = False
 
     def forward(
@@ -79,11 +81,13 @@ class BertEncoder(nn.Module):
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = False,
         output_hidden_states: Optional[bool] = False,
-        #return_dict: Optional[bool] = True,
+        # return_dict: Optional[bool] = True,
     ) -> Union[Tuple[torch.Tensor], BaseModelOutputWithPastAndCrossAttentions]:
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
-        all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
+        all_cross_attentions = (
+            () if output_attentions and self.config.add_cross_attention else None
+        )
 
         next_decoder_cache = () if use_cache else None
         for i, layer_module in enumerate(self.layer):
@@ -91,7 +95,9 @@ class BertEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             layer_head_mask = head_mask[i] if head_mask is not None else None
-            past_key_value = None # past_key_values[i] if past_key_values is not None else None
+            past_key_value = (
+                None  # past_key_values[i] if past_key_values is not None else None
+            )
 
             if self.gradient_checkpointing and self.training:
 
@@ -202,7 +208,7 @@ class BertModel(BertPreTrainedModel):
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
-        #return_dict: Optional[bool] = None,
+        # return_dict: Optional[bool] = None,
     ) -> Union[Tuple[torch.Tensor], BaseModelOutputWithPoolingAndCrossAttentions]:
         r"""
         encoder_hidden_states  (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
@@ -237,17 +243,19 @@ class BertModel(BertPreTrainedModel):
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
-        extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(attention_mask, input_shape, device)
+        extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(
+            attention_mask, input_shape, device
+        )
 
         # If a 2D or 3D attention mask is provided for the cross-attention
         # we need to make broadcastable to [batch_size, num_heads, seq_length, seq_length]
-        #if self.config.is_decoder and encoder_hidden_states is not None:
+        # if self.config.is_decoder and encoder_hidden_states is not None:
         #    encoder_batch_size, encoder_sequence_length, _ = encoder_hidden_states.size()
         #    encoder_hidden_shape = (encoder_batch_size, encoder_sequence_length)
         #    if encoder_attention_mask is None:
         #        encoder_attention_mask = torch.ones(encoder_hidden_shape, device=device)
         #    encoder_extended_attention_mask = self.invert_attention_mask(encoder_attention_mask)
-        #else:
+        # else:
         #    encoder_extended_attention_mask = None
         extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(
             attention_mask, input_shape, device
@@ -276,10 +284,12 @@ class BertModel(BertPreTrainedModel):
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            #return_dict=return_dict,
+            # return_dict=return_dict,
         )
         sequence_output = encoder_outputs[0]
-        pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+        pooled_output = (
+            self.pooler(sequence_output) if self.pooler is not None else None
+        )
 
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
@@ -311,7 +321,7 @@ class BertForQuestionAnswering(nn.Module):
         inputs_embeds: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
-        #return_dict: Optional[bool] = None,
+        # return_dict: Optional[bool] = None,
     ) -> Union[Tuple[torch.Tensor], QuestionAnsweringModelOutput]:
         r"""
         start_positions (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -323,7 +333,7 @@ class BertForQuestionAnswering(nn.Module):
             Positions are clamped to the length of the sequence (`sequence_length`). Position outside of the sequence
             are not taken into account for computing the loss.
         """
-        #return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        # return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         outputs = self.bert(
             input_ids,
@@ -359,6 +369,6 @@ class BertForQuestionAnswering(nn.Module):
             loss=total_loss,
             start_logits=start_logits,
             end_logits=end_logits,
-            #hidden_states=outputs.hidden_states,
-            #attentions=outputs.attentions,
+            # hidden_states=outputs.hidden_states,
+            # attentions=outputs.attentions,
         )
