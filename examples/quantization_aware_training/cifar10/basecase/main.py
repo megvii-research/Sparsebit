@@ -5,6 +5,7 @@ import shutil
 import time
 import warnings
 from enum import Enum
+import math
 
 import torch
 import torch.nn as nn
@@ -21,6 +22,7 @@ import torchvision.datasets as datasets
 
 from model import resnet20
 from sparsebit.quantization import QuantModel, parse_qconfig
+from sparsebit.quantization.regularizers import build_regularizer
 
 
 parser = argparse.ArgumentParser(description="PyTorch Cifar Training")
@@ -147,8 +149,6 @@ def main():
 
     qconfig = parse_qconfig(args.config)
 
-    is_pact = qconfig.A.QUANTIZER.TYPE == "pact"
-
     qmodel = QuantModel(model, qconfig).cuda()  # 将model转化为量化模型，以支持后续QAT的各种量化操作
 
     # set head and tail of model is 8bit
@@ -181,6 +181,11 @@ def main():
         optimizer, milestones=[100, 150], last_epoch=args.start_epoch - 1
     )
 
+    if qconfig.REGULARIZER.ENABLE:
+        regularizer = build_regularizer(qconfig)
+    else:
+        regularizer = None
+
     best_acc1 = 0
     for epoch in range(args.start_epoch, args.epochs):
         # train for one epoch
@@ -190,7 +195,7 @@ def main():
             criterion,
             optimizer,
             epoch,
-            is_pact,
+            regularizer,
             args.regularizer_lambda,
             args.print_freq,
         )
@@ -225,18 +230,9 @@ def main():
         )
 
 
-# PACT算法中对 alpha 增加 L2-regularization
-def get_pact_regularizer_loss(model):
-    loss = 0
-    for n, p in model.named_parameters():
-        if "alpha" in n:
-            loss += (p**2).sum()
-    return loss
-
-
-def get_regularizer_loss(model, is_pact, scale=0):
-    if is_pact:
-        return get_pact_regularizer_loss(model) * scale
+def get_regularizer_loss(model, regularizer, _lambda):
+    if regularizer is not None:
+        return regularizer(model) * _lambda
     else:
         return torch.tensor(0.0).cuda()
 
@@ -247,7 +243,7 @@ def train(
     criterion,
     optimizer,
     epoch,
-    is_pact,
+    regularizer,
     regularizer_lambda,
     print_freq,
 ):
@@ -278,7 +274,7 @@ def train(
         # compute output
         output = model(images)
         ce_loss = criterion(output, target)
-        regular_loss = get_regularizer_loss(model, is_pact, scale=regularizer_lambda)
+        regular_loss = get_regularizer_loss(model, regularizer, regularizer_lambda)
         loss = ce_loss + regular_loss
 
         # measure accuracy and record loss
