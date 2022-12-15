@@ -1,3 +1,4 @@
+import os
 from functools import partial
 
 import torch
@@ -11,12 +12,16 @@ from timm.models.efficientnet_builder import (
 )
 from timm.models.efficientnet import _create_effnet
 
+__all__ = [
+    "efficientnet_lite0",
+]
+
 
 def _gen_efficientnet_lite(
     arch,
     channel_multiplier=1.0,
     depth_multiplier=1.0,
-    ckpt_path=None,
+    pretrained=False,
     num_classes=1000,
     **kwargs
 ):
@@ -57,18 +62,23 @@ def _gen_efficientnet_lite(
         **kwargs,
     )
     model = _create_effnet(arch, pretrained=False, **model_kwargs)
-    if ckpt_path:
-        state_dict = torch.load(ckpt_path, map_location="cpu")
-        model.load_state_dict(state_dict)
+    if pretrained:
+        if os.path.exists("./checkpoints/efficientnet_lite0.pth"):
+            state_dict = torch.load(
+                "./checkpoints/efficientnet_lite0.pth", map_location="cpu"
+            )
+            model.load_state_dict(state_dict)
+        else:
+            raise "no pretrain checkpoint, Please follow the README guide to download the checkpoint"
     return model
 
 
-def efficientnet_lite0(num_classes=1000, ckpt_path=None):
+def efficientnet_lite0(num_classes=1000, pretrained=False):
     return _gen_efficientnet_lite(
         "efficientnet_lite0",
         channel_multiplier=1.0,
         depth_multiplier=1.0,
-        ckpt_path=ckpt_path,
+        pretrained=pretrained,
         num_classes=num_classes,
         bn_eps=1e-3,
         bn_momentum=0.1,
