@@ -2,6 +2,7 @@ import torch
 
 from sparsebit.quantization.regularizers import Regularizer as BaseRegularizer
 from sparsebit.quantization.regularizers import register_regularizer
+from sparsebit.quantization.quant_tensor import fake_qrange_factory
 
 
 @register_regularizer
@@ -16,16 +17,14 @@ class Regularizer(BaseRegularizer):
 
         x_q = quantizer(x)
 
-        qmin, qmax = quantizer.qdesc.qrange
-
         scale, zero_point = quantizer._qparams_preprocess(x)
 
-        scale = scale.detach()
-        zero_point = zero_point.detach()
+        min_val, max_val = fake_qrange_factory[quantizer.backend](
+            scale, zero_point, quantizer.qdesc
+        )
 
-        min_val = (qmin - zero_point) * scale
-
-        max_val = (qmax - zero_point) * scale
+        min_val = min_val.detach()
+        max_val = max_val.detach()
 
         x_c = torch.min(torch.max(x, min_val), max_val)
 

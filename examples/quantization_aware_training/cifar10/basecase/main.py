@@ -230,18 +230,9 @@ def main():
         )
 
 
-# PACT算法中对 alpha 增加 L2-regularization
-def get_pact_regularizer_loss(model):
-    loss = 0
-    for n, p in model.named_parameters():
-        if "alpha" in n:
-            loss += (p**2).sum()
-    return loss
-
-
-def get_regularizer_loss(model, is_pact, scale=0):
-    if is_pact:
-        return get_pact_regularizer_loss(model) * scale
+def get_regularizer_loss(model, regularizer, _lambda):
+    if regularizer is not None:
+        return regularizer(model) * _lambda
     else:
         return torch.tensor(0.0).cuda()
 
