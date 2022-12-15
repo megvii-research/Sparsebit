@@ -26,6 +26,28 @@ class MaxPool2d(nn.Module):
         return F.max_pool2d(x_in, **self.fwd_kwargs)
 
 
+@register_qmodule(sources=[nn.AvgPool2d])
+class QAvgPool2d(QuantOpr):
+    """AvgPool层。
+    Attributes:
+        fwd_kwargs (Dict[str, any]): 运行 ``torch.nn.functional.avg_pool2d`` 需要的参数。
+    """
+
+    def __init__(self, org_module, config=None):
+        super().__init__()
+        self.fwd_kwargs = dict(
+            kernel_size=org_module.kernel_size,
+            stride=org_module.stride,
+            padding=org_module.padding,
+            ceil_mode=org_module.ceil_mode,
+        )
+
+    def forward(self, x_in, *args):
+        """AvgPool层的前向传播,但加入了input量化。"""
+        x_in = self.input_quantizer(x_in)
+        return F.avg_pool2d(x_in, **self.fwd_kwargs)
+
+
 @register_qmodule(sources=[nn.AdaptiveAvgPool2d, F.adaptive_avg_pool2d])
 class QAdaptiveAvgPool2d(QuantOpr):
     """量化AvgPool层,拥有 ``input_quantizer`` 。

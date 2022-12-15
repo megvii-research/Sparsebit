@@ -23,9 +23,14 @@ class QReLU(QuantOpr):
         if isinstance(org_module, nn.Module):
             self.inplace = org_module.inplace
         else:
-            self.inplace = org_module.args[1]
+            if "inplace" in org_module.kwargs:
+                self.inplace = org_module.kwargs["inplace"]
+            elif len(org_module.args) == 2:
+                self.inplace = org_module.args[1]
+            else:
+                self.inplace = False
 
-    def forward(self, x_in):
+    def forward(self, x_in, *args, **kwargs):
         """ReLU层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = F.relu(x_in, inplace=self.inplace)
