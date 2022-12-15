@@ -2,7 +2,7 @@ import torch
 
 from sparsebit.quantization.regularizers import Regularizer as BaseRegularizer
 from sparsebit.quantization.regularizers import register_regularizer
-from sparsebit.quantization.quant_tensor import fake_qrange_factory
+from sparsebit.quantization.quantizers.quant_tensor import fake_qrange_factory
 
 
 @register_regularizer
