@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers.utils import fx as hf_fx
 import torch.fx as torch_fx
 from sparsebit.sparse import parse_sconfig, SparseModel
-from tracer import my_trace
 from model import BertModel, BertForSequenceClassification
 from transformers import BertTokenizer, AdamW, get_linear_schedule_with_warmup
 
