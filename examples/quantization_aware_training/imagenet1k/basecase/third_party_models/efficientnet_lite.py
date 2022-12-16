@@ -4,6 +4,7 @@ from functools import partial
 import torch
 from torch import nn
 from torch.nn import functional as F
+import timm.models.layers as layers
 from timm.models.efficientnet_builder import (
     resolve_bn_args,
     decode_arch_def,
@@ -70,6 +71,7 @@ def _gen_efficientnet_lite(
             model.load_state_dict(state_dict)
         else:
             raise "no pretrain checkpoint, Please follow the README guide to download the checkpoint"
+    model = _replace_Linear(model)
     return model
 
 
@@ -83,3 +85,36 @@ def efficientnet_lite0(num_classes=1000, pretrained=False):
         bn_eps=1e-3,
         bn_momentum=0.1,
     )
+
+
+def _replace_Linear(model):
+    finished = False
+    while not finished:
+        finished = _recurrency_replace_Linear(model)
+    return model
+
+
+def _recurrency_replace_Linear(module):
+    finished = True
+    for n, m in module.named_children():
+        if isinstance(m, layers.linear.Linear):
+            setattr(module, n, Linear(m))
+            finished = False
+            break
+        else:
+            finished = _recurrency_replace_Linear(m)
+            if not finished:
+                break
+    return finished
+
+
+class Linear(nn.Module):
+    def __init__(self, org_module=None):
+        super().__init__()
+        self.linear = nn.Linear(org_module.in_features, org_module.out_features)
+        self.linear.weight = org_module.weight
+        self.linear.bias = org_module.bias
+
+    def forward(self, x):
+        x = self.linear(x)
+        return x

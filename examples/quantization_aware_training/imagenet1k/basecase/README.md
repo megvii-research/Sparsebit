@@ -20,7 +20,7 @@ python3 main.py qconfig.yaml [imagenet-folder with train and val folders] -a [an
 - Last Layer: 8w8f
 
 ## Note
-- When train & eval Efficientnet_lite0, please install timm==0.6.12, then download [pretrain checkpoint](https://drive.google.com/file/d/1IriBhPbgE7G7yN4Ou8zqhsNOqqE3iEZl/view?usp=sharing) and put it at:
+- When train & eval Efficientnet_lite0, please install timm==0.4.9, then download [pretrain checkpoint](https://drive.google.com/file/d/1IriBhPbgE7G7yN4Ou8zqhsNOqqE3iEZl/view?usp=sharing) and put it at:
 ```
 $Sparsebit/examples/quantization_aware_training/imagenet1k/basecase/checkpoints/
 ```
