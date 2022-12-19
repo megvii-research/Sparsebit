@@ -318,3 +318,43 @@ class QuantModel(nn.Module):
                     onnx.helper.make_attribute("bits", module.weight_quantizer.bit)
                 )
         onnx.save(onnx_model, extra_onnx_path)
+
+    def dump_mermaid(self, f):
+        from sparsebit.quantization.converters.utils.subgraph_matching_utils import (
+            get_operators_type,
+        )
+        import sparsebit.quantization.modules as M
+
+        def printf(*args):
+            print(*args, file=f)
+
+        named_modules = dict(self.model.named_modules())
+        printf("graph TD")
+        for node in self.model.graph.nodes:
+            op_type = get_operators_type([node], self.model, named_modules)[0]
+            if node.op == "placeholder":
+                op_type = "input"
+            elif node.op == "output":
+                op_type = "output"
+            elif node.op == "get_attr":
+                op_type = "nn.Parameter"
+            elif node.op == "call_function":
+                op_type = op_type.__repr__
+            elif node.op == "call_method":
+                op_type = op_type.__name__
+            elif node.op == "call_module":
+                if op_type in M.__dict__.values():
+                    op_type = "{}".format(op_type.__name__)
+                else:
+                    op_type = op_type.__module__
+            else:
+                assert False, "unknown node op"
+
+            printf(
+                '{}["{}({}), <{}>"]'.format(node.name, node.name, node.target, op_type)
+            )
+            if node.op in ["placeholder", "output"]:
+                printf("style {} fill:#cafe02".format(node.name))
+        for node in self.model.graph.nodes:
+            for input_node in node.all_input_nodes:
+                printf("{} --> {}".format(input_node.name, node.name))
