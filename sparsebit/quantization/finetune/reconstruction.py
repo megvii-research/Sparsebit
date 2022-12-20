@@ -127,7 +127,7 @@ def subgraph_reconstruction(subgraph, cached_inps, cached_oups, config):
             weight_quantizer = layer.weight_quantizer
             print("learn the weight_quantizer alpha for {}".format(name))
             w_para += [weight_quantizer.alpha]
-        if isinstance(layer, QuantOpr) and not layer.fake_fused:
+        if isinstance(layer, QuantOpr) and not layer.input_quantizer.fake_fused:
             if config.W.QUANTIZER.ADAROUND.GRANULARITY == "blockwise":
                 input_quantizer = layer.input_quantizer
                 if input_quantizer is not None:

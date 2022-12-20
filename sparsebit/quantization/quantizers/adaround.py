@@ -42,7 +42,7 @@ class Quantizer(BaseQuantizer):
     def update_observer(self, weight):
         self.weight = weight.detach()
         self.dims = len(weight.shape)
-        self.observer.update(self.weight)
+        self.observer.data_cache.update(self.weight)
 
     def get_soft_targets(self):
         return torch.clamp(
