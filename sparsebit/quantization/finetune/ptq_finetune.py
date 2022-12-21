@@ -119,17 +119,15 @@ def ptq_reconstruction(
     for node in nodes:
         if node in checked_nodes:
             continue
-        if node.op == "call_module" and isinstance(
-            quant_modules[node], ADAROUND_SUPPORT_OPR
-        ):
+        if node.op == "call_module" and hasattr(quant_modules[node], "input_quantizer") and quant_modules[node].input_quantizer.TYPE == "Quadapter":
             print(
                 "prepare {} reconstruction for {}".format(
-                    config.W.QUANTIZER.ADAROUND.GRANULARITY, node
+                    config.A.QUANTIZER.QUADAPTER.GRANULARITY, node
                 )
             )
-            if config.W.QUANTIZER.ADAROUND.GRANULARITY == "layerwise":
+            if config.A.QUANTIZER.QUADAPTER.GRANULARITY == "layerwise":
                 layer_node_list = [node]
-            elif config.W.QUANTIZER.ADAROUND.GRANULARITY == "blockwise":
+            elif config.A.QUANTIZER.QUADAPTER.GRANULARITY == "blockwise":
                 assert (
                     block_mark_pattern is not None
                 ), "you must provide block_mark_pattern when use brecq"
@@ -179,7 +177,7 @@ def ptq_reconstruction(
                             raise "unsupport cali_data GRANULARITY {}".format(
                                 GRANULARITY(cali_data)
                             )
-                        if config.W.QUANTIZER.ADAROUND.KEEP_GPU:
+                        if config.A.QUANTIZER.QUADAPTER.KEEP_GPU:
                             quant_inps = [
                                 data.to(next(quant_model.parameters()).device)
                                 for data in quant_inps
@@ -193,7 +191,7 @@ def ptq_reconstruction(
                             cali_data,
                             store_inp=False,
                             store_oup=True,
-                            keep_gpu=config.W.QUANTIZER.ADAROUND.KEEP_GPU,
+                            keep_gpu=config.A.QUANTIZER.QUADAPTER.KEEP_GPU,
                         )
                     quant_all_inps.append(quant_inps)
                     if not out_is_cached:
@@ -205,7 +203,7 @@ def ptq_reconstruction(
                             cali_data,
                             store_inp=False,
                             store_oup=(not out_is_cached),
-                            keep_gpu=config.W.QUANTIZER.ADAROUND.KEEP_GPU,
+                            keep_gpu=config.A.QUANTIZER.QUADAPTER.KEEP_GPU,
                         )
                         fp32_final_oups = fp32_oups
                         out_is_cached = True

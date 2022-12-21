@@ -12,7 +12,7 @@ from . import lsq
 from . import dorefa
 from . import lsq_plus
 from . import pact
-from . import adaround
+from . import quadapter
 
 
 def build_quantizer(cfg):
