@@ -30,12 +30,7 @@ class QGetItem(nn.Module):
         self._repr_info = "QGetItem "
 
     def forward(self, x_in, *args):
-        try:
-            return x_in[self.target_item]
-        except:
-            import ipdb
-
-            ipdb.set_trace()
+        return x_in[self.target_item]
 
 
 @register_qmodule(sources=[operator.eq])
