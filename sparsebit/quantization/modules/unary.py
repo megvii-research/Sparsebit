@@ -37,7 +37,7 @@ class QSoftmax(QuantOpr):
         else:
             self.dim = org_module.args[1]
 
-        self._repr_info = "QSoftmax "
+        self._repr_info = "QSoftmax"
 
     def forward(self, x_in, *args, **kwargs):
         if "dim" in kwargs:
@@ -58,3 +58,21 @@ class Clone(nn.Module):
 
     def forward(self, x):
         return x.clone()
+
+
+@register_qmodule(sources=[torch.Tensor.contiguous])
+class Contiguous(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+
+    def forward(self, x):
+        return x.contiguous()
+
+
+@register_qmodule(sources=[torch.Tensor.detach])
+class Detach(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Detach, self).__init__()
+
+    def forward(self, x_in, *args, **kwargs):
+        return x_in.detach()

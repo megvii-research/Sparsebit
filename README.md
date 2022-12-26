@@ -2,6 +2,10 @@
 
 ## News
 - 2022.11.24: Release a QAT example of [BEVDet](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdet)
+- 2022.12.13: Release some examples of BERT.
+- 2022.12.14: Release a QAT example of [BEVDepth](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdepth)
+- 2022.12.26: Release a QAT example of [BEVDet4D](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdet4d)
+
 
 ## Introduction
 Sparsebit is a toolkit with pruning and quantization capabilities. It is designed to help researchers compress and accelerate neural network models by modifying only a few codes in existing pytorch project.

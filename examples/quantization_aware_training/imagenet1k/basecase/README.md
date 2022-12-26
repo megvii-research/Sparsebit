@@ -33,3 +33,4 @@ $Sparsebit/examples/quantization_aware_training/imagenet1k/basecase/checkpoints/
 |RegNetX-600MF|75.034| N/C | 73.578 | - | - | 
 |Efficientnet\_b0 | - | - | - | 71.97[log](https://drive.google.com/file/d/1iDDq-u-85JFZprvWQL_IzqVdj_sT2Diq/view?usp=share_link) | 73.22 [log](https://drive.google.com/file/d/1be5A1STinyirJMZ63h9cVH95E0d0KYxZ/view?usp=share_link) | 
 |Efficientnet\_lite0 | 75.1 | - | 65.76 [log](https://drive.google.com/file/d/1i3PYjcuKDRYzfUmcE7yr5XgL0nTmMdyr/view?usp=sharing)| 72.89 [log](https://drive.google.com/file/d/13pjk9WSzgrIi1TD9kemNF129mO5DJYfi/view?usp=sharing)| - |
+

@@ -70,13 +70,13 @@ class QuantModel(nn.Module):
                     continue
                 new_module = _get_new_qmodule(n.target, org_module)
             elif n.op == "call_function":
-                new_module = QMODULE_MAP[n.target](n)  # node作为module传入获取相关参数
+                new_module = QMODULE_MAP[n.target](n, self.cfg)  # node作为module传入获取相关参数
             elif n.op == "call_method":
                 if isinstance(n.target, str):
                     target_op = getattr(torch.Tensor, n.target)
                 else:
                     raise NotImplementedError
-                new_module = QMODULE_MAP[target_op](n)  # node作为module传入获取相关参数
+                new_module = QMODULE_MAP[target_op](n, self.cfg)  # node作为module传入获取相关参数
             elif n.op in ["placeholder", "get_attr", "output"]:
                 continue
             with traced.graph.inserting_after(n):
@@ -127,11 +127,14 @@ class QuantModel(nn.Module):
                     and len(node.all_input_nodes) > 1
                 ):
                     module.prepare_input_quantizer(node, self.model)
-                    for input_node in node.all_input_nodes:
-                        identity_module = getattr(self.model, input_node.target)
-                        _config = self.cfg.clone()  # init
-                        update_config(_config, "A", _sub_build(self.cfg.A, node.target))
-                        identity_module.build_quantizer(_config)
+                    if module.input_quantizer_generated:
+                        for input_node in node.all_input_nodes:
+                            identity_module = getattr(self.model, input_node.target)
+                            _config = self.cfg.clone()  # init
+                            update_config(
+                                _config, "A", _sub_build(self.cfg.A, node.target)
+                            )
+                            identity_module.build_quantizer(_config)
 
     def _trace(self, model):
         skipped_modules = self.cfg.SKIP_TRACE_MODULES
@@ -143,7 +146,6 @@ class QuantModel(nn.Module):
             else model.__name__
         )
         traced = fx.GraphModule(tracer.root, graph, name)
-        traced.graph.print_tabular()
         return traced
 
     def _run_simplifiers(self):
@@ -197,8 +199,8 @@ class QuantModel(nn.Module):
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
 
-    def forward(self, *args):
-        return self.model.forward(*args)
+    def forward(self, *args, **kwargs):
+        return self.model.forward(*args, **kwargs)
 
     def get_quantization_error(
         self, data: torch.Tensor, checker=F.mse_loss, is_async: bool = True
@@ -238,7 +240,7 @@ class QuantModel(nn.Module):
 
         torch.onnx.export(
             self.model.cpu(),
-            dummy_data.cpu(),
+            dummy_data,
             name,
             opset_version=opset_version,
             input_names=input_names,
@@ -275,7 +277,7 @@ class QuantModel(nn.Module):
         for name, module in self.model.named_modules():
             if (
                 module == self.model
-                or isinstance(module, (Observer, Quantizer, Clone))
+                or isinstance(module, (Observer, Quantizer, QIdentity, Clone))
                 or module in skipped_modules
             ):
                 continue

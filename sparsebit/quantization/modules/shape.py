@@ -64,7 +64,9 @@ class Reshape(nn.Module):
         super(Reshape, self).__init__()
 
     def forward(self, x_in, *args):
-        return torch.reshape(x_in, args)
+        if isinstance(args, tuple) and len(args) != 1:
+            args = (args,)
+        return torch.reshape(x_in, *args)
 
 
 @register_qmodule(sources=[torch.cat])
@@ -106,6 +108,16 @@ class Expand(nn.Module):
         return out
 
 
+@register_qmodule(sources=[torch.Tensor.expand_as])
+class Expand_as(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Expand_as, self).__init__()
+
+    def forward(self, x_in, *args):
+        out = x_in.expand_as(*args)
+        return out
+
+
 @register_qmodule(sources=[torch.transpose, torch.Tensor.transpose])
 class Transpose(nn.Module):
     def __init__(self, org_module=None, config=None):
@@ -126,4 +138,14 @@ class Permute(nn.Module):
 
     def forward(self, x_in, *args):
         out = torch.permute(x_in, dims=self.dims)
+        return out
+
+
+@register_qmodule(sources=[torch.split])
+class Split(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(Split, self).__init__()
+
+    def forward(self, x_in, *args, **kwargs):
+        out = torch.split(x_in, *args, **kwargs)
         return out
