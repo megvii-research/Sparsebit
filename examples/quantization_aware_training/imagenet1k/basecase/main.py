@@ -22,12 +22,20 @@ import torchvision.models as models
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 import utils
+import third_party_models
 
 
 model_names = sorted(
     name
     for name in models.__dict__
     if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
+)
+third_party_model_names = sorted(
+    name
+    for name in third_party_models.__dict__
+    if name.islower()
+    and not name.startswith("__")
+    and callable(third_party_models.__dict__[name])
 )
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
@@ -44,8 +52,10 @@ parser.add_argument(
     "--arch",
     metavar="ARCH",
     default="resnet18",
-    choices=model_names,
-    help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",
+    choices=model_names + third_party_model_names,
+    help="model architecture: "
+    + " | ".join(model_names + third_party_model_names)
+    + " (default: resnet18)",
 )
 parser.add_argument(
     "-j",
@@ -208,10 +218,16 @@ def main():
 
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
+        if args.arch in model_names:
+            model = models.__dict__[args.arch](pretrained=True)
+        else:
+            model = third_party_models.__dict__[args.arch](pretrained=True)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+        if args.arch in model_names:
+            model = models.__dict__[args.arch]()
+        else:
+            model = third_party_models.__dict__[args.arch]()
 
     model.to(device)
     model = QuantModel(model, config=qconfig)
