@@ -238,13 +238,16 @@ class SubgraphMatcher(object):
                         continue
                     # Bipartite graph maximum matching
                     calc = Hungary(len(match_node.inputs), len(op.all_input_nodes))
-                    for id1, match_inp in match_node.inputs:
+                    for id1, match_inp in enumerate(match_node.inputs):
                         if match_inp is None:
                             for i in range(calc.m):
                                 calc.add_edge(id1, i)
                         else:
                             for id2, op_inp in enumerate(op.all_input_nodes):
-                                if op_inp.idx in matching_ops[match_inp]:
+                                if (
+                                    op_inp.index
+                                    in matching_ops[name_to_idxes[match_inp]]
+                                ):
                                     calc.add_edge(id1, id2)
                     if calc.apply() == calc.n:
                         matching_ops[idx].add(op_idx)
@@ -403,7 +406,7 @@ class SubgraphMatcher(object):
                 for pred_idx, pos in input_pos:
                     used_input_pos[pred_idx][pos] = False
 
-                return False
+            return False
 
         out_mask = dfs_per_layer(0)
         return match_dict if out_mask else {}
