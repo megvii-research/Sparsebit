@@ -226,95 +226,34 @@ class QuantModel(nn.Module):
         verbose=False,
         extra_info=False,
     ):
+        from sparsebit.quantization.tools.onnx_export_wrapper import (
+            enable_onnx_export,
+            enable_extra_info_export,
+        )
+
         self.eval()
         self.set_quant(w_quant=True, a_quant=True)  # quant must prepared before export
-        for n, m in self.model.named_modules():
-            if isinstance(m, Quantizer):
-                m.enable_export_onnx()
-                if m.bit != 8:
-                    assert (
-                        extra_info
-                    ), "You must set extra_info=True when export a model with {}bit".format(
-                        m.bit
+
+        with enable_onnx_export(self.model):
+            torch.onnx.export(
+                self.model.cpu(),
+                dummy_data,
+                name,
+                opset_version=opset_version,
+                input_names=input_names,
+                output_names=output_names,
+                dynamic_axes=dynamic_axes,
+                verbose=verbose,
+            )
+            if extra_info:
+                with enable_extra_info_export(self.model):
+                    torch.onnx.export(
+                        self.model.cpu(),
+                        dummy_data.cpu(),
+                        name.replace(".onnx", "_external.onnx"),
+                        opset_version=opset_version,
+                        input_names=input_names,
+                        output_names=output_names,
+                        dynamic_axes=dynamic_axes,
+                        verbose=verbose,
                     )
-
-        torch.onnx.export(
-            self.model.cpu(),
-            dummy_data,
-            name,
-            opset_version=opset_version,
-            input_names=input_names,
-            output_names=output_names,
-            dynamic_axes=dynamic_axes,
-            verbose=verbose,
-        )
-        for n, m in self.model.named_modules():
-            if isinstance(m, Quantizer):
-                m.disable_export_onnx()
-
-        if extra_info:
-            self.add_extra_info_to_onnx(name)
-
-    def add_extra_info_to_onnx(self, onnx_path):
-        onnx_model = onnx.load(onnx_path)
-        extra_onnx_path = onnx_path.replace(".onnx", "_extra.onnx")
-        tensor_inputs = {}
-        tensor_outputs = {}
-        nodes = {}
-        for op in onnx_model.graph.node:
-            nodes[op.name] = op
-            for inp in op.input:
-                if inp not in tensor_outputs:
-                    tensor_outputs[inp] = []
-                tensor_outputs[inp].append(op.name)
-            for outp in op.output:
-                if outp not in tensor_inputs:
-                    tensor_inputs[outp] = []
-                tensor_inputs[outp].append(op.name)
-
-        op_pos = 0
-        skipped_modules = set()
-        for name, module in self.model.named_modules():
-            if (
-                module == self.model
-                or isinstance(module, (Observer, Quantizer, QIdentity, Clone))
-                or module in skipped_modules
-            ):
-                continue
-            if isinstance(module, QuantOpr):
-                for submodule in module.children():
-                    if not isinstance(submodule, QuantOpr):
-                        skipped_modules.add(submodule)
-
-            while op_pos < len(onnx_model.graph.node) and (
-                onnx_model.graph.node[op_pos].op_type
-                in ["QuantizeLinear", "DequantizeLinear", "Constant"]
-            ):
-                op_pos += 1
-            onnx_op = onnx_model.graph.node[op_pos]
-            op_pos += 1
-
-            if isinstance(module, QuantOpr) and getattr(
-                module.input_quantizer, "is_enable", False
-            ):
-                input_dequant = nodes[tensor_inputs[onnx_op.input[0]][0]]
-                input_quant = nodes[tensor_inputs[input_dequant.input[0]][0]]
-                input_dequant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
-                input_quant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
-
-            if isinstance(module, QuantOpr) and getattr(
-                module.weight_quantizer, "is_enable", False
-            ):
-                weight_dequant = nodes[tensor_inputs[onnx_op.input[1]][0]]
-                weight_quant = nodes[tensor_inputs[weight_dequant.input[0]][0]]
-                weight_dequant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.weight_quantizer.bit)
-                )
-                weight_quant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.weight_quantizer.bit)
-                )
-        onnx.save(onnx_model, extra_onnx_path)
