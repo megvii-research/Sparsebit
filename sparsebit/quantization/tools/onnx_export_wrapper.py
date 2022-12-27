@@ -23,15 +23,16 @@ class ExtraInfoContextManager:
 
 
 class ONNXExportContextManager:
-    def __init__(self, model):
+    def __init__(self, model, extra_info):
         self.model = model
+        self.extra_info = extra_info
 
     def enable_export_onnx(self):
         for module in self.model.modules():
             if isinstance(module, Quantizer):
                 module.enable_export_onnx()
                 # FIXME: if quantizer bit!=8, extra_info must be enabled
-                if module.bit != 8 and not module.extra_info:
+                if module.bit != 8 and not self.extra_info:
                     assert (
                         False
                     ), "8bit is supported by default. \
@@ -60,10 +61,10 @@ def enable_extra_info_export(model):
     return ExtraInfoContextManager(model)
 
 
-def enable_onnx_export(model):
+def enable_onnx_export(model, extra_info=False):
     """
     Usage:
         with enable_onnx_export(model):
             torch.onnx.export(model, ...)
     """
-    return ONNXExportContextManager(model)
+    return ONNXExportContextManager(model, extra_info)

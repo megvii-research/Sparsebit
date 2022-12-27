@@ -234,7 +234,7 @@ class QuantModel(nn.Module):
         self.eval()
         self.set_quant(w_quant=True, a_quant=True)  # quant must prepared before export
 
-        with enable_onnx_export(self.model):
+        with enable_onnx_export(self.model, extra_info=extra_info):
             torch.onnx.export(
                 self.model.cpu(),
                 dummy_data,
