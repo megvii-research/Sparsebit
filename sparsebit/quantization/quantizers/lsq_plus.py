@@ -56,7 +56,15 @@ class Quantizer(BaseQuantizer):
 
     def _qparams_preprocess(self, x):
         if self.export_onnx:
-            return self.scale, self.zero_point
+            return torch.tensor(
+                self.scale.abs().detach().cpu().numpy(), device=self.device
+            ), torch.tensor(
+                torch.clamp(self.zero_point, self.qdesc.qmin, self.qdesc.qmax)
+                .detach()
+                .cpu()
+                .numpy(),
+                device=self.device,
+            )
         scale = self.scale.abs()
         zero_point = torch.clamp(self.zero_point, self.qdesc.qmin, self.qdesc.qmax)
         return scale, zero_point
