@@ -2,6 +2,7 @@ import torch
 from functools import partial
 
 from sparsebit.quantization.modules import QuantOpr
+from sparsebit.quantization.quantizers.adaround import reconstruct_qlayer
 from .graph_wrapper import GraphVisitor, fx_symbolic_trace
 from .tensor_wrapper import to_cpu, to_device, to_detach
 
@@ -61,10 +62,14 @@ class CalibrationRunner(object):
 
         self.builder = GraphVisitor(self.model, hook_wrapper)
 
-    def feature_layerwise_calibration(self, device):
+    def layerwise_calibration(self, device):
         # manual forward once to calculate calibration
         assert hasattr(self, "builder"), "run self.prepare_calibration first!"
         batch_num = None
+        # remove hook from module before calibration
+        for handle in self.builder.handles:
+            handle.remove()
+        # run calibration qopr-by-qopr
         for node in self.model.graph.nodes:
             if node.op in ["placeholder", "output"]:
                 if batch_num is None:
@@ -101,7 +106,18 @@ class CalibrationRunner(object):
                     kwargs = to_device(kwargs, device)
                     # more time for less cuda memory occupation
                     outputs.append(to_cpu(module(*args, **kwargs)))
+            # save outputs of this node into storage
             self.builder.storage.set_output(node.target, outputs)
+            # weight calibration
+            if isinstance(module, QuantOpr) and getattr(module, "weight_quantizer", None):
+                module.weight_quantizer.update_observer(module.weight)
+                module.weight_quantizer.calc_qparams()
+                if module.weight_quantizer.TYPE.lower() == "adaround":
+                    assert len(node.all_input_nodes) == 1, "AdaRound not supports the oprs which has more than one inputs"
+                    inp_tensors = self.builder.storage.get_output(node.all_input_nodes[0].target)
+                    out_tensors = self.builder.storage.get_output(node.target)
+                    reconstruct_qlayer(module, torch.cat(inp_tensors, dim=0), torch.cat(out_tensors, dim=0))
+            # pop the outputs of nodes whose out-degree=0
             self.builder.storage.finish_node(node.target)
 
     def weight_calibration(self):
