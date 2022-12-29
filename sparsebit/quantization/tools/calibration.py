@@ -64,15 +64,17 @@ class CalibrationRunner(object):
     def feature_layerwise_calibration(self, device):
         # manual forward once to calculate calibration
         assert hasattr(self, "builder"), "run self.prepare_calibration first!"
+        # remove hook from module before calibration
+        for handle in self.builder.handles:
+            handle.remove()
+        # run calibration qopr-by-qopr
         batch_num = None
         for node in self.model.graph.nodes:
             if node.op in ["placeholder", "output"]:
                 if batch_num is None:
                     batch_num = len(self.builder.storage.get_output(node.target))
                 continue
-
             assert batch_num is not None
-
             module = getattr(self.model, node.target)
             if isinstance(module, QuantOpr) and getattr(
                 module, "input_quantizer", None
