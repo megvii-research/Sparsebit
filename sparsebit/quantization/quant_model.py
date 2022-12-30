@@ -188,10 +188,14 @@ class QuantModel(nn.Module):
         self.calibration_runner = CalibrationRunner(self.model)
         self.calibration_runner.prepare_calibration()
 
-    def calc_qparams(self):
+    def calc_qparams(self, asym=False, w_quant=False, a_quant=False):
+        """
+        asym: enable calculate the quant params with all preceding layers quantized
+        """
         assert hasattr(self, "calibration_runner"), "run self.prepare_calibration first"
-        self.calibration_runner.feature_layerwise_calibration(self.device)
-        self.calibration_runner.weight_calibration()
+        self.calibration_runner.layerwise_calibration(
+            self.device, asym, w_quant, a_quant
+        )
         del self.calibration_runner
 
     def init_QAT(self):

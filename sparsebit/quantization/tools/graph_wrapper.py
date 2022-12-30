@@ -114,6 +114,7 @@ class SharedData(object):
 class GraphVisitor(object):
     def __init__(self, model: fx.GraphModule, hook_wrapper: Callable):
         self.storage = SharedData()
+        self.qstorage = None
         self.build(model, hook_wrapper)
 
     def __del__(self):
