@@ -103,8 +103,7 @@ class CalibrationRunner(object):
         module = getattr(self.model, node.target)
         if isinstance(module, QuantOpr) and getattr(module, "input_quantizer", None):
             for inp_node in node.all_input_nodes:
-                _storage = self.builder.qstorage if asym else self.builder.storage
-                inp_tensors = _storage.get_output(inp_node.target)
+                inp_tensors = self.builder.storage.get_output(inp_node.target)
                 for inp_tensor in inp_tensors:
                     if isinstance(inp_tensor, torch.Tensor):
                         module.input_quantizer.update_observer(inp_tensor)
@@ -120,9 +119,8 @@ class CalibrationRunner(object):
                 assert (
                     len(node.all_input_nodes) == 1
                 ), "AdaRound not supports the oprs which has more than one inputs"
-                inp_tensors = self.builder.storage.get_output(
-                    node.all_input_nodes[0].target
-                )
+                _storage = self.builder.qstorage if asym else self.builder.storage
+                inp_tensors = _storage.get_output(node.all_input_nodes[0].target)
                 out_tensors = self.builder.storage.get_output(node.target)
                 print("Reconstruct {}".format(node.target))
                 reconstruct_qlayer(
