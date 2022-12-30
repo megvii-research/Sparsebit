@@ -1,3 +1,9 @@
+"""
+Code are based on
+https://github.com/yhhhli/BRECQ/blob/main/quant/
+Copyright (c) 2021 Yuhang Li, MIT License
+"""
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -22,6 +28,12 @@ class Quantizer(BaseQuantizer):
         v = -torch.log((self.zeta - self.gamma) / (rest - self.gamma) - 1) # => rectified_sigmoid(v)=rest
         self.v = nn.Parameter(v.to(x.device))
 
+    def _qparams_preprocess(self, x):
+        if self.export_onnx:
+            assert False, "please raise an issue in our repo if you need this feature"
+        else:
+            return self.scale, self.zero_point
+
     def _get_soft_round_values(self):
         return torch.clamp(torch.sigmoid(self.v) * (self.zeta - self.gamma) + self.gamma, 0, 1)
 
@@ -31,15 +43,17 @@ class Quantizer(BaseQuantizer):
             x_q = x_floor + self._get_soft_round_values()
         else: # evaluation
             x_q = x_floor + (self.v>=0).float()
-        x_dq = STE.apply(x_q, torch.ones_like(scale), zero_point, self.qdesc, self.backend) * scale
+        x_q = torch.clamp(x_q + zero_point, self.qdesc.qmin, self.qdesc.qmax)
+        x_dq = (x_q - zero_point) * scale
         return x_dq
 
 
 def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
-                       batch_size=32, max_steps=2000, beta_range=(20, 2),
-                       warmup=0.0, p=2.0, round_loss_weight=1e-3):
+                       batch_size=32, max_steps=20000, beta_range=(20, 2),
+                       warmup=0.2, p=2.0, round_loss_weight=1e-3, a_quant=False):
     # init
-    layer.set_quant(w_quant=True, a_quant=False)
+    layer.eval()
+    layer.set_quant(w_quant=True, a_quant=a_quant)
     layer.weight_quantizer.init_variables(layer.weight)
     layer.weight_quantizer.train()
     opt_params = [layer.weight_quantizer.v]
@@ -47,12 +61,13 @@ def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
     beta_decayer = LinearTempDecay(max_steps=max_steps, rel_start_step=warmup,
                                    start_beta=beta_range[0], end_beta=beta_range[1])
     loss_start_step = int(warmup * max_steps)
-    print_freq = 1
+    print_freq = 500
     # training
     device = layer.weight.device
+    inputs, outputs = inputs.to(device), outputs.to(device)
     for step in range(max_steps):
         idx = torch.randperm(inputs.size(0))[:batch_size]
-        cur_input, cur_output = inputs[idx].to(device), outputs[idx].to(device)
+        cur_input, cur_output = inputs[idx], outputs[idx]
         optimizer.zero_grad()
         quant_output = layer(cur_input)
         # calculate reconstruct_loss
@@ -65,7 +80,7 @@ def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
             round_vals = layer.weight_quantizer._get_soft_round_values()
             round_loss = (1 - ((round_vals - .5).abs() * 2).pow(beta)).sum()
         loss = rec_loss + round_loss_weight * round_loss
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
         if step % print_freq == 0:
             print('Loss: {:.3f} (rec: {:.3f}, round: {:.3f}) beta={:.2f} step={}'.format(loss, rec_loss, round_loss, beta, step))
@@ -74,7 +89,7 @@ def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
 
 
 class LinearTempDecay:
-    def __init__(self, max_steps, rel_start_step=0.2, start_beta=10, end_beta=2):
+    def __init__(self, max_steps, rel_start_step, start_beta, end_beta):
         self.max_steps = max_steps
         self.start_step = int(rel_start_step * max_steps)
         self.start_beta = start_beta
