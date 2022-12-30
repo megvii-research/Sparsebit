@@ -19,13 +19,17 @@ class Quantizer(BaseQuantizer):
 
     def __init__(self, config):
         super(Quantizer, self).__init__(config)
-        assert config.TARGET[0] == QuantTarget.WEIGHT, "AdaRound only supports to quant weights"
-        self.zeta, self.gamma = 1.1, -0.1 # stretch-parameters
+        assert (
+            config.TARGET[0] == QuantTarget.WEIGHT
+        ), "AdaRound only supports to quant weights"
+        self.zeta, self.gamma = 1.1, -0.1  # stretch-parameters
 
     def init_variables(self, x):
         x_floor = torch.floor(x / self.scale)
         rest = (x / self.scale) - x_floor
-        v = -torch.log((self.zeta - self.gamma) / (rest - self.gamma) - 1) # => rectified_sigmoid(v)=rest
+        v = -torch.log(
+            (self.zeta - self.gamma) / (rest - self.gamma) - 1
+        )  # => rectified_sigmoid(v)=rest
         self.v = nn.Parameter(v.to(x.device))
 
     def _qparams_preprocess(self, x):
@@ -35,22 +39,33 @@ class Quantizer(BaseQuantizer):
             return self.scale, self.zero_point
 
     def _get_soft_round_values(self):
-        return torch.clamp(torch.sigmoid(self.v) * (self.zeta - self.gamma) + self.gamma, 0, 1)
+        return torch.clamp(
+            torch.sigmoid(self.v) * (self.zeta - self.gamma) + self.gamma, 0, 1
+        )
 
     def _forward(self, x, scale, zero_point):
         x_floor = torch.floor(x / scale)
         if self.training:
             x_q = x_floor + self._get_soft_round_values()
-        else: # evaluation
-            x_q = x_floor + (self.v>=0).float()
+        else:  # evaluation
+            x_q = x_floor + (self.v >= 0).float()
         x_q = torch.clamp(x_q + zero_point, self.qdesc.qmin, self.qdesc.qmax)
         x_dq = (x_q - zero_point) * scale
         return x_dq
 
 
-def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
-                       batch_size=32, max_steps=20000, beta_range=(20, 2),
-                       warmup=0.2, p=2.0, round_loss_weight=1e-3, a_quant=False):
+def reconstruct_qlayer(
+    layer,
+    inputs: torch.Tensor,
+    outputs: torch.Tensor,
+    batch_size=32,
+    max_steps=20000,
+    beta_range=(20, 2),
+    warmup=0.2,
+    p=2.0,
+    round_loss_weight=1e-3,
+    a_quant=False,
+):
     # init
     layer.eval()
     layer.set_quant(w_quant=True, a_quant=a_quant)
@@ -58,8 +73,12 @@ def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
     layer.weight_quantizer.train()
     opt_params = [layer.weight_quantizer.v]
     optimizer = torch.optim.Adam(opt_params)
-    beta_decayer = LinearTempDecay(max_steps=max_steps, rel_start_step=warmup,
-                                   start_beta=beta_range[0], end_beta=beta_range[1])
+    beta_decayer = LinearTempDecay(
+        max_steps=max_steps,
+        rel_start_step=warmup,
+        start_beta=beta_range[0],
+        end_beta=beta_range[1],
+    )
     loss_start_step = int(warmup * max_steps)
     print_freq = 500
     # training
@@ -78,12 +97,16 @@ def reconstruct_qlayer(layer, inputs: torch.Tensor, outputs: torch.Tensor,
         else:
             beta = beta_decayer(step)
             round_vals = layer.weight_quantizer._get_soft_round_values()
-            round_loss = (1 - ((round_vals - .5).abs() * 2).pow(beta)).sum()
+            round_loss = (1 - ((round_vals - 0.5).abs() * 2).pow(beta)).sum()
         loss = rec_loss + round_loss_weight * round_loss
         loss.backward(retain_graph=True)
         optimizer.step()
         if step % print_freq == 0:
-            print('Loss: {:.3f} (rec: {:.3f}, round: {:.3f}) beta={:.2f} step={}'.format(loss, rec_loss, round_loss, beta, step))
+            print(
+                "Loss: {:.3f} (rec: {:.3f}, round: {:.3f}) beta={:.2f} step={}".format(
+                    loss, rec_loss, round_loss, beta, step
+                )
+            )
     torch.cuda.empty_cache()
     layer.weight_quantizer.eval()
 
@@ -105,6 +128,7 @@ class LinearTempDecay:
             return self.start_beta
         else:
             ratio = (step - self.start_step) / (self.max_steps - self.start_step)
-            beta = (self.end_beta + (self.start_beta - self.end_beta) * max(0., (1-ratio)))
+            beta = self.end_beta + (self.start_beta - self.end_beta) * max(
+                0.0, (1 - ratio)
+            )
             return beta
-

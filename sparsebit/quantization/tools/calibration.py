@@ -91,7 +91,9 @@ class CalibrationRunner(object):
             self.run_weight_calibration(node, asym, a_quant=a_quant)
             # foward quant output
             if asym:
-                quant_outputs = self.module_forward(batch_num, node, device, asym, w_quant, a_quant)
+                quant_outputs = self.module_forward(
+                    batch_num, node, device, asym, w_quant, a_quant
+                )
                 self.builder.qstorage.set_output(node.target, quant_outputs)
                 self.builder.qstorage.finish_node(node.target)
             # pop the outputs of nodes whose out-degree=0
@@ -115,13 +117,24 @@ class CalibrationRunner(object):
             module.weight_quantizer.update_observer(module.weight)
             module.weight_quantizer.calc_qparams()
             if module.weight_quantizer.TYPE.lower() == "adaround":
-                assert len(node.all_input_nodes) == 1, "AdaRound not supports the oprs which has more than one inputs"
-                inp_tensors = self.builder.storage.get_output(node.all_input_nodes[0].target)
+                assert (
+                    len(node.all_input_nodes) == 1
+                ), "AdaRound not supports the oprs which has more than one inputs"
+                inp_tensors = self.builder.storage.get_output(
+                    node.all_input_nodes[0].target
+                )
                 out_tensors = self.builder.storage.get_output(node.target)
                 print("Reconstruct {}".format(node.target))
-                reconstruct_qlayer(module, torch.cat(inp_tensors, dim=0), torch.cat(out_tensors, dim=0), a_quant=a_quant)
+                reconstruct_qlayer(
+                    module,
+                    torch.cat(inp_tensors, dim=0),
+                    torch.cat(out_tensors, dim=0),
+                    a_quant=a_quant,
+                )
 
-    def module_forward(self, batch_num, node, device, asym=False, w_quant=False, a_quant=False):
+    def module_forward(
+        self, batch_num, node, device, asym=False, w_quant=False, a_quant=False
+    ):
         module = getattr(self.model, node.target)
         module.eval()
         if isinstance(module, QuantOpr) and asym:
