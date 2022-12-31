@@ -22,6 +22,7 @@ class Quantizer(nn.Module, abc.ABC):
         self.observer = build_observer(config, self.qdesc)
         self.use_quant = False
         self.export_onnx = False
+        self.extra_info = False
         self.fake_fused = False
         if self.cfg.QUANTIZER.DISABLE:
             self.set_fake_fused()
@@ -56,7 +57,9 @@ class Quantizer(nn.Module, abc.ABC):
         if self.is_enable:
             scale, zero_point = self._qparams_preprocess(x)
             if self.export_onnx:
-                x_dq = torch_fake_quant(x, scale, zero_point, self.qdesc)
+                x_dq = torch_fake_quant(
+                    x, scale, zero_point, self.qdesc, self.extra_info
+                )
             else:
                 x_dq = self._forward(x, scale, zero_point)
         else:
@@ -93,6 +96,12 @@ class Quantizer(nn.Module, abc.ABC):
 
     def disable_export_onnx(self):
         self.export_onnx = False
+
+    def enable_extra_info(self):
+        self.extra_info = True
+
+    def disable_extra_info(self):
+        self.extra_info = False
 
     def _broadcast_qparams(self, params):
         dst_shape = [1] * self.dims

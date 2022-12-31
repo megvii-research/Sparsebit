@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sparsebit.quantization.common import Backend
+from sparsebit.quantization.modules.onnx.quantizers import QuantizeFunc
 
 if torch.cuda.is_available():
     from torch.utils.cpp_extension import load
@@ -217,7 +218,7 @@ fake_qrange_factory = {
 
 
 # torch_fake_quant仅用作模型export to onnx使用
-def torch_fake_quant(x_f, scale, zero_point, qdesc):
+def torch_fake_quant(x_f, scale, zero_point, qdesc, extra_info: bool = False):
     # lower_bound, upper_bound = qdesc.qrange
     # set [0, 255] for quint and [-128, 127] for qint because onnx only support 8 bit
     if qdesc._type.startswith("uint"):
@@ -232,18 +233,25 @@ def torch_fake_quant(x_f, scale, zero_point, qdesc):
             zero_point = zero_point.reshape(-1).long().to(x_f.device)
         else:
             zero_point = zero_point.reshape(-1).int().to(x_f.device)
-        x_dq = torch.fake_quantize_per_channel_affine(
-            x_f, scale, zero_point, ch_axis, lower_bound, upper_bound
-        )
+        is_perchannel = True
     elif scale.numel() == 1:  # pertensor
+        ch_axis = None
         scale = scale.item()
         if torch.__version__.startswith("1.9"):  # fix bug in 1.9.x
             zero_point = zero_point.long().item()
         else:
             zero_point = zero_point.int().item()
-        x_dq = torch.fake_quantize_per_tensor_affine(
-            x_f, scale, zero_point, lower_bound, upper_bound
-        )
+        is_perchannel = False
     else:
         raise TypeError("scale / zeropoint is not allowed to be an empty tensor")
+    x_dq = QuantizeFunc.apply(
+        x_f,
+        scale,
+        zero_point,
+        ch_axis,
+        lower_bound,
+        upper_bound,
+        is_perchannel,
+        extra_info,
+    )
     return x_dq
