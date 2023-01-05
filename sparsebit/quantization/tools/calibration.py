@@ -138,7 +138,8 @@ class CalibrationRunner(object):
         self, batch_num, node, device, asym=False, w_quant=False, a_quant=False
     ):
         module = getattr(self.model, node.target)
-        module.eval()
+        if node.op == "call_module":
+            module.eval()
         if isinstance(module, QuantOpr) and asym:
             module.set_quant(w_quant, a_quant)
         with torch.no_grad():
