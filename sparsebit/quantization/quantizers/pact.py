@@ -19,10 +19,16 @@ class Quantizer(BaseQuantizer):
             self.qdesc.target == QuantTarget.FEATURE
         ), "PACT only support feature quantization"
         assert not self.qdesc.is_perchannel, "PACT no yet supports per-channel"
-        if not self.fake_fused:
-            self.alpha = nn.Parameter(
-                torch.Tensor([config.QUANTIZER.PACT.ALPHA_VALUE]).to(self.device)
-            )
+        self.init_alpha_value = config.QUANTIZER.PACT.ALPHA_VALUE
+
+    def calc_qparams(self):
+        if self.fake_fused:
+            return self.scale, self.zero_point
+        scale, zero_point = self.observer.calc_qparams()
+        self.scale = self._broadcast_qparams(scale)
+        self.zero_point = self._broadcast_qparams(zero_point)
+        self.alpha = nn.Parameter(torch.Tensor([self.init_alpha_value]).to(self.device))
+        return self.scale, self.zero_point
 
     def _qparams_preprocess(self, x):
         lower = (

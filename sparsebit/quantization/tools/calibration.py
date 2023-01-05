@@ -101,7 +101,11 @@ class CalibrationRunner(object):
 
     def run_feature_calibration(self, node, asym=False):
         module = getattr(self.model, node.target)
-        if isinstance(module, QuantOpr) and getattr(module, "input_quantizer", None):
+        if (
+            isinstance(module, QuantOpr)
+            and getattr(module, "input_quantizer", None)
+            and not module.input_quantizer.fake_fused
+        ):
             for inp_node in node.all_input_nodes:
                 inp_tensors = self.builder.storage.get_output(inp_node.target)
                 for inp_tensor in inp_tensors:
