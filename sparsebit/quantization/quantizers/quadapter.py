@@ -31,6 +31,7 @@ class Quantizer(BaseQuantizer):
         x_dq = x_dq / self.alpha
         return x_dq
 
+
 def reconstruct_qlayer(
     layer,
     inputs: torch.Tensor,
@@ -59,10 +60,6 @@ def reconstruct_qlayer(
         loss.backward(retain_graph=True)
         optimizer.step()
         if step % print_freq == 0:
-            print(
-                "Loss: {:.3f}  step={}".format(
-                    loss, step
-                )
-            )
+            print("Loss: {:.3f}  step={}".format(loss, step))
     torch.cuda.empty_cache()
     layer.input_quantizer.eval()

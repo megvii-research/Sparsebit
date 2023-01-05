@@ -122,7 +122,11 @@ class CalibrationRunner(object):
         for n in node.target.split("."):
             module = getattr(module, n)
         if isinstance(module, QuantOpr):
-            if getattr(module, "input_quantizer", None) and not module.input_quantizer.fake_fused and module.input_quantizer.TYPE.lower() == "quadapter":
+            if (
+                getattr(module, "input_quantizer", None)
+                and not module.input_quantizer.fake_fused
+                and module.input_quantizer.TYPE.lower() == "quadapter"
+            ):
                 assert (
                     len(node.all_input_nodes) == 1
                 ), "Quadapter not supports the oprs which has more than one inputs"
@@ -135,7 +139,10 @@ class CalibrationRunner(object):
                     torch.cat(inp_tensors, dim=0),
                     torch.cat(out_tensors, dim=0),
                 )
-            if  getattr(module, "weight_quantizer", None) and module.weight_quantizer.TYPE.lower() == "adaround":
+            if (
+                getattr(module, "weight_quantizer", None)
+                and module.weight_quantizer.TYPE.lower() == "adaround"
+            ):
                 assert (
                     len(node.all_input_nodes) == 1
                 ), "AdaRound not supports the oprs which has more than one inputs"
@@ -149,7 +156,6 @@ class CalibrationRunner(object):
                     torch.cat(out_tensors, dim=0),
                     a_quant=a_quant,
                 )
-
 
     def module_forward(
         self, batch_num, node, device, asym=False, w_quant=False, a_quant=False
