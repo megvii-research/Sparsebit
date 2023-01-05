@@ -3,7 +3,6 @@ import torch
 from functools import partial
 
 from sparsebit.quantization.modules import QuantOpr
-from sparsebit.quantization.quantizers.adaround import reconstruct_qlayer
 from .graph_wrapper import GraphVisitor, fx_symbolic_trace
 from .tensor_wrapper import to_cpu, to_device, to_detach
 
@@ -89,6 +88,8 @@ class CalibrationRunner(object):
             float_outputs = self.module_forward(batch_num, node, device)
             self.builder.storage.set_output(node.target, float_outputs)
             self.run_weight_calibration(node, asym, a_quant=a_quant)
+            # layerwise reconstruction
+            self.run_layerwise_reconstruction(node, asym, a_quant=a_quant)
             # foward quant output
             if asym:
                 quant_outputs = self.module_forward(
@@ -115,20 +116,40 @@ class CalibrationRunner(object):
         if isinstance(module, QuantOpr) and getattr(module, "weight_quantizer", None):
             module.weight_quantizer.update_observer(module.weight)
             module.weight_quantizer.calc_qparams()
-            if module.weight_quantizer.TYPE.lower() == "adaround":
+
+    def run_layerwise_reconstruction(self, node, asym=False, a_quant=False):
+        module = self.model
+        for n in node.target.split("."):
+            module = getattr(module, n)
+        if isinstance(module, QuantOpr):
+            if getattr(module, "input_quantizer", None) and not module.input_quantizer.fake_fused and module.input_quantizer.TYPE.lower() == "quadapter":
+                assert (
+                    len(node.all_input_nodes) == 1
+                ), "Quadapter not supports the oprs which has more than one inputs"
+                _storage = self.builder.qstorage if asym else self.builder.storage
+                inp_tensors = _storage.get_output(node.all_input_nodes[0].target)
+                out_tensors = self.builder.storage.get_output(node.target)
+                print("Reconstruct input_quantizer of {}".format(node.target))
+                module.input_quantizer.reconstruct_qlayer(
+                    module,
+                    torch.cat(inp_tensors, dim=0),
+                    torch.cat(out_tensors, dim=0),
+                )
+            if  getattr(module, "weight_quantizer", None) and module.weight_quantizer.TYPE.lower() == "adaround":
                 assert (
                     len(node.all_input_nodes) == 1
                 ), "AdaRound not supports the oprs which has more than one inputs"
                 _storage = self.builder.qstorage if asym else self.builder.storage
                 inp_tensors = _storage.get_output(node.all_input_nodes[0].target)
                 out_tensors = self.builder.storage.get_output(node.target)
-                print("Reconstruct {}".format(node.target))
-                reconstruct_qlayer(
+                print("Reconstruct weight_quantizer of {}".format(node.target))
+                module.weight_quantizer.reconstruct_qlayer(
                     module,
                     torch.cat(inp_tensors, dim=0),
                     torch.cat(out_tensors, dim=0),
                     a_quant=a_quant,
                 )
+
 
     def module_forward(
         self, batch_num, node, device, asym=False, w_quant=False, a_quant=False

@@ -23,6 +23,7 @@ class Quantizer(BaseQuantizer):
             config.TARGET[0] == QuantTarget.WEIGHT
         ), "AdaRound only supports to quant weights"
         self.zeta, self.gamma = 1.1, -0.1  # stretch-parameters
+        self.reconstruct_qlayer = reconstruct_qlayer
 
     def init_variables(self, x):
         x_floor = torch.floor(x / self.scale)
