@@ -21,6 +21,7 @@ from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
 from sparsebit.quantization.converters import simplify, fuse_operations
 from sparsebit.quantization.quant_tracer import QTracer
+from sparsebit.quantization.bit_allocation import bit_allocation
 
 
 __all__ = ["QuantModel"]
@@ -185,7 +186,9 @@ class QuantModel(nn.Module):
         from sparsebit.quantization.tools.calibration import CalibrationRunner
 
         self.eval()
-        self.calibration_runner = CalibrationRunner(self.model)
+        self.calibration_runner = CalibrationRunner(
+            self.model, self.cfg.SCHEDULE.BIT_ALLOCATION
+        )
         self.calibration_runner.prepare_calibration()
 
     def calc_qparams(self, asym=False, w_quant=False, a_quant=False):
@@ -196,6 +199,8 @@ class QuantModel(nn.Module):
         self.calibration_runner.layerwise_calibration(
             self.device, asym, w_quant, a_quant
         )
+        if self.cfg.SCHEDULE.BIT_ALLOCATION.ENABLE:
+            bit_allocation(self, self.calibration_runner.calib_data_for_mixbit)
         del self.calibration_runner
 
     def init_QAT(self):
@@ -205,6 +210,9 @@ class QuantModel(nn.Module):
 
     def forward(self, *args, **kwargs):
         return self.model.forward(*args, **kwargs)
+
+    def bit_allocation(self, data):
+        bit_allocation(self, data)
 
     def get_quantization_error(
         self, data: torch.Tensor, checker=F.mse_loss, is_async: bool = True

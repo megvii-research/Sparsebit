@@ -1,5 +1,7 @@
 import copy
+from sparsebit.quantization.modules.conv import QConv2d
 import torch
+import torch.nn as nn
 from functools import partial
 
 from sparsebit.quantization.modules import QuantOpr
@@ -9,8 +11,10 @@ from .tensor_wrapper import to_cpu, to_device, to_detach
 
 
 class CalibrationRunner(object):
-    def __init__(self, model):
+    def __init__(self, model, bit_allocation_cfg):
         self.model = fx_symbolic_trace(model)
+        self.bit_allocation = bit_allocation_cfg.ENABLE
+        self.calib_data_for_mixbit = None
 
     def prepare_calibration(self):
         input_names_cache = set(
@@ -82,6 +86,10 @@ class CalibrationRunner(object):
             if node.op in ["placeholder", "output"]:
                 if batch_num is None:
                     batch_num = len(self.builder.storage.get_output(node.target))
+                if self.bit_allocation and self.calib_data_for_mixbit is None:
+                    self.calib_data_for_mixbit = self.builder.storage.get_output(
+                        node.target
+                    )[0]
                 continue
             assert batch_num is not None
             self.run_feature_calibration(node, asym)
@@ -111,14 +119,14 @@ class CalibrationRunner(object):
                 for inp_tensor in inp_tensors:
                     if isinstance(inp_tensor, torch.Tensor):
                         module.input_quantizer.update_observer(inp_tensor)
-            module.input_quantizer.calc_qparams()
+            module.input_quantizer.calc_qparams(bit_allocation=self.bit_allocation)
             module.input_quantizer.observer.data_cache.reset()
 
     def run_weight_calibration(self, node, asym=False, a_quant=False):
         module = getattr(self.model, node.target)
         if isinstance(module, QuantOpr) and getattr(module, "weight_quantizer", None):
             module.weight_quantizer.update_observer(module.weight)
-            module.weight_quantizer.calc_qparams()
+            module.weight_quantizer.calc_qparams(bit_allocation=self.bit_allocation)
             if module.weight_quantizer.TYPE.lower() == "adaround":
                 assert (
                     len(node.all_input_nodes) == 1
@@ -138,7 +146,8 @@ class CalibrationRunner(object):
         self, batch_num, node, device, asym=False, w_quant=False, a_quant=False
     ):
         module = getattr(self.model, node.target)
-        module.eval()
+        if isinstance(module, nn.Module):
+            module.eval()
         if isinstance(module, QuantOpr) and asym:
             module.set_quant(w_quant, a_quant)
         with torch.no_grad():
@@ -156,4 +165,11 @@ class CalibrationRunner(object):
                 outputs.append(to_cpu(module(*args, **kwargs)))
         if isinstance(module, QuantOpr):
             module.set_quant(w_quant=False, a_quant=False)
+        if isinstance(module, QConv2d):
+            module.output_hw = outputs[0].shape[-2:]
+        if (
+            isinstance(module, QuantOpr)
+            and module.input_quantizer.observer.qdesc._ch_axis == 2
+        ):  # NLC
+            module.seq_len = outputs[0].shape[0]
         return outputs

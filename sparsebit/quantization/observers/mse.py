@@ -27,7 +27,6 @@ class Observer(BaseObserver):
 
     def calc_qparams(self):
         data_c_first = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
-        self.data_cache.reset()
         min_val, max_val = self.calc_minmax(data_c_first)
         x_f = data_c_first.to(self.device)
         if self.is_perchannel:

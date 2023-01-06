@@ -55,18 +55,33 @@ class Observer(nn.Module):
         self.register_buffer("max_val", torch.tensor(float("inf")).to(self.device))
         self.data_cache = DataCache(qdesc)
 
-    def calc_qparams(self):
-        min_val, max_val = self.calc_minmax()
-        scale, zero_point = self.calc_qparams_with_minmax(min_val, max_val)
+    def calc_qparams(self, bit_allocation):
+        if bit_allocation:
+            assert (
+                len(self.cfg.OBSERVER.BIT_CHOICES) > 0
+            ), "Please assign bit choices before applying bit allocation!"
+            self.scales, self.zero_points = {}, {}
+            for bit in self.cfg.OBSERVER.BIT_CHOICES:
+                min_val, max_val = self.calc_minmax(bit)
+                scale, zero_point = self.calc_qparams_with_minmax(min_val, max_val, bit)
+                self.scales[bit] = scale
+                self.zero_points[bit] = zero_point
+
+        min_val, max_val = self.calc_minmax(self.qdesc.bit)
+        scale, zero_point = self.calc_qparams_with_minmax(
+            min_val, max_val, self.qdesc.bit
+        )
+        self.data_cache.reset()
+        assert len(self.data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
-    def calc_qparams_with_minmax(self, min_val, max_val):
+    def calc_qparams_with_minmax(self, min_val, max_val, bit):
         min_val_neg = torch.minimum(min_val, torch.zeros_like(min_val))
         max_val_pos = torch.maximum(max_val, torch.zeros_like(max_val))
         device = min_val_neg.device
         scale = torch.ones(min_val_neg.size(), dtype=torch.float32, device=device)
         zero_point = torch.zeros(min_val_neg.size(), dtype=torch.float32, device=device)
-        qmin, qmax = self.qdesc.qrange
+        qmin, qmax, _ = self.qdesc.calc_qmin_qmax(bit, self.qdesc._scheme)
         if self.is_symmetric:
             max_val_pos = torch.maximum(-min_val_neg, max_val_pos)
             scale = max_val_pos * 2 / float(qmax - qmin)
@@ -75,7 +90,6 @@ class Observer(nn.Module):
             scale = (max_val_pos - min_val_neg) / float(qmax - qmin)
             scale = torch.maximum(scale, torch.tensor(1e-6))
             zero_point = torch.round(-min_val_neg / scale)
-        assert len(self.data_cache) == 0, "free data cache after calc_qparams"
         return scale, zero_point
 
     @property

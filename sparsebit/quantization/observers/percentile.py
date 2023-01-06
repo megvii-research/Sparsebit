@@ -13,15 +13,13 @@ class Observer(BaseObserver):
         super(Observer, self).__init__(config, qdesc)
         self.alpha = config.OBSERVER.PERCENTILE.ALPHA
 
-    def calc_minmax(self):
-
+    def calc_minmax(self, bit):
         if self.is_perchannel:
             data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
         else:
             data = self.data_cache.get_data_for_calibration(
                 Granularity.LAYERWISE
             ).reshape(1, -1)
-        self.data_cache.reset()
         channel = data.shape[0]
 
         neg_length = (data < 0).sum(-1)
