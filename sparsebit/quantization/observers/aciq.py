@@ -62,27 +62,26 @@ class Observer(BaseObserver):
         }
         self.gaus_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
 
-    def calc_laplace_minmax(self):
+    def calc_laplace_minmax(self, bit):
         if self.is_perchannel:
             data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
             b = torch.mean(torch.abs(data - data.mean(1).unsqueeze(1)), dim=1)
         else:
             data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
             b = torch.mean(torch.abs(data - data.mean()))
-        self.data_cache.reset()
         is_half_range = data.min() >= 0
         if (
             self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
             and is_half_range
         ):
-            max_val = self.alpha_laplace_positive[self.qdesc.bit] * b
+            max_val = self.alpha_laplace_positive[bit] * b
             min_val = torch.zeros(max_val.shape)
         else:
-            max_val = self.alpha_laplace[self.qdesc.bit] * b
+            max_val = self.alpha_laplace[bit] * b
             min_val = -max_val
         return min_val, max_val
 
-    def calc_gaus_minmax(self):
+    def calc_gaus_minmax(self, bit):
         if self.qdesc.target == QuantTarget.FEATURE:
             batch_size = self.data_cache.get_batch_size()
         if self.is_perchannel:
@@ -94,7 +93,6 @@ class Observer(BaseObserver):
             max_val = data.max()
             min_val = data.min()
             self.data_cache.get_batch_size
-        self.data_cache.reset()
         is_half_range = data.min() >= 0
         num_elements = data.numel()
         if self.qdesc.target == QuantTarget.FEATURE:
@@ -106,18 +104,18 @@ class Observer(BaseObserver):
             self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
             and is_half_range
         ):
-            max_val = self.alpha_gaus_positive[self.qdesc.bit] * std
+            max_val = self.alpha_gaus_positive[bit] * std
             min_val = torch.zeros(max_val.shape)
         else:
-            max_val = self.alpha_gaus[self.qdesc.bit] * std
+            max_val = self.alpha_gaus[bit] * std
             min_val = -max_val
         return min_val, max_val
 
-    def calc_minmax(self):
+    def calc_minmax(self, bit):
         if self.distribution == "laplace":
-            min_val, max_val = self.calc_laplace_minmax()
+            min_val, max_val = self.calc_laplace_minmax(bit)
         else:
-            min_val, max_val = self.calc_gaus_minmax()
+            min_val, max_val = self.calc_gaus_minmax(bit)
         self.min_val = min_val.to(self.device)
         self.max_val = max_val.to(self.device)
 

@@ -16,9 +16,8 @@ class Observer(BaseObserver):
         ), "Moving_average observer only support feature observing!"
         self.ema_ratio = config.OBSERVER.MOVING_AVERAGE.EMA_RATIO
 
-    def calc_minmax(self):
+    def calc_minmax(self, bit):
         data = self.data_cache.get_data_cache()
-        self.data_cache.reset()
         max_val, min_val = None, None
         for data_batch in data:
             if self.qdesc.bs_axis > 0:
