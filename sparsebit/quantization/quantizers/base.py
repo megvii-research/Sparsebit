@@ -30,10 +30,10 @@ class Quantizer(nn.Module, abc.ABC):
                 "used bit==0 to disable quantizer is deprecated, please use a flag: QUANTIZER.DISABLE"
             )
 
-    def calc_qparams(self):
+    def calc_qparams(self, bit_allocation):
         if self.fake_fused:
             return self.scale, self.zero_point
-        scale, zero_point = self.observer.calc_qparams()
+        scale, zero_point = self.observer.calc_qparams(bit_allocation)
         self.scale = self._broadcast_qparams(scale)
         self.zero_point = self._broadcast_qparams(zero_point)
         return self.scale, self.zero_point
