@@ -1,5 +1,6 @@
 import pulp
 from sparsebit.quantization.modules import QConv2d, QLinear
+from sparsebit.quantization.modules.matmul import MatMul
 
 
 def feature_ilp_search(qmodel, perturbations, bops_limitation):
@@ -30,11 +31,21 @@ def feature_ilp_search(qmodel, perturbations, bops_limitation):
     ):  # only a single bit choice is chosen for each layer
         problem += pulp.lpSum(var[i]) == 1
     # add max BOPS limitation
-    total_bops = [
-        layer_modules[i].flops * bit_choices[j] * 8 * var[i][j]
-        for i in range(len(layer_names))
-        for j in range(len(bit_choices))
-    ]
+    total_bops = []
+    for i in range(len(layer_names)):
+        if isinstance(layer_modules[i], (QConv2d, QLinear)):
+            for j in range(len(bit_choices)):
+                total_bops.append(
+                    layer_modules[i].flops * bit_choices[j] * 8 * var[i][j]
+                )
+        elif isinstance(layer_modules[i], MatMul):
+            for j in range(len(bit_choices)):
+                total_bops.append(
+                    layer_modules[i].flops * (bit_choices[j] ** 2) * var[i][j]
+                )
+        else:
+            raise NotImplementedError
+
     problem += pulp.lpSum(total_bops) <= bops_limitation + 1
 
     # Calculate results

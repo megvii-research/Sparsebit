@@ -165,11 +165,8 @@ class CalibrationRunner(object):
                 outputs.append(to_cpu(module(*args, **kwargs)))
         if isinstance(module, QuantOpr):
             module.set_quant(w_quant=False, a_quant=False)
-        if isinstance(module, QConv2d):
-            module.output_hw = outputs[0].shape[-2:]
-        if (
-            isinstance(module, QuantOpr)
-            and module.input_quantizer.observer.qdesc._ch_axis == 2
-        ):  # NLC
-            module.seq_len = outputs[0].shape[0]
+            module.output_shape = outputs[0].shape
+            print(node.name)
+            print(module.output_shape)
+            print()
         return outputs
