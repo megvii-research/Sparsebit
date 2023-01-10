@@ -4,8 +4,7 @@ from sparsebit.quantization.modules import QConv2d, QLinear, MatMul
 
 def calc_flops_and_limitations(qmodel, target_w_bit, target_a_bit):
     bops_limitation = 0
-    bops_limitation_for_feature_search = 0
-    bops_limitation_for_weight_search = 0
+    bops_limitation_for_search = 0
     memory_limitation = 0
     for node in qmodel.model.graph.nodes:
         if node.op in ["placeholder", "output"]:
@@ -39,10 +38,7 @@ def calc_flops_and_limitations(qmodel, target_w_bit, target_a_bit):
                 memory_limitation += module.weight.numel()  # Byte
             else:
                 bops_limitation += module.flops * target_w_bit * target_a_bit
-                bops_limitation_for_feature_search += module.flops * 8 * target_a_bit
-                bops_limitation_for_weight_search += (
-                    module.flops * target_w_bit * target_a_bit
-                )
+                bops_limitation_for_search += module.flops * target_w_bit * target_a_bit
                 memory_limitation += module.weight.numel() * target_w_bit / 8  # Byte
         elif isinstance(module, MatMul) and getattr(
             module, "input_quantizer_generated", None
@@ -58,13 +54,12 @@ def calc_flops_and_limitations(qmodel, target_w_bit, target_a_bit):
             ).item()
 
             bops = module.flops * (target_a_bit**2)
-            bops_limitation_for_feature_search += bops
+            bops_limitation_for_search += bops
             bops_limitation += bops
 
     return (
         bops_limitation,
-        bops_limitation_for_feature_search,
-        bops_limitation_for_weight_search,
+        bops_limitation_for_search,
         memory_limitation,
     )
 
@@ -95,12 +90,16 @@ def calc_final_bops_and_memory(qmodel):
         elif isinstance(module, MatMul) and getattr(
             module, "input_quantizer_generated", None
         ):
-            input_bit = getattr(
+            input0_bit = getattr(
                 qmodel.model, node.all_input_nodes[0].target
             ).input_quantizer.bit
-            allocated_bops += module.flops * (input_bit**2)
+            input1_bit = getattr(
+                qmodel.model, node.all_input_nodes[1].target
+            ).input_quantizer.bit
+            allocated_bops += module.flops * input0_bit * input1_bit
             print("module name:", node.target)
-            print("input bit:", input_bit)
+            print("input0 bit:", input0_bit)
+            print("input1 bit:", input1_bit)
             print()
 
     return allocated_bops, allocated_memory
