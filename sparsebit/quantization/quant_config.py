@@ -30,7 +30,7 @@ _C.W.OBSERVER.PERCENTILE = CN()
 _C.W.OBSERVER.PERCENTILE.ALPHA = 0.001  # alpha for percentile observer
 _C.W.OBSERVER.ACIQ = CN()
 _C.W.OBSERVER.ACIQ.DISTRIBUTION = "GAUS"  # "LAPLACE"/"GAUS"
-_C.W.SPECIFIC = []
+_C.W.SPECIFIC = [{}]
 
 _C.A = CN()
 _C.A.QSCHEME = None  # support per-[channel/tensor]-[affine/symmetric]
@@ -52,7 +52,7 @@ _C.A.OBSERVER.ACIQ.DISTRIBUTION = "GAUS"  # "LAPLACE"/"GAUS"
 _C.A.OBSERVER.LAYOUT = "NCHW"  # NCHW / NLC
 _C.A.QADD = CN()
 _C.A.QADD.ENABLE_QUANT = False
-_C.A.SPECIFIC = []
+_C.A.SPECIFIC = [{}]
 
 
 def parse_qconfig(cfg_file):

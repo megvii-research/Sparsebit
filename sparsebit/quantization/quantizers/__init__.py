@@ -8,6 +8,8 @@ def register_quantizer(quantizer):
 
 from .base import Quantizer
 from . import uniform
+from . import uniform_symmetric_qat
+from . import uniform_asymmetric_qat
 from . import lsq
 from . import dorefa
 from . import lsq_plus

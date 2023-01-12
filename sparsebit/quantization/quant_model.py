@@ -191,7 +191,7 @@ class QuantModel(nn.Module):
         )
         self.calibration_runner.prepare_calibration()
 
-    def calc_qparams(self, asym=False, w_quant=False, a_quant=False):
+    def calc_qparams(self, asym=False, w_quant=False, a_quant=False, first_batch_label=None):
         """
         asym: enable calculate the quant params with all preceding layers quantized
         """
@@ -200,11 +200,11 @@ class QuantModel(nn.Module):
             self.device, asym, w_quant, a_quant
         )
         if self.cfg.SCHEDULE.BIT_ALLOCATION.ENABLE:
-            bit_allocation(self, self.calibration_runner.calib_data_for_mixbit)
+            bit_allocation(self, self.calibration_runner.calib_data_for_mixbit, first_batch_label)
         del self.calibration_runner
 
-    def init_QAT(self):
-        self.calc_qparams()
+    def init_QAT(self, first_batch_label):
+        self.calc_qparams(first_batch_label=first_batch_label)
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
 

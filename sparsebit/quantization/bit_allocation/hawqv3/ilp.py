@@ -10,13 +10,14 @@ def ilp_search(
     bops_limitation,
     memory_limitation,
 ):
-    print("Starting weight ILP search!")
+    print("Starting ILP search!")
     weight_layer_names = list(perturbations_convlinear.keys())
     weight_layer_modules = [getattr(qmodel.model, name) for name in weight_layer_names]
     matmul_layer_names = list(perturbations_matmul.keys())
     matmul_layer_modules = [getattr(qmodel.model, name) for name in matmul_layer_names]
     weight_bit_choices = qmodel.cfg.W.OBSERVER.BIT_CHOICES
     feature_bit_choices = qmodel.cfg.A.OBSERVER.BIT_CHOICES
+    # assert weight_bit_choices == feature_bit_choices, "For HAWQv3, weight and feature bit choices must be the same!"
 
     # Define problem
     problem = pulp.LpProblem("weight bit allocation", pulp.LpMinimize)
@@ -25,7 +26,7 @@ def ilp_search(
         (
             range(len(weight_layer_names)),
             range(len(weight_bit_choices)),
-            range(len(feature_bit_choices)),
+            # range(len(feature_bit_choices)),
         ),
         0,
         1,
@@ -43,13 +44,11 @@ def ilp_search(
         pulp.LpInteger,
     )
     target_values = [
-        perturbations_convlinear[weight_layer_names[i]][weight_bit_choices[j]][
-            feature_bit_choices[k]
-        ]
-        * var_convlinear[i][j][k]
+        perturbations_convlinear[weight_layer_names[i]][weight_bit_choices[j]]
+        * var_convlinear[i][j]
         for i in range(len(weight_layer_names))
         for j in range(len(weight_bit_choices))
-        for k in range(len(feature_bit_choices))
+        # for k in range(len(feature_bit_choices))
     ]
     target_values.extend(
         [
@@ -70,30 +69,26 @@ def ilp_search(
         problem += pulp.lpSum(var_convlinear[i]) == 1
     for i in range(len(matmul_layer_names)):
         problem += pulp.lpSum(var_matmul[i]) == 1
-    # #Fix matmul bits to 4
-    # idx_4bit = feature_bit_choices.index(4)
-    # for i in range(len(matmul_layer_names)):
-    #     problem += pulp.lpSum(var_matmul[i][idx_4bit][idx_4bit]) == 1
     # add memory limitation
     total_memory = [
         weight_layer_modules[i].weight.numel()
         * weight_bit_choices[j]
         / 8
-        * var_convlinear[i][j][k]
+        * var_convlinear[i][j]#[k]
         for i in range(len(weight_layer_names))
         for j in range(len(weight_bit_choices))
-        for k in range(len(feature_bit_choices))
+        # for k in range(len(feature_bit_choices))
     ]
     problem += pulp.lpSum(total_memory) <= memory_limitation
     # add max BOPS limitation
     total_bops = [
         weight_layer_modules[i].flops
-        * weight_bit_choices[j]
-        * feature_bit_choices[k]
-        * var_convlinear[i][j][k]
+        * (weight_bit_choices[j]**2)
+        # * feature_bit_choices[k]
+        * var_convlinear[i][j]#[k]
         for i in range(len(weight_layer_names))
         for j in range(len(weight_bit_choices))
-        for k in range(len(feature_bit_choices))
+        # for k in range(len(feature_bit_choices))
     ]
     total_bops.extend(
         [
@@ -118,17 +113,23 @@ def ilp_search(
         if "__" in v.name:
             continue
         print(v.name)
-        _, var_type, layer_idx, bit_idx_0, bit_idx_1 = v.name.split("_")
-        layer_idx = int(layer_idx)
-        bit_idx_0 = int(bit_idx_0)
-        bit_idx_1 = int(bit_idx_1)
+        splited_name = v.name.split("_")
+        if len(splited_name)==4:
+            _, var_type, layer_idx, bit_idx_0 = v.name.split("_")
+            layer_idx = int(layer_idx)
+            bit_idx_0 = int(bit_idx_0)
+        else:
+            _, var_type, layer_idx, bit_idx_0, bit_idx_1 = v.name.split("_")
+            layer_idx = int(layer_idx)
+            bit_idx_0 = int(bit_idx_0)
+            bit_idx_1 = int(bit_idx_1)
         # print(v)
         # print(v.varValue)
         if v.varValue > 0.5:
             if var_type == "convlinear":
                 bit_allocated[weight_layer_names[layer_idx]] = {
                     "w": weight_bit_choices[bit_idx_0],
-                    "f": feature_bit_choices[bit_idx_1],
+                    "f": weight_bit_choices[bit_idx_0],
                 }
             elif var_type == "matmul":
                 bit_allocated[matmul_layer_names[layer_idx]] = {

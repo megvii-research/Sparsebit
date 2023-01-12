@@ -10,7 +10,7 @@ def ilp_search(
     bops_limitation,
     memory_limitation,
 ):
-    print("Starting weight ILP search!")
+    print("Starting ILP search!")
     weight_layer_names = list(perturbations_convlinear.keys())
     weight_layer_modules = [getattr(qmodel.model, name) for name in weight_layer_names]
     matmul_layer_names = list(perturbations_matmul.keys())
@@ -70,10 +70,6 @@ def ilp_search(
         problem += pulp.lpSum(var_convlinear[i]) == 1
     for i in range(len(matmul_layer_names)):
         problem += pulp.lpSum(var_matmul[i]) == 1
-    # #Fix matmul bits to 4
-    # idx_4bit = feature_bit_choices.index(4)
-    # for i in range(len(matmul_layer_names)):
-    #     problem += pulp.lpSum(var_matmul[i][idx_4bit][idx_4bit]) == 1
     # add memory limitation
     total_memory = [
         weight_layer_modules[i].weight.numel()
