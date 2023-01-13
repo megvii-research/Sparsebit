@@ -13,6 +13,8 @@ def bit_allocation_by_greedy(qmodel, calib_loader):
         bops_limitation_for_search,
         memory_limitation,
     ) = calc_flops_and_limitations(qmodel, target_w_bit, target_a_bit)
+    print("Total BOPs limitation:", str(bops_limitation / 1e9), "GBOPs")
+    print("Total memory limitation:", str(memory_limitation / (2**20)), "MB")
     perturbations_conv_linear, perturbations_matmul = get_perturbations(qmodel, data)
     bit_allocated = ilp_search(
         qmodel,
