@@ -14,7 +14,6 @@ class CalibrationRunner(object):
     def __init__(self, model, bit_allocation_cfg):
         self.model = fx_symbolic_trace(model)
         self.bit_allocation = bit_allocation_cfg.ENABLE
-        self.calib_data_for_mixbit = None
 
     def prepare_calibration(self):
         input_names_cache = set(
@@ -86,10 +85,6 @@ class CalibrationRunner(object):
             if node.op in ["placeholder", "output"]:
                 if batch_num is None:
                     batch_num = len(self.builder.storage.get_output(node.target))
-                if self.bit_allocation and self.calib_data_for_mixbit is None:
-                    self.calib_data_for_mixbit = self.builder.storage.get_output(
-                        node.target
-                    )[0]
                 continue
             assert batch_num is not None
             self.run_feature_calibration(node, asym)

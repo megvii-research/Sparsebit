@@ -191,7 +191,7 @@ class QuantModel(nn.Module):
         )
         self.calibration_runner.prepare_calibration()
 
-    def calc_qparams(self, asym=False, w_quant=False, a_quant=False, first_batch_label=None):
+    def calc_qparams(self, asym=False, w_quant=False, a_quant=False, calib_loader=None):
         """
         asym: enable calculate the quant params with all preceding layers quantized
         """
@@ -200,19 +200,17 @@ class QuantModel(nn.Module):
             self.device, asym, w_quant, a_quant
         )
         if self.cfg.SCHEDULE.BIT_ALLOCATION.ENABLE:
-            bit_allocation(self, self.calibration_runner.calib_data_for_mixbit, first_batch_label)
+            assert calib_loader, "Must provide calib loader!"
+            bit_allocation(self, calib_loader)
         del self.calibration_runner
 
-    def init_QAT(self, first_batch_label):
-        self.calc_qparams(first_batch_label=first_batch_label)
+    def init_QAT(self, calib_loader):
+        self.calc_qparams(calib_loader=calib_loader)
         self.set_quant(w_quant=True, a_quant=True)
         self.enable_qat = True  # flag, 留备用
 
     def forward(self, *args, **kwargs):
         return self.model.forward(*args, **kwargs)
-
-    def bit_allocation(self, data):
-        bit_allocation(self, data)
 
     def get_quantization_error(
         self, data: torch.Tensor, checker=F.mse_loss, is_async: bool = True

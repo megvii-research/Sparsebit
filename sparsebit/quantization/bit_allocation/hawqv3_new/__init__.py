@@ -4,7 +4,8 @@ from .perturbations import get_perturbations
 from .bit_allocation import *
 
 
-def bit_allocation_by_hawqv3_new(qmodel, data, label):
+def bit_allocation_by_hawqv3_new(qmodel, calib_loader):
+    data, label = next(iter(calib_loader))
     target_w_bit = qmodel.cfg.SCHEDULE.BIT_ALLOCATION.AVG_WEIGHT_BIT_TARGET
     target_a_bit = qmodel.cfg.SCHEDULE.BIT_ALLOCATION.AVG_FEATURE_BIT_TARGET
     (
@@ -20,6 +21,18 @@ def bit_allocation_by_hawqv3_new(qmodel, data, label):
         bops_limitation_for_search,
         memory_limitation,
     )
+    #weight cfg
+    print("Weight bit cfg:")
+    for n, v in bit_allocated.items():
+        if "w" in v.keys():
+            print('"{}": ["QUANTIZER.BIT", {}],'.format(n, v["w"]))
+    print()
+    print("Featuret bit cfg:")
+    #feature cfg
+    for n, v in bit_allocated.items():
+        for k, bit in v.items():
+            if k!= "w":
+                print('"{}": ["QUANTIZER.BIT", {}],'.format(n, bit))
     bit_allocation(qmodel, bit_allocated)
 
     allocated_bops, allocated_memory = calc_final_bops_and_memory(qmodel)

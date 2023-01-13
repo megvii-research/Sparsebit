@@ -4,7 +4,8 @@ from .perturbations import get_perturbations
 from .bit_allocation import *
 
 
-def bit_allocation_by_greedy(qmodel, data, label=None):
+def bit_allocation_by_greedy(qmodel, calib_loader):
+    data, label = next(iter(calib_loader))
     target_w_bit = qmodel.cfg.SCHEDULE.BIT_ALLOCATION.AVG_WEIGHT_BIT_TARGET
     target_a_bit = qmodel.cfg.SCHEDULE.BIT_ALLOCATION.AVG_FEATURE_BIT_TARGET
     (

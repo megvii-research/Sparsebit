@@ -9,5 +9,5 @@ method_factory = {
 }
 
 
-def bit_allocation(qmodel, data, label):
-    method_factory[qmodel.cfg.SCHEDULE.BIT_ALLOCATION.METHOD](qmodel, data, label)
+def bit_allocation(qmodel, calib_loader):
+    method_factory[qmodel.cfg.SCHEDULE.BIT_ALLOCATION.METHOD](qmodel, calib_loader)

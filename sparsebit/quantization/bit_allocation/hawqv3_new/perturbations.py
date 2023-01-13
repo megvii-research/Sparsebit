@@ -134,7 +134,7 @@ def get_perturbations(qmodel, data, label):
             for w_bit, d_w in delta_w.items():
                 perturbations_conv_linear[node.target][w_bit] = {}
                 for f_bit, d_f in delta_f.items():
-                    perturbation = (weight_sensitivity*torch.norm(d_w, p=2, dim=0) ** 2)+(feature_sensitivity*torch.norm(d_f, p=2, dim=0) ** 2).item()
+                    perturbation = ((weight_sensitivity*torch.norm(d_w, p=2, dim=0) ** 2)+(feature_sensitivity*torch.norm(d_f, p=2, dim=0) ** 2)).item()
                     perturbations_conv_linear[node.target][w_bit][f_bit] = perturbation
                     print(
                         "    " + str(w_bit) + "w" + str(f_bit) + "f",
@@ -210,7 +210,7 @@ def get_perturbations(qmodel, data, label):
             for f0_bit, d_f0 in delta_f0.items():
                 perturbations_matmul[node.target][f0_bit] = {}
                 for f1_bit, d_f1 in delta_f1.items():
-                    perturbation = (input0_sensitivity*torch.norm(d_f0, p=2, dim=0) ** 2)+(input1_sensitivity*torch.norm(d_f1, p=2, dim=0) ** 2).item()
+                    perturbation = ((input0_sensitivity*torch.norm(d_f0, p=2, dim=0) ** 2)+(input1_sensitivity*torch.norm(d_f1, p=2, dim=0) ** 2)).item()
                     perturbations_matmul[node.target][f0_bit][f1_bit] = perturbation
                     print(
                         "    ",
@@ -231,7 +231,7 @@ def rademacher(shape, dtype=torch.float32):
 
 
 def calc_block_sensitivity(
-    block_grads, derived_params, eigen_type="avg", sensitivity_calc_iter_num=50
+    block_grads, derived_params, eigen_type="max", sensitivity_calc_iter_num=50
 ):
     if eigen_type == "max":
         v = torch.randn(block_grads.shape).cuda()
