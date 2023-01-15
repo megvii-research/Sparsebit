@@ -8,10 +8,6 @@ def mse(pred, target, p=2.0):
     return (pred - target).abs().pow(p).mean()
 
 
-def calc_sensitivity(loss, param):
-    return
-
-
 def get_perturbations(qmodel, data, label):
     qmodel.set_quant(False, False)
     param_dict = {}
