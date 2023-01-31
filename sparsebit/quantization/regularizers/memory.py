@@ -41,5 +41,5 @@ class Regularizer(BaseRegularizer):
             bit = torch.sqrt(2*dict["qmax"]+2)
             current_memory += dict["weight_numel"]*bit/(2**23)
         if current_memory.item()<=self.memory_limitation:
-            return 0
+            return torch.zeros(1, device=current_memory.device)
         return self.coeff*(current_memory-self.memory_limitation)

@@ -9,15 +9,15 @@ from sparsebit.quantization.quantizers import register_quantizer
 from sparsebit.quantization.common import Granularity
 
 
-# class gs_scaling(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, x, ratio):
-#         ctx.ratio = ratio
-#         return x
+class gs_scaling(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, ratio):
+        ctx.ratio = ratio
+        return x
 
-#     @staticmethod
-#     def backward(ctx, grad):
-#         return grad * ctx.ratio, None
+    @staticmethod
+    def backward(ctx, grad):
+        return grad * ctx.ratio, None
 
 class STE(torch.autograd.Function):
     @staticmethod
@@ -77,13 +77,27 @@ class Quantizer(BaseQuantizer):
         zero_point = torch.clamp(self.zero_point, self.qdesc.qmin, self.qdesc.qmax)
         return scale, zero_point
 
+    def fix_bit(self):
+        with torch.no_grad():
+            if self.qdesc.is_symmetric:
+                cur_bit = torch.sqrt(2*self.qmax+2)
+                new_bit = cur_bit.round()
+                new_qmax = 2**(new_bit-1)-1
+            else:
+                cur_bit = torch.sqrt(self.qmax+1)
+                new_bit = cur_bit.round()
+                new_qmax = 2**(new_bit)-1
+
+            self.qmax.data.copy_(new_qmax)
+            self.qmax.requires_grad = False
+
     def _forward(self, x, scale, zero_point):
-        # if self.is_perchannel:
-        #     num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
-        #     gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qdesc.qmax)
-        # else:
-        #     gs_ratio = 1.0 / math.sqrt(x.numel() * self.qdesc.qmax)
-        # scale = gs_scaling.apply(scale, gs_ratio)
+        if self.is_perchannel:
+            num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
+            gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qmax)
+        else:
+            gs_ratio = 1.0 / math.sqrt(x.numel() * self.qmax)
+        scale = gs_scaling.apply(scale, gs_ratio)
         if self.qdesc.is_symmetric:
             x_dq = STE.apply((x / scale).clamp(-self.qmax-1, self.qmax)) * scale
         else:

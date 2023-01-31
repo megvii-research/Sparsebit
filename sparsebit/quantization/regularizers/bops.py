@@ -2,6 +2,7 @@ import torch
 from sparsebit.quantization.regularizers import Regularizer as BaseRegularizer
 from sparsebit.quantization.regularizers import register_regularizer
 from sparsebit.quantization.modules import QConv2d, QLinear, MatMul
+from zmq import device
 
 
 @register_regularizer
@@ -76,5 +77,5 @@ class Regularizer(BaseRegularizer):
             bit2 = torch.sqrt(2*dict["qmax2"]+2) if dict["is_symmetric2"] else torch.sqrt(dict["qmax2"]+1)
             current_bops += dict["flops"]*bit1*bit2/1e9
         if current_bops.item()<=self.bops_limitation:
-            return 0
+            return torch.zeros(1, device=current_bops.device)
         return self.coeff*(current_bops-self.bops_limitation)
