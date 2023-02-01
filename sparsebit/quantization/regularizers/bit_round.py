@@ -13,10 +13,12 @@ class Regularizer(BaseRegularizer):
         config,
         qmodel,
         max_coeff = 1e6,
+        epochs_wo_regularization = 20,
         total_epochs = 90,
     ):
         super(Regularizer, self).__init__(config)
-        self.total_epochs = total_epochs
+        self.epochs_wo_regularization = epochs_wo_regularization
+        self.total_epochs = total_epochs - epochs_wo_regularization
         self.config = config
         self.max_coeff = max_coeff
         self.quantizers = []
@@ -25,11 +27,13 @@ class Regularizer(BaseRegularizer):
                 self.quantizers.append(m)
 
     def __call__(self, epoch):
-        loss = 0
+        loss = torch.tensor(0)
+        if epoch < self.epochs_wo_regularization:
+            return loss
         for quantizer in self.quantizers:
             bit = torch.sqrt(2*quantizer.qmax+2) if quantizer.qdesc.is_symmetric else torch.sqrt(quantizer.qmax+1)
             bit_floor = math.floor(bit.item())
             bit_bias = bit - bit_floor
             loss += bit_bias*(1-bit_bias)/bit_floor
-        coeff = self.max_coeff*(epoch+1)/self.total_epochs
+        coeff = self.max_coeff*(epoch-self.epochs_wo_regularization+1)/self.total_epochs
         return coeff*loss/len(self.quantizers)

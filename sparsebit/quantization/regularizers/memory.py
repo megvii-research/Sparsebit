@@ -11,7 +11,7 @@ class Regularizer(BaseRegularizer):
     def __init__(self,
         config,
         qmodel,
-        coeff = 1e6,
+        coeff = 1e2,
     ):
         super(Regularizer, self).__init__(config)
         self.config = config
@@ -27,7 +27,7 @@ class Regularizer(BaseRegularizer):
                 and getattr(module, "weight_quantizer", None)
             ):
                 self.module_dict[node.target] = module.weight
-                self.memory_limitation += module.weight.numel() * config.W.QUANTIZER.BIT/(2**23)
+                self.memory_limitation += module.weight.numel() * module.weight_quantizer.bit/(2**23)
                 self.module_dict[node.target] = {
                     "weight_numel": module.weight.numel(),
                     "qmax": module.weight_quantizer.qmax,
@@ -38,7 +38,7 @@ class Regularizer(BaseRegularizer):
     def __call__(self):
         current_memory = 0
         for n, dict in self.module_dict.items():
-            bit = torch.sqrt(2*dict["qmax"]+2)
+            bit = torch.log2(2*dict["qmax"]+2)
             current_memory += dict["weight_numel"]*bit/(2**23)
         if current_memory.item()<=self.memory_limitation:
             return torch.zeros(1, device=current_memory.device)

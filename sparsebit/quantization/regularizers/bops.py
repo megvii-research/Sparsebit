@@ -2,7 +2,6 @@ import torch
 from sparsebit.quantization.regularizers import Regularizer as BaseRegularizer
 from sparsebit.quantization.regularizers import register_regularizer
 from sparsebit.quantization.modules import QConv2d, QLinear, MatMul
-from zmq import device
 
 
 @register_regularizer
@@ -12,7 +11,7 @@ class Regularizer(BaseRegularizer):
     def __init__(self,
         config,
         qmodel,
-        coeff = 1e6,
+        coeff = 1e2,
     ):
         super(Regularizer, self).__init__(config)
         self.config = config
@@ -46,9 +45,9 @@ class Regularizer(BaseRegularizer):
                 }
                 self.bops_limitation += (
                     flops
-                    * config.A.QUANTIZER.BIT
-                    * config.W.QUANTIZER.BIT
-                )/1e9
+                    * module.input_quantizer.bit
+                    * module.weight_quantizer.bit
+                )
             elif isinstance(module, MatMul) and getattr(
                 module, "input_quantizer_generated", None
             ):
@@ -66,16 +65,18 @@ class Regularizer(BaseRegularizer):
                     "qmax1": input0_quantizer.qmax,
                     "qmax2": input1_quantizer.qmax,
                 }
-                self.bops_limitation += flops * (config.A.QUANTIZER.BIT**2)/1e9
+                self.bops_limitation += flops * (input0_quantizer.bit*input1_quantizer.bit)
 
+        self.bops_limitation /= 1e9
         print("BOPS limitation of the model:", str(self.bops_limitation), "GBOPS")
 
     def __call__(self):
         current_bops = 0
         for n, dict in self.module_dict.items():
-            bit1 = torch.sqrt(2*dict["qmax1"]+2) if dict["is_symmetric1"] else torch.sqrt(dict["qmax1"]+1)
-            bit2 = torch.sqrt(2*dict["qmax2"]+2) if dict["is_symmetric2"] else torch.sqrt(dict["qmax2"]+1)
-            current_bops += dict["flops"]*bit1*bit2/1e9
+            bit1 = torch.log2(2*dict["qmax1"]+2) if dict["is_symmetric1"] else torch.log2(dict["qmax1"]+1)
+            bit2 = torch.log2(2*dict["qmax2"]+2) if dict["is_symmetric2"] else torch.log2(dict["qmax2"]+1)
+            current_bops += dict["flops"]*bit1*bit2
+        current_bops /= 1e9
         if current_bops.item()<=self.bops_limitation:
             return torch.zeros(1, device=current_bops.device)
         return self.coeff*(current_bops-self.bops_limitation)

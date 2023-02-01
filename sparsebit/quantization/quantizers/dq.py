@@ -94,9 +94,9 @@ class Quantizer(BaseQuantizer):
     def _forward(self, x, scale, zero_point):
         if self.is_perchannel:
             num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
-            gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qmax)
+            gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qmax.item())
         else:
-            gs_ratio = 1.0 / math.sqrt(x.numel() * self.qmax)
+            gs_ratio = 1.0 / math.sqrt(x.numel() * self.qmax.item())
         scale = gs_scaling.apply(scale, gs_ratio)
         if self.qdesc.is_symmetric:
             x_dq = STE.apply((x / scale).clamp(-self.qmax-1, self.qmax)) * scale
