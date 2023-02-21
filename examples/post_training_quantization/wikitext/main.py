@@ -193,16 +193,6 @@ def finetuning(args):
         step = 0
         # train
         for batch in tqdm(train_dataloader):
-            # # Progress update every 40 batches.
-            # if step % 40 == 0 and not step == 0:
-            #     # Calculate elapsed time in minutes.
-            #     elapsed = format_time(time.time() - t0)
-            #     print(
-            #         "  Batch {:>5,}  of  {:>5,}.    Elapsed: {:}.".format(
-            #             step, len(train_dataloader), elapsed
-            #         )
-            #     )
-
             input_ids = batch[0].to(device)
             attention_mask = batch[1].to(device)
             labels = batch[2].to(device)
