@@ -12,10 +12,17 @@ from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
 from datasets import load_dataset
-from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer, AdamW, get_linear_schedule_with_warmup
+from transformers import (
+    GPT2LMHeadModel,
+    GPT2Config,
+    GPT2Tokenizer,
+    AdamW,
+    get_linear_schedule_with_warmup,
+)
 from sparsebit.quantization import QuantModel, parse_qconfig
 
 from model import ModifiedGPT2LMHeadModel
+
 
 def build_dataset(block_size=1024, calibration_size=None, batch_size=32):
     datasets = load_dataset("wikitext", "wikitext-103-v1")
@@ -70,14 +77,16 @@ def build_dataset(block_size=1024, calibration_size=None, batch_size=32):
 
     for i in tqdm(idxs):
         input_ids.append(torch.tensor(lm_dataset_train[i]["input_ids"]).unsqueeze(0))
-        attention_masks.append(torch.tensor(lm_dataset_train[i]["attention_mask"]).unsqueeze(0))
+        attention_masks.append(
+            torch.tensor(lm_dataset_train[i]["attention_mask"]).unsqueeze(0)
+        )
         labels.append(torch.tensor(lm_dataset_train[i]["labels"]).unsqueeze(0))
     input_ids = torch.cat(input_ids, dim=0)
     attention_masks = torch.cat(attention_masks, dim=0)
     labels = torch.cat(labels, dim=0)
     train_dataset = TensorDataset(input_ids, attention_masks, labels)
     end_time = time.time()
-    print("Finish loading train dataset, time cost:", str(end_time-start_time))
+    print("Finish loading train dataset, time cost:", str(end_time - start_time))
 
     print("start val dataset loading!")
     start_time = time.time()
@@ -87,14 +96,16 @@ def build_dataset(block_size=1024, calibration_size=None, batch_size=32):
     labels = []
     for i in tqdm(range(len(lm_dataset_val))):
         input_ids.append(torch.tensor(lm_dataset_val[i]["input_ids"]).unsqueeze(0))
-        attention_masks.append(torch.tensor(lm_dataset_val[i]["attention_mask"]).unsqueeze(0))
+        attention_masks.append(
+            torch.tensor(lm_dataset_val[i]["attention_mask"]).unsqueeze(0)
+        )
         labels.append(torch.tensor(lm_dataset_val[i]["labels"]).unsqueeze(0))
     input_ids = torch.cat(input_ids, dim=0)
     attention_masks = torch.cat(attention_masks, dim=0)
     labels = torch.cat(labels, dim=0)
     val_dataset = TensorDataset(input_ids, attention_masks, labels)
     end_time = time.time()
-    print("Finish loading val dataset, time cost:", str(end_time-start_time))
+    print("Finish loading val dataset, time cost:", str(end_time - start_time))
 
     train_dataloader = DataLoader(
         train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size
@@ -104,6 +115,7 @@ def build_dataset(block_size=1024, calibration_size=None, batch_size=32):
     )
 
     return train_dataloader, validation_dataloader
+
 
 def load_pretrained_state_dict():
     model_official = GPT2LMHeadModel.from_pretrained("gpt2")
@@ -118,24 +130,29 @@ def load_pretrained_state_dict():
             or "mlp.c_fc.weight" in k
             or "mlp.c_proj.weight" in k
         ):
-            replaced_kv[k] = v.transpose(1,0)
+            replaced_kv[k] = v.transpose(1, 0)
         elif "attn.c_attn.bias" in k:
             replaced_kv[k] = v
     for k, v in replaced_kv.items():
         if "attn.c_attn.weight" in k:
             state_dict.pop(k)
-            state_dict[k[:-7]+"_q"+k[-7:]] = v[:v.shape[0]//3]
-            state_dict[k[:-7]+"_k"+k[-7:]] = v[v.shape[0]//3:v.shape[0]//3*2]
-            state_dict[k[:-7]+"_v"+k[-7:]] = v[v.shape[0]//3*2:]
+            state_dict[k[:-7] + "_q" + k[-7:]] = v[: v.shape[0] // 3]
+            state_dict[k[:-7] + "_k" + k[-7:]] = v[
+                v.shape[0] // 3 : v.shape[0] // 3 * 2
+            ]
+            state_dict[k[:-7] + "_v" + k[-7:]] = v[v.shape[0] // 3 * 2 :]
         elif "attn.c_attn.bias" in k:
             state_dict.pop(k)
-            state_dict[k[:-5]+"_q"+k[-5:]] = v[:v.shape[0]//3]
-            state_dict[k[:-5]+"_k"+k[-5:]] = v[v.shape[0]//3:v.shape[0]//3*2]
-            state_dict[k[:-5]+"_v"+k[-5:]] = v[v.shape[0]//3*2:]
+            state_dict[k[:-5] + "_q" + k[-5:]] = v[: v.shape[0] // 3]
+            state_dict[k[:-5] + "_k" + k[-5:]] = v[
+                v.shape[0] // 3 : v.shape[0] // 3 * 2
+            ]
+            state_dict[k[:-5] + "_v" + k[-5:]] = v[v.shape[0] // 3 * 2 :]
         else:
             state_dict[k] = v
 
     return state_dict
+
 
 def finetuning(args):
 
@@ -148,7 +165,9 @@ def finetuning(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     block_size = 1024
-    train_dataloader, validation_dataloader = build_dataset(block_size, batch_size=args.batch_size)
+    train_dataloader, validation_dataloader = build_dataset(
+        block_size, batch_size=args.batch_size
+    )
 
     # trace gpt2 backbone
     state_dict = load_pretrained_state_dict()
@@ -194,14 +213,16 @@ def finetuning(args):
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
-            loss = criterion(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-            loss = loss/args.gradient_accumulation_steps
+            loss = criterion(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
+            loss = loss / args.gradient_accumulation_steps
 
             total_train_loss += loss.item()
             loss.backward()
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            if (step+1) % args.gradient_accumulation_steps==0:
+            if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 lr_scheduler.step()
             step += 1
@@ -233,7 +254,7 @@ def postquant(args):
     torch.cuda.manual_seed_all(seed_val)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    block_size=1024
+    block_size = 1024
     if args.checkpoint:
         state_dict = torch.load(args.checkpoint)["model"]
     else:
@@ -242,14 +263,15 @@ def postquant(args):
     model = ModifiedGPT2LMHeadModel(gpt2_config, block_size)
     model.load_state_dict(state_dict)
     model.to(device)
-    
 
     qconfig = parse_qconfig(args.qconfig)
     qmodel = QuantModel(model, config=qconfig).to(device)
     qmodel.cuda()
     cudnn.benchmark = True
 
-    calib_dataloader, validation_dataloader = build_dataset(block_size, calibration_size=args.calibration_size)
+    calib_dataloader, validation_dataloader = build_dataset(
+        block_size, calibration_size=args.calibration_size
+    )
 
     print("Start calibration with calibration_size =", str(args.calibration_size))
     start_time = time.time()
@@ -265,7 +287,7 @@ def postquant(args):
             break
     qmodel.calc_qparams()
     end_time = time.time()
-    print("Calibration finished. Time cost:", str(end_time-start_time), "s")
+    print("Calibration finished. Time cost:", str(end_time - start_time), "s")
 
     qmodel.set_quant(w_quant=True, a_quant=True)
     validation(qmodel, validation_dataloader, nn.CrossEntropyLoss(), device)
@@ -286,7 +308,9 @@ def validation(model, dataloader, criterion, device):
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
-            loss = criterion(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss = criterion(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
 
         total_eval_loss += loss.item()
     avg_val_loss = total_eval_loss / len(dataloader)
@@ -314,14 +338,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
-#    a fine-tuning worker
+    #    a fine-tuning worker
     parser_finetuning = subparsers.add_parser(
         "finetuning", help="the entrance of GPT2 fine-tuning"
     )
     parser_finetuning.set_defaults(func=finetuning)
     parser_finetuning.add_argument("--batch_size", default=4, type=int)
     parser_finetuning.add_argument("--gradient_accumulation_steps", default=4, type=int)
-
 
     # a PTQ worker
     parser_postquant = subparsers.add_parser(
