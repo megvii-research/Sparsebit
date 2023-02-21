@@ -1,0 +1,23 @@
+BACKEND: tensorrt
+SCHEDULE:
+  FUSE_BN: True
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MINMAX
+A:
+  QSCHEME: per-tensor-symmetric
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MSE
+    LAYOUT: NLC
+  SPECIFIC: [{ # bit=0 is disable_quant
+    "*ln*": ["QUANTIZER.DISABLE", True],
+    "softmax*": ["QUANTIZER.DISABLE", True],
+    "lm_head": ["OBSERVER.TYPE", "ACIQ", "OBSERVER.ACIQ.DISTRIBUTION", "laplace"],
+  }]
