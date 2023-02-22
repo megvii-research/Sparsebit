@@ -21,4 +21,4 @@ model | float | 8w8f
 --- | --- | --- |
 official gpt2-small|29.88|-|
 zero-shot gpt2-small | 29.96 | 38.29 |
-fine-tuned gpt2-small |  |  |
+fine-tuned gpt2-small |17.09  | 20.64 |
