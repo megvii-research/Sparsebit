@@ -1,6 +1,7 @@
 ## [中文版](https://github.com/megvii-research/Sparsebit/blob/main/README_zh-CN.md)
 
 ## News
+- 2023.02.23: Release a PTQ example of [GPT2] on [wikiText2](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/wikitext)
 - 2022.11.24: Release a QAT example of [BEVDet](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdet)
 - 2022.12.13: Release some examples of [BERT](https://github.com/megvii-research/Sparsebit/tree/main/examples/post_training_quantization/GLUE/CoLA).
 - 2022.12.14: Release a QAT example of [BEVDepth](https://github.com/megvii-research/Sparsebit/blob/main/examples/quantization_aware_training/nuscenes/bevdepth)
