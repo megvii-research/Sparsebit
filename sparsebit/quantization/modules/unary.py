@@ -77,6 +77,7 @@ class Detach(nn.Module):
     def forward(self, x_in, *args, **kwargs):
         return x_in.detach()
 
+
 @register_qmodule(sources=[torch.where])
 class Where(nn.Module):
     def __init__(self, org_module=None, config=None):
@@ -84,4 +85,3 @@ class Where(nn.Module):
 
     def forward(self, condition, mat1, mat2):
         return torch.where(condition, mat1, mat2)
-
