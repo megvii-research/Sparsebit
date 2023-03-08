@@ -49,9 +49,7 @@ python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /data/llama/h
 - From these figures, it can be seen that our mixed-precision method provides an intermediate result that can be adapted according to specific resources during deployment. Additionally, if measured in terms of the number of perplexity (ppl) reduction per 100MB weight, ours can achieve a fewer drop in perplexity under the same weight compared to directly converting to a low-precision version. Specifically, in llama-7B, a reduction of 0.6GB weight leads to a decrease of ~1.2ppl, while the int3 result leads to a loss of ~7.4ppl for a 1GB reduction.
 - **Note: !!!** We use groupsize=-1 in all experiments, and it will get better results if set groupsize=1024 or smaller, but currently cuda kernel does not support it. For example, int4/3/2 with groupsize=128 will get **ppl=4.376(25G)** on wikiText2, which is significantly better than groupsize=-1(4.897(27G)). We will support it soon.
 
-<img width="320" height="240" src="./figs/llama-7b_075.png"/>
-<img width="320" height="240" src="./figs/llama-13b_075.png"/>
-<img width="320" height="240" src="./figs/llama-65b_075.png"/>
+<img width="320" height="240" src="./figs/llama-7b_075.png"/> <img width="320" height="240" src="./figs/llama-13b_075.png"/> <img width="320" height="240" src="./figs/llama-65b_075.png"/>
 
 | bit-width | LLaMa-7b|LLaMa-13b|LLaMa-65b|
 |---|---|---|---|
