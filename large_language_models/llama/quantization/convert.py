@@ -333,7 +333,7 @@ if __name__ == "__main__":
     quantizers = llama_sequential(model, dataloader, DEV)
 
     # evaluation
-    print(args.dataset)
+    print("The Perplexity on wikiText2: ")
     llama_eval(model, testloader, DEV, args)
 
     if args.save:
