@@ -61,7 +61,12 @@ class GPTQ:
         self.H += inp.matmul(inp.t())
 
     def fasterquant(
-        self, blocksize=128, percdamp=.01, groupsize=-1, threshold=1e-3, bias_correction=False,
+        self,
+        blocksize=128,
+        percdamp=0.01,
+        groupsize=-1,
+        threshold=1e-3,
+        bias_correction=False,
     ):
         weight = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):
@@ -88,12 +93,12 @@ class GPTQ:
         for idx, quantizer in enumerate(self.quantizers):
             W = weight.clone()
             if not quantizer.ready():
-                quantizer.find_params(W, weight=True) # 先有个初始量化参数
+                quantizer.find_params(W, weight=True)  # 先有个初始量化参数
 
             Losses = torch.zeros_like(W)
             Q = torch.zeros_like(W)
 
-            for i1 in range(0, self.columns, blocksize): # 以blocksize为单位进行处理
+            for i1 in range(0, self.columns, blocksize):  # 以blocksize为单位进行处理
                 i2 = min(i1 + blocksize, self.columns)
                 count = i2 - i1
 
@@ -103,21 +108,25 @@ class GPTQ:
                 Losses1 = torch.zeros_like(W1)
                 Hinv1 = Hinv[i1:i2, i1:i2]
 
-                for i in range(count): # 每一列做一次,
+                for i in range(count):  # 每一列做一次,
                     w = W1[:, i]
                     d = Hinv1[i, i]
 
                     if groupsize != -1:
                         if (i1 + i) % groupsize == 0:
-                            quantizer.find_params(W[:, (i1 + i):(i1 + i + groupsize)], weight=True)
+                            quantizer.find_params(
+                                W[:, (i1 + i) : (i1 + i + groupsize)], weight=True
+                            )
 
-                    q = quantize( # 按列作量化, 但为什么scale/zero不重新统计呢? 是不是意味着更新不重要了?
+                    q = quantize(  # 按列作量化, 但为什么scale/zero不重新统计呢? 是不是意味着更新不重要了?
                         w.unsqueeze(1), quantizer.scale, quantizer.zero, quantizer.maxq
                     ).flatten()
                     Q1[:, i] = q
-                    Losses1[:, i] = (w - q) ** 2 / d ** 2 # 误差大小, 平方是有道理的, 因为做了cholesky分解.
+                    Losses1[:, i] = (
+                        w - q
+                    ) ** 2 / d**2  # 误差大小, 平方是有道理的, 因为做了cholesky分解.
 
-                    err1 = (w - q) / d # 只有一列
+                    err1 = (w - q) / d  # 只有一列
                     W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))
                     Err1[:, i] = err1
 
@@ -135,7 +144,7 @@ class GPTQ:
             mean_error = torch.mean(Losses).item()
             if mean_error < threshold:
                 break
-        print('time {:.2f}, mean-error {:.5f}'.format(time.time() - tick, mean_error))
+        print("time {:.2f}, mean-error {:.5f}".format(time.time() - tick, mean_error))
         if isinstance(self.layer, transformers.Conv1D):
             Q = Q.t()
         Q = Q.reshape(self.layer.weight.shape).to(self.layer.weight.data.dtype)

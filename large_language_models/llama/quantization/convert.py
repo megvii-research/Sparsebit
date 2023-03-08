@@ -18,6 +18,7 @@ def get_llama(model):
         pass
 
     from transformers import LLaMAForCausalLM
+
     torch.nn.init.kaiming_uniform_ = skip
     torch.nn.init.uniform_ = skip
     torch.nn.init.normal_ = skip
@@ -57,8 +58,6 @@ def get_wikitext2(nsamples, seed, seqlen, model):
         tar[:, :-1] = -100
         trainloader.append((inp, tar))
     return trainloader, testenc
-
-
 
 
 @torch.no_grad()
@@ -118,9 +117,7 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
             for bit in args.candidate_bits:
                 quantizer = Quantizer()
                 mse_flag = True if bit == 2 else False
-                quantizer.configure(
-                    bit, perchannel=True, sym=False, mse=mse_flag
-                )
+                quantizer.configure(bit, perchannel=True, sym=False, mse=mse_flag)
                 gptq[name].quantizers.append(quantizer)
 
         def add_batch(name):
@@ -133,9 +130,7 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         for name in subset:
             handles.append(subset[name].register_forward_hook(add_batch(name)))
         for j in range(args.nsamples):
-            outs[j] = layer(
-                inps[j].unsqueeze(0), attention_mask=attention_mask
-            )[0]
+            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
         for h in handles:
             h.remove()
 
@@ -147,13 +142,11 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
                 groupsize=args.groupsize,
             )
             quantizer = gptq[name].quantizers[bit_idx]
-            quantizers['model.decoder.layers.%d.%s' % (i, name)] = quantizer
-            print('model.decoder.layers.%d.%s: %d' % (i, name, quantizer.bit))
+            quantizers["model.decoder.layers.%d.%s" % (i, name)] = quantizer
+            print("model.decoder.layers.%d.%s: %d" % (i, name, quantizer.bit))
             gptq[name].free()
         for j in range(args.nsamples):
-            outs[j] = layer(
-                inps[j].unsqueeze(0), attention_mask=attention_mask
-            )[0]
+            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
 
         layers[i] = layer.cpu()
         del gptq
@@ -278,6 +271,7 @@ def load_qllama(model, checkpoint):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "model", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
@@ -298,8 +292,11 @@ if __name__ == "__main__":
         help="Percent of the average Hessian diagonal to use for dampening.",
     )
     parser.add_argument(
-        '--candidate-bits', type=int, required=True, nargs='+',
-        help='the target bit of mixed-precision.'
+        "--candidate-bits",
+        type=int,
+        required=True,
+        nargs="+",
+        help="the target bit of mixed-precision.",
     )
     parser.add_argument(
         "--groupsize",
@@ -322,7 +319,9 @@ if __name__ == "__main__":
     model = get_llama(model_cache)
 
     # load dataloaders
-    tokenizer_cache = os.path.join(args.cachedir, args.model.split("-")[-1], "tokenizer")
+    tokenizer_cache = os.path.join(
+        args.cachedir, args.model.split("-")[-1], "tokenizer"
+    )
     dataloader, testloader = get_wikitext2(
         nsamples=args.nsamples,
         seed=args.seed,
@@ -340,9 +339,11 @@ if __name__ == "__main__":
     if args.save:
         llama_pack(model, quantizers)
         layers_bit = {k: v.bit for k, v in quantizers.items()}
-        torch.save({
-            "model": model.state_dict(),
-            "hyper_parameters": args,
-            "layers_bit": layers_bit,
-        }, args.save)
-
+        torch.save(
+            {
+                "model": model.state_dict(),
+                "hyper_parameters": args,
+                "layers_bit": layers_bit,
+            },
+            args.save,
+        )

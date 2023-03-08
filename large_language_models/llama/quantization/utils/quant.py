@@ -140,11 +140,14 @@ def vecquant2matmul(x, qweight, y, scales, zeros):
     tmp = 0
     scales, zeros = scales[:, 0], zeros[:, 0]
     for row in range(qweight.shape[0]):
-        for i in range(16): # 得到16个ic的partsum
-            dqweight = (scales * ((qweight[row] >> 2*i) & 0x3) - zeros)
-            tmp += dqweight.unsqueeze(0).unsqueeze(0) * x[:, :, (i+shift):(i+shift+1)]
+        for i in range(16):  # 得到16个ic的partsum
+            dqweight = scales * ((qweight[row] >> 2 * i) & 0x3) - zeros
+            tmp += (
+                dqweight.unsqueeze(0).unsqueeze(0)
+                * x[:, :, (i + shift) : (i + shift + 1)]
+            )
         shift += 16
-    return tmp + y.unsqueeze(0).unsqueeze(0) # 扩展(N, L)维度
+    return tmp + y.unsqueeze(0).unsqueeze(0)  # 扩展(N, L)维度
 
 
 # Assumes layer is perfectly divisible into 1024 * 1024 blocks
@@ -267,7 +270,9 @@ def make_quant(module, layers_bit, name=""):
         name1 = name + "." + attr if name != "" else attr
         if name1 in layers_bit:
             setattr(
-                module, attr, QuantLinear(tmp.in_features, tmp.out_features, bit=layers_bit[name1])
+                module,
+                attr,
+                QuantLinear(tmp.in_features, tmp.out_features, bit=layers_bit[name1]),
             )
     for name1, child in module.named_children():
         make_quant(child, layers_bit, name + "." + name1 if name != "" else name1)

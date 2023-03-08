@@ -47,11 +47,13 @@ def load_llama(model_name, load_quant=True, config=None, checkpoint=""):
 
 def inference(args):
     DEV = torch.device("cuda:0")
-    #prompt = "Let me tell you a story:"
+    # prompt = "Let me tell you a story:"
     prompt = "why is the sky blue?"
 
     config = transformers.AutoConfig.from_pretrained(args.config_cache)
-    model = load_llama(args.model, load_quant=True, config=config, checkpoint=args.checkpoint)
+    model = load_llama(
+        args.model, load_quant=True, config=config, checkpoint=args.checkpoint
+    )
     model.to(DEV)
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_cache)
