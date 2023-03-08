@@ -66,7 +66,7 @@ class GPTQ:
         percdamp=0.01,
         groupsize=-1,
         threshold=1e-3,
-        bias_correction=False,
+        bias_correction=True,
     ):
         weight = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):
