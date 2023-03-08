@@ -25,7 +25,7 @@ python3 src/transformers/models/llama/convert_llama_weights_to_hf.py \
 
 ### Run
 #### Quantization
-- All scales can be run in a single V100-32GB, but you need a large memory to load fp16 checkpoint.
+- All scales can be run in a single V100-32GB, but you need a large memory to load the fp16 checkpoint.
 
 ```
 # usage
