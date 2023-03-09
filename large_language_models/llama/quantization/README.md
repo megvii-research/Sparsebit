@@ -1,8 +1,8 @@
 ### Introduction
-- In order to achieve a better trade-off between model size and the performance of [LLaMA](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/), we implemented a mixed-precision quantization method based on [GPTQ](https://arxiv.org/abs/2210.17323) to replace the default single-precision quantization.
+- In order to achieve a better trade-off between model size and the performance in quantizaiton of [LLaMA](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/), we implemented a mixed-precision quantization method based on [GPTQ](https://arxiv.org/abs/2210.17323) to replace the default single-precision quantization.
 - Specifically, unlike adopting a single-precision bit-width throughout the entire network, our approach performs bit-width assignment based on the quantization sensitivity of each linear layer.
-- We release quantized model files for download and an inference example that can be run on GPU.
-- In the future, we will continue to optimize our method to further explore smaller model sizes and higher precision. Additionally, we will also provide sparse version compression results soon.
+- We release conversion script for producing the quantized model files, and an inference example that can be run on GPU.
+- In the future, we will continue to optimize our method to further explore smaller model sizes and higher precision. Additionally, we will also provide sparse+quantized versions soon.
 
 ### Prerequests
 #### install transformers from source
@@ -45,9 +45,9 @@ python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /data/llama/h
 ```
 
 ### Results
-- quantization configure: token is keep as fp16 and the weights in linear will be quantized with per-channel scale and asysmetric.
-- From these figures, it can be seen that our mixed-precision method provides an intermediate result that can be adapted according to specific resources during deployment. Additionally, if measured in terms of the number of perplexity (ppl) reduction per 100MB weight, ours can achieve a fewer drop in perplexity under the same weight compared to directly converting to a low-precision version. Specifically, in LLaMA-7B, a reduction of 0.6GB weight leads to a decrease of ~1.2ppl, while the int3 result leads to a loss of ~7.4ppl for a 1GB reduction.
-- **Note: !!!** We use groupsize=-1 in all experiments, and it will get better results if set groupsize=1024 or smaller, but currently cuda kernel does not support it. For example, int4/3/2 with groupsize=128 will get **ppl=4.376(25G)** on wikiText2, which is significantly better than groupsize=-1(4.897(27G)). We will support it soon.
+- quantization configure: token is kept as fp16 and the weights in linear will be quantized with per-channel scale and asysmetric.
+- From these figures, it can be seen that our mixed-precision method provides an intermediate result that can be adapted according to specific resources during deployment. Additionally, if measured in terms of the number of perplexity (ppl) reduction per 100MB weight, mixed-precision-quantization can achieve less drop in perplexity under the same weight compared to directly converting to a fixed-precision version. Specifically, in LLaMA-7B from int4 -> int4/3/2, a reduction of 0.4GB weight leads to a decrease of ~1.2ppl. In comparison, int4->int3 will lead to a loss of ~7.4ppl for a 1GB reduction.
+- **Note: !!!** We use groupsize=-1 in all experiments, and it will get better results if setting groupsize=1024 or smaller, but our current CUDA kernel does not support it. For example, int4/3/2 with groupsize=128 will get **ppl=4.376(25G)** on wikiText2, which is significantly better than groupsize=-1(4.897(27G)). We will support it soon.
 
 <img width="320" height="240" src="./figs/llama-7b_075.png"/> <img width="320" height="240" src="./figs/llama-13b_075.png"/> <img width="320" height="240" src="./figs/llama-65b_075.png"/>
 
