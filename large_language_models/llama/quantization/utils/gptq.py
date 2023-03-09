@@ -157,6 +157,7 @@ class GPTQ:
                 self.layer.bias.data += delta_bias
             else:
                 self.layer.bias = nn.Parameter(delta_bias)
+        self.layer.bias.data = self.layer.bias.data.to(torch.half)
         self.layer.weight.data = Q
 
         if DEBUG:
