@@ -47,18 +47,25 @@ def load_llama(model_name, load_quant=True, config=None, checkpoint=""):
 
 def inference(args):
     DEV = torch.device("cuda:0")
-    # prompt = "Let me tell you a story:"
-    prompt = "why is the sky blue?"
+    prompt = "Let me tell you a story:"
+    # prompt = "why is the sky blue?"
 
     config = transformers.AutoConfig.from_pretrained(args.config_cache)
     model = load_llama(
         args.model, load_quant=True, config=config, checkpoint=args.checkpoint
     )
-    model.to(DEV)
+    model.single_device_mode = bool(args.single_device_mode)
+    if not model.single_device_mode:
+        model.to(DEV)
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_cache)
+    import time
+
     inputs = tokenizer.encode(prompt, return_tensors="pt").to(DEV)
+    start_time = time.time()
     outputs = model.generate(inputs, max_new_tokens=100, do_sample=False)
+    end_time = time.time()
+    print("time = {} s.".format(end_time - start_time))
     print(tokenizer.decode(outputs[0]))
 
 
@@ -88,6 +95,12 @@ def main():
         default="",
         required=True,
         help="tokenizer config from local storage",
+    )
+    parser.add_argument(
+        "--single_device_mode",
+        default=False,
+        action="store_true",
+        help="run LLaMA large models with single device",
     )
     args = parser.parse_args()
     inference(args)
