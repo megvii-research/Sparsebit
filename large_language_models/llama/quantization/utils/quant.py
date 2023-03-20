@@ -40,13 +40,22 @@ class Quantizer(nn.Module):
         self.maxshrink = maxshrink
         self.bit = bit
 
-    def find_params(self, x, weight=False):
+    def find_params(self, x, weight=False, groupsize=-1):
         dev = x.device
         self.maxq = self.maxq.to(dev)
+
+        if groupsize != -1:
+            # groupsize must be a divisor of infeatures
+            assert weight is True and x.shape[1] % groupsize == 0
+            groups = x.shape[1] // groupsize
+        else:
+            groups = 1
 
         shape = x.shape
         if self.perchannel:
             if weight:
+                if groups > 1:
+                    x = x.reshape((-1, groupsize))
                 x = x.flatten(1)
             else:
                 if len(shape) == 4:
@@ -105,7 +114,10 @@ class Quantizer(nn.Module):
             self.zero = self.zero.repeat(tmp)
 
         if weight:
-            shape = [-1] + [1] * (len(shape) - 1)
+            if groups > 1:
+                shape = [shape[0], groups] + [1] * (len(shape) - 1)
+            else:
+                shape = [-1] + [1] * (len(shape) - 1)
             self.scale = self.scale.reshape(shape)
             self.zero = self.zero.reshape(shape)
             return
@@ -131,33 +143,31 @@ class Quantizer(nn.Module):
         return torch.all(self.scale != 0)
 
 
-def vecquant2matmul(x, qweight, y, scales, zeros):
-    """
-    A CPU version vecquant2matmul for DEBUG
-    """
-    # decode weight, qweight is (ic//16, oc)
-    shift = 0
-    tmp = 0
-    scales, zeros = scales[:, 0], zeros[:, 0]
-    for row in range(qweight.shape[0]):
-        for i in range(16):  # 得到16个ic的partsum
-            dqweight = scales * ((qweight[row] >> 2 * i) & 0x3) - zeros
-            tmp += (
-                dqweight.unsqueeze(0).unsqueeze(0)
-                * x[:, :, (i + shift) : (i + shift + 1)]
-            )
-        shift += 16
-    return tmp + y.unsqueeze(0).unsqueeze(0)  # 扩展(N, L)维度
-
-
 # Assumes layer is perfectly divisible into 1024 * 1024 blocks
 class QuantLinear(nn.Module):
-    def __init__(self, infeatures, outfeatures, bit=4):
+    def __init__(self, infeatures, outfeatures, bit=4, groupsize=-1):
         super().__init__()
         # 3 int32 solved at the same time for 3bit
         # 1 int32 solved at the same time for 4bit
-        self.register_buffer("zeros", torch.zeros((outfeatures, 1)))
-        self.register_buffer("scales", torch.zeros((outfeatures, 1)))
+        if groupsize != -1:
+            min_group_size = {4: 128, 3: 128, 2: 64}[bit]
+            assert groupsize % min_group_size == 0
+            assert infeatures % groupsize == 0
+            groups = infeatures // groupsize
+        else:
+            groups = 1
+        self.infeatures = infeatures
+        self.outfeatures = outfeatures
+
+        self.groups = groups
+        self.groupsize = groupsize
+
+        if self.groups > 1:
+            self.register_buffer("zeros", torch.zeros((outfeatures, self.groups, 1)))
+            self.register_buffer("scales", torch.zeros((outfeatures, self.groups, 1)))
+        else:
+            self.register_buffer("zeros", torch.zeros((outfeatures, 1)))
+            self.register_buffer("scales", torch.zeros((outfeatures, 1)))
         self.register_buffer("bias", torch.zeros(outfeatures))
         self.bit = bit
         self.parallel_bit_nums = 1 if self.bit in [2, 4] else 3
@@ -177,12 +187,16 @@ class QuantLinear(nn.Module):
     def pack(self, linear, scales, zeros):
         self.zeros = zeros * scales
         self.scales = scales.clone()
-        if linear.bias is not None:
-            self.bias = linear.bias.clone()
+        self.bias = linear.bias.clone()
 
-        intweight = torch.round((linear.weight.data + self.zeros) / self.scales).to(
-            torch.int
-        )
+        weight = linear.weight.data
+        if self.groups > 1:
+            weight = weight.view(self.outfeatures, self.groups, -1)
+            intweight = torch.round((weight + self.zeros) / self.scales).to(torch.int)
+            intweight = intweight.view(self.outfeatures, self.infeatures)
+        else:
+            intweight = torch.round((weight + self.zeros) / self.scales).to(torch.int)
+
         intweight = intweight.t().contiguous()
         intweight = intweight.numpy().astype(np.uint32)
         qweight = np.zeros(
@@ -246,23 +260,166 @@ class QuantLinear(nn.Module):
         self.qweight = torch.from_numpy(qweight)
 
     def forward(self, x):
-        if x.shape[-1] == x.numel():
-            outshape = list(x.shape)
-            y = self.bias.clone()
-            outshape[-1] = self.bias.numel()
-            dtype = x.dtype
-            x = x.float()
-            {
-                2: cuda_kernel.vecquant2matmul,
-                3: cuda_kernel.vecquant3matmul,
-                4: cuda_kernel.vecquant4matmul,
-            }[self.bit](x, self.qweight, y, self.scales, self.zeros)
-            y = y.to(dtype)
-            return y.reshape(outshape)
-        raise ValueError("Only supports a single token currently.")
+        f32 = lambda x: x.to(torch.float32)
+
+        # prefer 32bit data as FC input
+        # because 4w16f cuda implementation is 4x ~ 5x slower than 4w32f (2080ti)
+        return (
+            {2: Quant2Matmul, 3: Quant3Matmul, 4: Quant4Matmul}[self.bit]
+            .apply(
+                f32(x),
+                self.qweight,
+                f32(self.scales),
+                f32(self.zeros),
+                f32(self.bias),
+                self.groupsize,
+            )
+            .to(x.dtype)
+        )
 
 
-def make_quant(module, layers_bit, name=""):
+class Quant4Matmul(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, qweight, scales, zeros, bias, groupsize=-1):
+        x_shape = list(input.shape)
+        y = (
+            bias.to(input.dtype)[(None,) * (len(x_shape) - 1)]
+            .repeat(x_shape[:-1] + [1])
+            .contiguous()
+        )
+        if not input.is_cuda:
+            input = input.cuda()
+            qweight = qweight.cuda()
+            y = y.cuda()
+            scales = scales.cuda()
+            zeros = zeros.cuda()
+            is_cuda = False
+        else:
+            is_cuda = True
+        if groupsize == -1:
+            cuda_kernel.vecquant4matmul(input, qweight, y, scales, zeros)
+        else:
+            cuda_kernel.vecgroupquant4matmul(
+                input, qweight, y, scales, zeros, groupsize
+            )
+        if not is_cuda:
+            y = y.cpu()
+        return y
+
+    @staticmethod
+    def backward(ctx, grad):
+        return [None] * 6
+
+    @staticmethod
+    def symbolic(g, input, qweight, scales, zeros, bias, groupsize=-1):
+        from torch.onnx.symbolic_helper import _get_tensor_sizes, _get_tensor_dim_size
+
+        op_name = "GPTQ::Quant4Matmul"
+        input_sizes = _get_tensor_sizes(input)
+        opr_type = input.type().with_sizes(
+            input_sizes[:-1] + [_get_tensor_dim_size(qweight, 1)]
+        )
+        args = (input, qweight, scales, zeros, bias)
+        kwargs = {"groupsize_i": groupsize}
+        opr = g.op(op_name, *args, **kwargs).setType(opr_type)
+        return opr
+
+
+class Quant3Matmul(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, qweight, scales, zeros, bias, groupsize=-1):
+        x_shape = list(input.shape)
+        y = (
+            bias.to(input.dtype)[(None,) * (len(x_shape) - 1)]
+            .repeat(x_shape[:-1] + [1])
+            .contiguous()
+        )
+        if not input.is_cuda:
+            input = input.cuda()
+            qweight = qweight.cuda()
+            y = y.cuda()
+            scales = scales.cuda()
+            zeros = zeros.cuda()
+            is_cuda = False
+        else:
+            is_cuda = True
+        if groupsize == -1:
+            cuda_kernel.vecquant3matmul(input, qweight, y, scales, zeros)
+        else:
+            cuda_kernel.vecgroupquant3matmul(
+                input, qweight, y, scales, zeros, groupsize
+            )
+        if not is_cuda:
+            y = y.cpu()
+        return y
+
+    @staticmethod
+    def backward(ctx, grad):
+        return [None] * 6
+
+    @staticmethod
+    def symbolic(g, input, qweight, scales, zeros, bias, groupsize=-1):
+        from torch.onnx.symbolic_helper import _get_tensor_sizes, _get_tensor_dim_size
+
+        op_name = "GPTQ::Quant3Matmul"
+        input_sizes = _get_tensor_sizes(input)
+        opr_type = input.type().with_sizes(
+            input_sizes[:-1] + [_get_tensor_dim_size(qweight, 1)]
+        )
+        args = (input, qweight, scales, zeros, bias)
+        kwargs = {"groupsize_i": groupsize}
+        opr = g.op(op_name, *args, **kwargs).setType(opr_type)
+        return opr
+
+
+class Quant2Matmul(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, qweight, scales, zeros, bias, groupsize=-1):
+        x_shape = list(input.shape)
+        y = (
+            bias.to(input.dtype)[(None,) * (len(x_shape) - 1)]
+            .repeat(x_shape[:-1] + [1])
+            .contiguous()
+        )
+        if not input.is_cuda:
+            input = input.cuda()
+            qweight = qweight.cuda()
+            y = y.cuda()
+            scales = scales.cuda()
+            zeros = zeros.cuda()
+            is_cuda = False
+        else:
+            is_cuda = True
+        if groupsize == -1:
+            cuda_kernel.vecquant2matmul(input, qweight, y, scales, zeros)
+        else:
+            cuda_kernel.vecgroupquant2matmul(
+                input, qweight, y, scales, zeros, groupsize
+            )
+        if not is_cuda:
+            y = y.cpu()
+        return y
+
+    @staticmethod
+    def backward(ctx, grad):
+        return [None] * 6
+
+    @staticmethod
+    def symbolic(g, input, qweight, scales, zeros, bias, groupsize=-1):
+        from torch.onnx.symbolic_helper import _get_tensor_sizes, _get_tensor_dim_size
+
+        op_name = "GPTQ::Quant2Matmul"
+        input_sizes = _get_tensor_sizes(input)
+        opr_type = input.type().with_sizes(
+            input_sizes[:-1] + [_get_tensor_dim_size(qweight, 1)]
+        )
+        args = (input, qweight, scales, zeros, bias)
+        kwargs = {"groupsize_i": groupsize}
+        opr = g.op(op_name, *args, **kwargs).setType(opr_type)
+        return opr
+
+
+def make_quant(module, layers_bit, name="", groupsize=-1):
     if isinstance(module, QuantLinear):
         return
     for attr in dir(module):
@@ -272,7 +429,17 @@ def make_quant(module, layers_bit, name=""):
             setattr(
                 module,
                 attr,
-                QuantLinear(tmp.in_features, tmp.out_features, bit=layers_bit[name1]),
+                QuantLinear(
+                    tmp.in_features,
+                    tmp.out_features,
+                    bit=layers_bit[name1],
+                    groupsize=groupsize,
+                ),
             )
     for name1, child in module.named_children():
-        make_quant(child, layers_bit, name + "." + name1 if name != "" else name1)
+        make_quant(
+            child,
+            layers_bit,
+            name + "." + name1 if name != "" else name1,
+            groupsize=groupsize,
+        )

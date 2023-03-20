@@ -36,12 +36,16 @@ python3 convert.py llama-7b /data/llama/hf/ --candidate-bits 2 3 4 --save llama-
 ```
 
 #### inference
+- Now running inference of large models in a single device (even with GPU memory not capable for whole parameters) is supported. use `--single_device_mode` to enable the function.
+
 ```
 # usage
 python3 inference.py model_name /path/to/checkpoint --config_cache /path/to/config.json --tokenizer_cache /path/to/tokenizer
 
 # example
 python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /data/llama/hf/7b/llama-7b/config.json --tokenizer_cache /data/llama/hf/7b/tokenizer
+
+python3 inference.py llama-65b llama-65b_234w.pth.tar --config_cache /data/llama/hf/65b/llama-65b/config.json --tokenizer_cache /data/llama/hf/65b/tokenizer --single_device_mode
 ```
 
 ### Results
