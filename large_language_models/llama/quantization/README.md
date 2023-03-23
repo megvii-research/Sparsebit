@@ -30,13 +30,15 @@ python3 src/transformers/models/llama/convert_llama_weights_to_hf.py \
 ### Run
 #### Quantization
 - All scales can be run in a single V100-32GB, but you need a large memory to load the fp16 checkpoint.
-
+- Quantization with groups is supported.
 ```
 # usage
 python3 convert.py model_name /path/to/cachedir --candidate-bits <bit-widths> --save /path/to/save
 
 # example
 python3 convert.py llama-7b /data/llama/hf/ --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
+
+python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --save llama-13b_3w_group128.pth.tar
 ```
 
 #### inference
