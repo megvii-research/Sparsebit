@@ -52,6 +52,11 @@ python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /data/llama/h
 python3 inference.py llama-65b llama-65b_234w.pth.tar --config_cache /data/llama/hf/65b/llama-65b/config.json --tokenizer_cache /data/llama/hf/65b/tokenizer --single_device_mode
 ```
 
+We have updated a llama-13b checkpoint with 3-bit 128-group quantization [here](https://drive.google.com/file/d/1LjZmOU8tr2VT6HdAP_WbuX8cqmrs5DrR). For config_cache and tokenizer_cache, the files can be found [here in huggingface](https://huggingface.co/decapoda-research/llama-13b-hf).
+```
+python3 inference.py llama-13b llama_13b_3w_group128.pth.tar --config_cache /data/llama/hf/13b/llama-13b/config.json --tokenizer_cache /data/llama/hf/13b/tokenizer --groupsize 128
+```
+
 ### Results
 - quantization configure: token is kept as fp16 and the weights in linear will be quantized with per-channel scale and asysmetric.
 - From these figures, it can be seen that our mixed-precision method provides an intermediate result that can be adapted according to specific resources during deployment. Additionally, if measured in terms of the number of perplexity (ppl) reduction per 100MB weight, mixed-precision-quantization can achieve less drop in perplexity under the same weight compared to directly converting to a fixed-precision version. Specifically, in LLaMA-7B from int4 -> int4/3/2, a reduction of 0.4GB weight leads to a decrease of ~1.2ppl. In comparison, int4->int3 will lead to a loss of ~7.4ppl for a 1GB reduction.

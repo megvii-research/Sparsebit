@@ -9,7 +9,7 @@ from utils.modelutils import find_layers
 from utils.quant import make_quant
 
 
-def load_llama(model_name, load_quant=True, config=None, checkpoint=""):
+def load_llama(model_name, load_quant=True, config=None, checkpoint="", groupsize=-1):
     def skip(*args, **kwargs):
         pass
 
@@ -37,7 +37,9 @@ def load_llama(model_name, load_quant=True, config=None, checkpoint=""):
             if name in layers:
                 del layers[name]
         ckpt = torch.load(checkpoint)
-        make_quant(model, ckpt["layers_bit"])
+        if ckpt["hyper_parameters"]["groupsize"] != groupsize:
+            warnings.warn("Quantization group-size not-set / mismatch detected.")
+        make_quant(model, ckpt["layers_bit"], groupsize=groupsize)
         print("Loading Quant model ...")
         model.load_state_dict(ckpt["model"])
         model.seqlen = 2048
@@ -52,7 +54,11 @@ def inference(args):
 
     config = transformers.AutoConfig.from_pretrained(args.config_cache)
     model = load_llama(
-        args.model, load_quant=True, config=config, checkpoint=args.checkpoint
+        args.model,
+        load_quant=True,
+        config=config,
+        checkpoint=args.checkpoint,
+        groupsize=args.groupsize,
     )
     model.single_device_mode = bool(args.single_device_mode)
     if not model.single_device_mode:
@@ -95,6 +101,12 @@ def main():
         default="",
         required=True,
         help="tokenizer config from local storage",
+    )
+    parser.add_argument(
+        "--groupsize",
+        type=int,
+        default=-1,
+        help="Groupsize to use for quantization; default uses full row.",
     )
     parser.add_argument(
         "--single_device_mode",

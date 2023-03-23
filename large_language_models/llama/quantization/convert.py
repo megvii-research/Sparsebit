@@ -142,6 +142,9 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
                 groupsize=args.groupsize,
             )
             quantizer = gptq[name].quantizers[bit_idx]
+            quantizer.find_params(
+                gptq[name].layer.weight.data, weight=True, groupsize=args.groupsize
+            )
             quantizers["model.decoder.layers.%d.%s" % (i, name)] = quantizer
             print("model.decoder.layers.%d.%s: %d" % (i, name, quantizer.bit))
             gptq[name].free()
@@ -238,10 +241,10 @@ def llama_eval(model, testenc, dev, args):
     model.config.use_cache = use_cache
 
 
-def llama_pack(model, quantizers):
+def llama_pack(model, quantizers, groupsize=-1):
     layers = find_layers(model)
     layers_bit = {k: v.bit for k, v in quantizers.items()}
-    make_quant(model, layers_bit)
+    make_quant(model, layers_bit, groupsize=groupsize)
     qlayers = find_layers(model, [QuantLinear])
     print("Packing ...")
     for name in qlayers:
@@ -337,12 +340,12 @@ if __name__ == "__main__":
     llama_eval(model, testloader, DEV, args)
 
     if args.save:
-        llama_pack(model, quantizers)
+        llama_pack(model, quantizers, groupsize=args.groupsize)
         layers_bit = {k: v.bit for k, v in quantizers.items()}
         torch.save(
             {
                 "model": model.state_dict(),
-                "hyper_parameters": args,
+                "hyper_parameters": {"groupsize": args.groupsize},
                 "layers_bit": layers_bit,
             },
             args.save,
