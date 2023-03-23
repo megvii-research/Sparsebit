@@ -38,7 +38,7 @@ python3 convert.py model_name /path/to/cachedir --candidate-bits <bit-widths> --
 # example
 python3 convert.py llama-7b /data/llama/hf/ --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
 
-python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --save llama-13b_3w_group128.pth.tar
+python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
 ```
 
 #### inference
