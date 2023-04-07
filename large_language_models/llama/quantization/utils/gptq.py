@@ -66,7 +66,7 @@ class GPTQ:
         percdamp=0.01,
         groupsize=-1,
         threshold=1e-3,
-        bias_correction=True,
+        bias_correction=False,
     ):
         weight = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):
@@ -157,7 +157,7 @@ class GPTQ:
                 self.layer.bias.data += delta_bias
             else:
                 self.layer.bias = nn.Parameter(delta_bias)
-        self.layer.bias.data = self.layer.bias.data.to(torch.half)
+            self.layer.bias.data = self.layer.bias.data.to(torch.half)
         self.layer.weight.data = Q
 
         if DEBUG:

@@ -47,6 +47,10 @@ python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save l
 
 # example with groupsizes
 python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
+python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
+
+# example with mixbit
+python3 convert.py llama-7b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --mixbit-config ./mixbit_configs/llama-7b-234mix-3.2bit-g128.json --save llama-7b-234mix-3.2bit-g128.pth.tar
 ```
 
 #### inference
@@ -73,6 +77,10 @@ python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.ta
 
 <img width="320" height="240" src="./figs/llama-7b_075.png"/> <img width="320" height="240" src="./figs/llama-13b_075.png"/> <img width="320" height="240" src="./figs/llama-65b_075.png"/>
 
+- We use kl loss to measure the quantized sensitivity of each layer of the model, and then perform mixed bit allocation. The result is as follows：All experiments use quantization groupsize=128
+
+<img width="640" height="480" src="./figs/llama-mixbit.png"/>
+
 #### Table A
 
 | bit-width | LLaMA-7b|LLaMA-13b|LLaMA-65b|
@@ -83,6 +91,25 @@ python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.ta
 |int4/3/2|**7.755(3.2G)**|~~5.700(6.0G)~~|~~4.897(27G)~~|
 |int3|13.905(2.6G)|6.310(5.1G)|4.9056(24G)|
 |int3 & groupsize=128 | 7.547(2.6G) | 5.52(5.1G) | 4.376(25G) | 
+
+#### Table B
+- All experiments use quantization groupsize=128
+
+| bit-width | LLaMA-7b|LLaMA-13b|
+|---|---|---|
+|fp16     |5.67  |5.09  |
+|int4     |6.10  |5.18  |
+|mix3.8   |6.09  |5.20  |
+|mix3.6   |6.18  |5.23  |
+|mix3.4   |6.25  |5.28  |
+|mix3.2   |6.40  |5.37  |
+|mix3     |6.49  |5.47  |
+|int3     |7.55  |5.52  |
+|mix2.8   |6.84  |5.59  |
+|mix2.6   |7.43  |5.85  |
+|mix2.4   |8.37  |6.18  |
+|mix2.2   |9.76  |6.68  |
+|int2     |16.70 |7.59  |
 
 ### Acknowledgement
 - We are grateful for these excellent projects and list them as follows:
