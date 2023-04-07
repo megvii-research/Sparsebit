@@ -187,7 +187,8 @@ class QuantLinear(nn.Module):
     def pack(self, linear, scales, zeros):
         self.zeros = zeros * scales
         self.scales = scales.clone()
-        self.bias = linear.bias.clone()
+        if linear.bias is not None:
+            self.bias = linear.bias.clone()
 
         weight = linear.weight.data
         if self.groups > 1:

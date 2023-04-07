@@ -61,7 +61,7 @@ def get_wikitext2(nsamples, seed, seqlen, model):
 
 
 @torch.no_grad()
-def llama_sequential(model, dataloader, dev, means=None, stds=None):
+def llama_sequential(model, dataloader, dev, means=None, stds=None, extra_bit_allocation={}):
     print("Starting ...")
 
     use_cache = model.config.use_cache
@@ -114,7 +114,11 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         for name in subset:
             gptq[name] = GPTQ(subset[name])
             gptq[name].quantizers = []
-            for bit in args.candidate_bits:
+            weight_name = "model.decoder.layers.%d.%s.weight" % (i, name)
+            candidate_bits = args.candidate_bits
+            if weight_name in extra_bit_allocation:
+                candidate_bits = extra_bit_allocation[weight_name]
+            for bit in candidate_bits:
                 quantizer = Quantizer()
                 mse_flag = True if bit == 2 else False
                 quantizer.configure(bit, perchannel=True, sym=False, mse=mse_flag)
@@ -308,6 +312,12 @@ if __name__ == "__main__":
         help="Groupsize to use for quantization; default uses full row.",
     )
     parser.add_argument(
+        "--mixbit-config",
+        type=str,
+        default=None,
+        help="mixbit config of model.",
+    )
+    parser.add_argument(
         "--save",
         type=str,
         default="",
@@ -332,8 +342,15 @@ if __name__ == "__main__":
         seqlen=model.seqlen,
     )
 
+    # get extra bit allocation
+    extra_bit_allocation = {}
+    if args.mixbit_config is not None:
+        import json
+        extra_bit_allocation = json.load(open(args.mixbit_config, "r"))
+    print(extra_bit_allocation)
+
     # convert
-    quantizers = llama_sequential(model, dataloader, DEV)
+    quantizers = llama_sequential(model, dataloader, DEV, extra_bit_allocation=extra_bit_allocation)
 
     # evaluation
     print("The Perplexity on wikiText2: ")
