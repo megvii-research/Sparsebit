@@ -61,9 +61,7 @@ def get_wikitext2(nsamples, seed, seqlen, model_name):
 
 
 @torch.no_grad()
-def llama_sequential(
-    model, dataloader, dev, means=None, stds=None, extra_bit_allocation={}
-):
+def llama_sequential(model, dataloader, dev, means=None, stds=None, extra_bit_allocation={}):
     print("Starting ...")
 
     use_cache = model.config.use_cache
@@ -338,6 +336,12 @@ if __name__ == "__main__":
         help="mixbit config of model.",
     )
     parser.add_argument(
+        "--mixbit-config",
+        type=str,
+        default=None,
+        help="mixbit config of model.",
+    )
+    parser.add_argument(
         "--save",
         type=str,
         default="",
@@ -362,14 +366,11 @@ if __name__ == "__main__":
     extra_bit_allocation = {}
     if args.mixbit_config is not None:
         import json
-
         extra_bit_allocation = json.load(open(args.mixbit_config, "r"))
     print(extra_bit_allocation)
 
     # convert
-    quantizers = llama_sequential(
-        model, dataloader, DEV, extra_bit_allocation=extra_bit_allocation
-    )
+    quantizers = llama_sequential(model, dataloader, DEV, extra_bit_allocation=extra_bit_allocation)
 
     # evaluation
     print("The Perplexity on wikiText2: ")
