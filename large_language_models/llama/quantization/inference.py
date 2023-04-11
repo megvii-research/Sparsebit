@@ -3,7 +3,7 @@ import warnings
 import torch
 import transformers
 
-from transformers import LLaMAForCausalLM
+from transformers import LlamaForCausalLM
 from utils.llama_wrapper import LLaMAClass
 from utils.modelutils import find_layers
 from utils.quant import make_quant
@@ -22,7 +22,7 @@ def load_llama(model_name, load_quant=True, config=None, checkpoint="", groupsiz
 
     print("Loading model... ", end="")
     if not load_quant:
-        model = LLaMAForCausalLM.from_pretrained(model_name, torch_dtype="auto")
+        model = LlamaForCausalLM.from_pretrained(model_name, torch_dtype="auto")
         model.seqlen = 2048
     else:
         assert os.path.exists(checkpoint), "loading low-bit model requires checkpoint"

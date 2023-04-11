@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 from torch.nn import CrossEntropyLoss
-from transformers import LLaMAForCausalLM
+from transformers import LlamaForCausalLM
 from transformers.modeling_outputs import (
     BaseModelOutputWithPast,
     CausalLMOutputWithPast,
@@ -24,7 +24,7 @@ GreedySearchOutput = Union[
 SampleOutput = Union[SampleEncoderDecoderOutput, SampleDecoderOnlyOutput]
 
 
-class LLaMAClass(LLaMAForCausalLM):
+class LLaMAClass(LlamaForCausalLM):
     def greedy_search(
         self,
         input_ids: torch.LongTensor,
@@ -220,6 +220,8 @@ class LLaMAClass(LLaMAForCausalLM):
                         model_inputs = self.prepare_inputs_for_generation(
                             input_ids, **model_kwargs
                         )
+                        import ipdb
+                        ipdb.set_trace()
                         outputs = self(
                             **model_inputs,
                             return_dict=True,
@@ -659,6 +661,7 @@ class LLaMAClass(LLaMAForCausalLM):
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
@@ -727,9 +730,9 @@ class LLaMAClass(LLaMAForCausalLM):
         Example:
 
         ```python
-        >>> from transformers import AutoTokenizer, LLaMAForCausalLM
+        >>> from transformers import AutoTokenizer, LlamaForCausalLM
 
-        >>> model = LLaMAForCausalLM.from_pretrained(PATH_TO_CONVERTED_WEIGHTS)
+        >>> model = LlamaForCausalLM.from_pretrained(PATH_TO_CONVERTED_WEIGHTS)
         >>> tokenizer = AutoTokenizer.from_pretrained(PATH_TO_CONVERTED_TOKENIZER)
 
         >>> prompt = "Hey, are you consciours? Can you talk to me?"
@@ -792,11 +795,11 @@ class LLaMAClass(LLaMAForCausalLM):
         )
 
         if inputs_embeds is None:
-            if getattr(self.model.decoder.embed_tokens, "is_init", None) is None:
-                self.model.decoder.embed_tokens.is_init = True
-                self.to_device([self.model.decoder.embed_tokens], cuda_device)
+            if getattr(self.model.embed_tokens, "is_init", None) is None:
+                self.model.embed_tokens.is_init = True
+                self.to_device([self.model.embed_tokens], cuda_device)
 
-            inputs_embeds = self.model.decoder.embed_tokens(input_ids)
+            inputs_embeds = self.model.embed_tokens(input_ids)
 
         # embed positions
         if attention_mask is None:
@@ -804,13 +807,13 @@ class LLaMAClass(LLaMAForCausalLM):
                 inputs_embeds.shape[:2], dtype=torch.bool, device=inputs_embeds.device
             )
 
-        attention_mask = self.model.decoder._prepare_decoder_attention_mask(
+        attention_mask = self.model._prepare_decoder_attention_mask(
             attention_mask, input_shape, inputs_embeds, past_key_values_length
         )
 
         hidden_states = inputs_embeds
 
-        if self.model.decoder.gradient_checkpointing and self.model.decoder.training:
+        if self.model.gradient_checkpointing and self.model.training:
             if use_cache:
                 logger.warning_once(
                     "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
@@ -825,9 +828,9 @@ class LLaMAClass(LLaMAForCausalLM):
         # check if head_mask has a correct number of layers specified if desired
         for attn_mask, mask_name in zip([head_mask], ["head_mask"]):
             if attn_mask is not None:
-                if attn_mask.size()[0] != (len(self.model.decoder.layers)):
+                if attn_mask.size()[0] != (len(self.model.layers)):
                     raise ValueError(
-                        f"The `{mask_name}` should be specified for {len(self.model.decoder.layers)} layers, but it is for"
+                        f"The `{mask_name}` should be specified for {len(self.model.layers)} layers, but it is for"
                         f" {head_mask.size()[0]}."
                     )
 
@@ -840,7 +843,7 @@ class LLaMAClass(LLaMAForCausalLM):
 
         last_streams = [torch.cuda.current_stream(), torch.cuda.current_stream()]
 
-        for idx, decoder_layer in enumerate(self.model.decoder.layers):
+        for idx, decoder_layer in enumerate(self.model.layers):
             last_htod, last_func = last_streams
             htod_stream = torch.cuda.Stream()
             func_stream = torch.cuda.Stream()
@@ -920,11 +923,11 @@ class LLaMAClass(LLaMAForCausalLM):
 
         torch.cuda.current_stream().wait_stream(last_streams[-1])
 
-        if getattr(self.model.decoder.norm, "is_init", None) is None:
-            self.model.decoder.norm.is_init = True
-            self.to_device([self.model.decoder.norm], cuda_device)
+        if getattr(self.model.norm, "is_init", None) is None:
+            self.model.norm.is_init = True
+            self.to_device([self.model.norm], cuda_device)
 
-        hidden_states = self.model.decoder.norm(hidden_states)
+        hidden_states = self.model.norm(hidden_states)
 
         # add hidden states from the last decoder layer
         # if output_hidden_states:
