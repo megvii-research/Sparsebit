@@ -23,7 +23,9 @@ class Quant4Matmul(torch.autograd.Function):
             .contiguous()
         ).reshape(x_shape[0:2] + [-1])
         if groupsize == -1:
-            q8weight = cuda_kernel.unpack(qweight, (zeros / scales).round().char(), True)
+            q8weight = cuda_kernel.unpack(
+                qweight, (zeros / scales).round().char(), True
+            )
             input, inv_scale = cuda_kernel.quant_pertoken(input)
             cuda_kernel.int8gemm(
                 input.reshape(-1, input.shape[-1]), q8weight, y, 1.0, 0.0
@@ -33,20 +35,22 @@ class Quant4Matmul(torch.autograd.Function):
             y *= scales[:, 0]
         else:
             raise NotImplementedError
-        ctx.save_for_backward(qweight, scales, zeros, backward_ic_scales, backward_ic_zeros)
+        ctx.save_for_backward(
+            qweight, scales, zeros, backward_ic_scales, backward_ic_zeros
+        )
         ctx.in_shapes = list(input.shape)
         return y
 
     @staticmethod
     def backward(ctx, grad_y):
-        #ic_scales = ctx.backward_ic_scales
-        #ic_zeros = ctx.backward_ic_zeros
+        # ic_scales = ctx.backward_ic_scales
+        # ic_zeros = ctx.backward_ic_zeros
         qweight, scales, zeros, ic_scales, ic_zeros = ctx.saved_tensors
         ic_shapes = [1] * (len(ctx.in_shapes) - 1) + [ctx.in_shapes[-1]]
         assert ic_scales is not None and ic_zeros is not None
-        #scales = ctx.scales
-        #zeros = ctx.zeros
-        #qweight = ctx.qweight
+        # scales = ctx.scales
+        # zeros = ctx.zeros
+        # qweight = ctx.qweight
         grad_x = torch.zeros(ctx.in_shapes, dtype=grad_y.dtype, device=grad_y.device)
         grad_y, inv_grad_scales = cuda_kernel.quant_pertoken(grad_y)
         qweight8_ic_t = cuda_kernel.unpack_backward(
@@ -63,4 +67,3 @@ class Quant4Matmul(torch.autograd.Function):
         grad_x -= torch.sum(grad_y, dim=-1, keepdim=True) * ic_zeros.view(ic_shapes)
         grad_x *= inv_grad_scales.unsqueeze(-1)
         return grad_x, None, None, None, None, None, None, None
-

@@ -24,7 +24,9 @@ if QUANT:
     model = load_qllama(
         config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
     )
-    model = PeftQModel.from_pretrained(model, "./lora-alpaca/", torch_dtype=torch.float16)
+    model = PeftQModel.from_pretrained(
+        model, "./lora-alpaca/", torch_dtype=torch.float16
+    )
 
 else:
     model = LlamaForCausalLM.from_pretrained(
@@ -63,13 +65,13 @@ model.eval()
 
 
 def evaluate(
-        instruction,
-        input=None,
-        temperature=0.1,
-        top_p=0.75,
-        top_k=40,
-        num_beams=4,
-        **kwargs,
+    instruction,
+    input=None,
+    temperature=0.1,
+    top_p=0.75,
+    top_k=40,
+    num_beams=4,
+    **kwargs,
 ):
     prompt = generate_prompt(instruction, input)
     inputs = tokenizer(prompt, return_tensors="pt")
@@ -100,9 +102,7 @@ gr.Interface(
         gr.components.Textbox(
             lines=2, label="Instruction", placeholder="Tell me about alpacas."
         ),
-        gr.components.Textbox(
-            lines=2, label="Input", placeholder="none"
-        ),
+        gr.components.Textbox(lines=2, label="Input", placeholder="none"),
         gr.components.Slider(minimum=0, maximum=1, value=0.1, label="Temperature"),
         gr.components.Slider(minimum=0, maximum=1, value=0.75, label="Top p"),
         gr.components.Slider(minimum=0, maximum=100, step=1, value=40, label="Top k"),

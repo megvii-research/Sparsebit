@@ -256,13 +256,17 @@ class QLinear(QuantLinear, LoraLayer):
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.zeros_(self.lora_A.weight)  # a walkaround for weight is nan
             nn.init.zeros_(self.lora_B.weight)
-            self.lora_A.weight.data = nn.init.kaiming_uniform(self.lora_A.weight, a=math.sqrt(5))
+            self.lora_A.weight.data = nn.init.kaiming_uniform(
+                self.lora_A.weight, a=math.sqrt(5)
+            )
             if (
                 torch.isnan(self.lora_A.weight).sum() > 0
                 or self.lora_A.weight.sum() == 0
             ):
                 print("debug nan")
-                from IPython import embed; embed()
+                from IPython import embed
+
+                embed()
 
     def forward(self, x: torch.Tensor):
         if self.disable_adapters:
@@ -284,7 +288,10 @@ class QLinear(QuantLinear, LoraLayer):
                 expected_dtype = result.dtype
                 if x.dtype != torch.float32:
                     x = x.float()
-                output = self.lora_B(self.lora_A(self.lora_dropout(x))).to(expected_dtype) * self.scaling
+                output = (
+                    self.lora_B(self.lora_A(self.lora_dropout(x))).to(expected_dtype)
+                    * self.scaling
+                )
                 result += output
             return result
         else:

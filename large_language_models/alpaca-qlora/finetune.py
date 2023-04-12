@@ -51,7 +51,7 @@ if QUANT:
     model = load_qllama(
         config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
     )
-    model.is_loaded_in_8bit = True # hack for gradient-checkpoint
+    model.is_loaded_in_8bit = True  # hack for gradient-checkpoint
     model = prepare_model_for_int8_training(model)
     model.is_loaded_in_8bit = False
     model.seq_len = 2048
