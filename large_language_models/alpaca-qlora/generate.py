@@ -24,7 +24,7 @@ if QUANT:
     model = load_qllama(
         config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
     )
-    model = PeftQModel.from_pretrained(model, "./alpaca-qlora/", torch_dtype=torch.float16)
+    model = PeftQModel.from_pretrained(model, "./lora-alpaca/", torch_dtype=torch.float16)
 
 else:
     model = LlamaForCausalLM.from_pretrained(

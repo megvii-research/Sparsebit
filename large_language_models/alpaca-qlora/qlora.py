@@ -238,7 +238,7 @@ class QLinear(QuantLinear, LoraLayer):
             r=r,
             lora_alpha=lora_alpha,
             lora_dropout=lora_dropout,
-            merge_weights=merge_weights,
+            merge_weights=False,
         )
 
         self.fan_in_fan_out = fan_in_fan_out
@@ -252,55 +252,17 @@ class QLinear(QuantLinear, LoraLayer):
         self.reset_parameters()
 
     def reset_parameters(self):
-        QuantLinear.reset_parameters(self)
         if hasattr(self, "lora_A"):
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.zeros_(self.lora_A.weight)  # a walkaround for weight is nan
             nn.init.zeros_(self.lora_B.weight)
-            self.lora_A.weight.data = nn.init.kaiming_uniform(
-                self.lora_A.weight, a=math.sqrt(5)
-            )
+            self.lora_A.weight.data = nn.init.kaiming_uniform(self.lora_A.weight, a=math.sqrt(5))
             if (
                 torch.isnan(self.lora_A.weight).sum() > 0
                 or self.lora_A.weight.sum() == 0
             ):
                 print("debug nan")
-                from IPython import embed
-
-                embed()
-
-    def train(self, mode: bool = True):
-        QuantLinear.train(self, mode)
-        self.lora_A.train(mode)
-        self.lora_B.train(mode)
-        if not mode and self.merge_weights and not self.merged:
-            # Merge the weights and mark it
-            if self.r > 0:
-                self.weight.data += (
-                    transpose(
-                        self.lora_B.weight @ self.lora_A.weight, self.fan_in_fan_out
-                    )
-                    * self.scaling
-                )
-            self.merged = True
-        elif self.merge_weights and self.merged:
-            # Make sure that the weights are not merged
-            if self.r > 0:
-                self.weight.data -= (
-                    transpose(
-                        self.lora_B.weight @ self.lora_A.weight, self.fan_in_fan_out
-                    )
-                    * self.scaling
-                )
-            self.merged = False
-
-    def eval(self):
-        QuantLinear.eval(self)
-        self.lora_A.eval()
-        self.lora_B.eval()
-
-    def train(self, mode=True):
-        QuantLinear.train(self, mode)
+                from IPython import embed; embed()
 
     def forward(self, x: torch.Tensor):
         if self.disable_adapters:
@@ -317,23 +279,13 @@ class QLinear(QuantLinear, LoraLayer):
                 x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias
             )
         elif self.r > 0 and not self.merged:
-            f32 = lambda x: x.to(torch.float32)
-            result = (
-                {4: Quant4Matmul}[self.bit]
-                .apply(
-                    f32(x),
-                    self.qweight,
-                    f32(self.scales),
-                    self.zeros,
-                    f32(self.bias),
-                    -1,
-                    getattr(self, "backward_ic_scales", None),
-                    getattr(self, "backward_ic_zeros", None),
-                )
-                .to(x.dtype)
-            )
+            result = super().forward(x)
             if self.r > 0:
-                result += self.lora_B(self.lora_A(self.lora_dropout(x.float()))) * self.scaling
+                expected_dtype = result.dtype
+                if x.dtype != torch.float32:
+                    x = x.float()
+                output = self.lora_B(self.lora_A(self.lora_dropout(x))).to(expected_dtype) * self.scaling
+                result += output
             return result
         else:
             return F.linear(

@@ -28,7 +28,6 @@ def load_kernel():
             os.path.join(basedir, "cuda_kernel.cpp"),
             os.path.join(basedir, "cuda_kernel_4bit.cu"),
             os.path.join(basedir, "int8gemm.cu"),
-            os.path.join(basedir, "quant_tensor.cu"),
             os.path.join(basedir, "unpack.cu"),
             os.path.join(basedir, "tokenwise_quant.cu"),
         ],

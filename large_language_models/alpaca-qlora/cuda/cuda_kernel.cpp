@@ -56,13 +56,6 @@ at::Tensor unpack_backward(at::Tensor &inputs, at::Tensor &scales, at::Tensor &z
     return unpack_backward_cuda(inputs, scales, zeros, ic_scales, ic_zeros, transpose);
 }
 //======================== quant ======================
-torch::Tensor quant_pertensor_cuda(torch::Tensor &input);
-at::Tensor quant_pertensor(at::Tensor inputs)
-{
-    const at::cuda::OptionalCUDAGuard device_guard(device_of(inputs));
-    return quant_pertensor_cuda(inputs);
-}
-
 std::vector<torch::Tensor> quant_pertoken_cuda(torch::Tensor &input);
 std::vector<torch::Tensor> quant_pertoken(at::Tensor inputs)
 {

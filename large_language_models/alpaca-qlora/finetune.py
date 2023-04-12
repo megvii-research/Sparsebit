@@ -1,5 +1,6 @@
 import os
 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import torch.nn as nn
 import bitsandbytes as bnb
@@ -24,10 +25,10 @@ from qlora import get_peft_qmodel
 DEBUG = False
 QUANT = True
 if DEBUG:
-    MICRO_BATCH_SIZE = 1
-    BATCH_SIZE = 1
+    MICRO_BATCH_SIZE = 2
+    BATCH_SIZE = 2
 else:
-    MICRO_BATCH_SIZE = 2  # this could actually be 5 but i like powers of 2
+    MICRO_BATCH_SIZE = 4  # this could actually be 5 but i like powers of 2
     BATCH_SIZE = 128
 GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
 EPOCHS = 3  # we don't need 3 tbh
@@ -50,7 +51,9 @@ if QUANT:
     model = load_qllama(
         config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
     )
+    model.is_loaded_in_8bit = True # hack for gradient-checkpoint
     model = prepare_model_for_int8_training(model)
+    model.is_loaded_in_8bit = False
     model.seq_len = 2048
     peft_func = get_peft_qmodel
 else:
@@ -76,6 +79,7 @@ config = LoraConfig(
     task_type="QUANT_CAUSAL_LM" if QUANT else "CAUSAL_LM",
 )
 model = peft_func(model, config)
+
 tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
 data = load_dataset("json", data_files="alpaca_data.json")
 
