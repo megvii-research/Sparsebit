@@ -220,8 +220,6 @@ class LLaMAClass(LlamaForCausalLM):
                         model_inputs = self.prepare_inputs_for_generation(
                             input_ids, **model_kwargs
                         )
-                        import ipdb
-                        ipdb.set_trace()
                         outputs = self(
                             **model_inputs,
                             return_dict=True,
@@ -899,7 +897,9 @@ class LLaMAClass(LlamaForCausalLM):
                     hidden_states,
                     next_decoder_cache,
                     attention_mask=attention_mask,
-                    layer_head_mask=head_mask[idx] if head_mask is not None else None,
+                    position_ids=torch.arange(
+                0, input_ids.shape[1], dtype=torch.long, device=attention_mask.device
+            ).unsqueeze(0),
                     past_key_value=past_key_values[idx]
                     if past_key_values is not None
                     else None,
