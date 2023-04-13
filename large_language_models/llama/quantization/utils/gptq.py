@@ -66,6 +66,7 @@ class GPTQ:
         percdamp=0.01,
         groupsize=-1,
         threshold=1e-3,
+        rank=0,
         bias_correction=False,
     ):
         weight = self.layer.weight.data.clone()
@@ -148,6 +149,19 @@ class GPTQ:
         if isinstance(self.layer, transformers.Conv1D):
             Q = Q.t()
         Q = Q.reshape(self.layer.weight.shape).to(self.layer.weight.data.dtype)
+        quantizer.find_params(Q, weight=True, groupsize=groupsize)
+
+        if rank != 0 and quantizer.bit == 2:  # svd
+            print("rank : {}".format(rank))
+            delta_w = self.layer.weight.data - Q
+            w_weights = torch.diag(Hinv)[None, :]
+            delta_w_weighted = delta_w / w_weights
+            U, S, Vh = torch.linalg.svd(delta_w_weighted.float())
+            add_ww = (
+                U[:, 0:rank] @ torch.diag(S)[0:rank, 0:rank] @ Vh[0:rank, :] * w_weights
+            ).to(torch.half)
+            Q = Q + add_ww
+
         if bias_correction:
             delta_w = self.layer.weight.data - Q
             mean_inp = self.mean_inp.float() / self.nsamples
