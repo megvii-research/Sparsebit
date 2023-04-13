@@ -130,9 +130,13 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         for name in subset:
             handles.append(subset[name].register_forward_hook(add_batch(name)))
         for j in range(args.nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=torch.arange(
-                0, model.seqlen, dtype=torch.long, device=inps.device
-            ).unsqueeze(0))[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=torch.arange(
+                    0, model.seqlen, dtype=torch.long, device=inps.device
+                ).unsqueeze(0),
+            )[0]
         for h in handles:
             h.remove()
 
@@ -151,9 +155,13 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
             print("model.layers.%d.%s: %d" % (i, name, quantizer.bit))
             gptq[name].free()
         for j in range(args.nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=torch.arange(
-                0, model.seqlen, dtype=torch.long, device=inps.device
-            ).unsqueeze(0))[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=torch.arange(
+                    0, model.seqlen, dtype=torch.long, device=inps.device
+                ).unsqueeze(0),
+            )[0]
 
         layers[i] = layer.cpu()
         del gptq
@@ -216,9 +224,13 @@ def llama_eval(model, testenc, dev, args):
     for i in range(len(layers)):
         layer = layers[i].to(dev)
         for j in range(nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=torch.arange(
-                0, model.seqlen, dtype=torch.long, device=inps.device
-            ).unsqueeze(0))[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=torch.arange(
+                    0, model.seqlen, dtype=torch.long, device=inps.device
+                ).unsqueeze(0),
+            )[0]
         layers[i] = layer.cpu()
         del layer
         torch.cuda.empty_cache()

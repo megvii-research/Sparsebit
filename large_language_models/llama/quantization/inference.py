@@ -49,8 +49,8 @@ def load_llama(model_name, load_quant=True, config=None, checkpoint="", groupsiz
 
 def inference(args):
     DEV = torch.device("cuda:0")
-    # prompt = "Let me tell you a story:"
-    prompt = "why is the sky blue? Because"
+    prompt = "Let me tell you a story:"
+    # prompt = "why is the sky blue?"
 
     config = transformers.AutoConfig.from_pretrained(args.config_cache)
     model = load_llama(

@@ -898,8 +898,11 @@ class LLaMAClass(LlamaForCausalLM):
                     next_decoder_cache,
                     attention_mask=attention_mask,
                     position_ids=torch.arange(
-                0, input_ids.shape[1], dtype=torch.long, device=attention_mask.device
-            ).unsqueeze(0),
+                        0,
+                        input_ids.shape[1],
+                        dtype=torch.long,
+                        device=attention_mask.device,
+                    ).unsqueeze(0),
                     past_key_value=past_key_values[idx]
                     if past_key_values is not None
                     else None,
