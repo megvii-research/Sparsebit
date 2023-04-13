@@ -11,7 +11,7 @@ from utils.modelutils import find_layers
 from utils.quant import QuantLinear, Quantizer, make_quant, quantize
 
 
-def get_llama(model):
+def get_llama(model_name):
     import torch
 
     def skip(*args, **kwargs):
@@ -26,7 +26,7 @@ def get_llama(model):
     transformers.modeling_utils._init_weights = False
     torch.set_default_dtype(torch.half)
 
-    model = LlamaForCausalLM.from_pretrained(model, torch_dtype="auto")
+    model = LlamaForCausalLM.from_pretrained(model_name, torch_dtype="auto")
     model.seqlen = 2048
     torch.set_default_dtype(torch.float)
     model.eval()
@@ -34,7 +34,7 @@ def get_llama(model):
     return model
 
 
-def get_wikitext2(nsamples, seed, seqlen, model):
+def get_wikitext2(nsamples, seed, seqlen, model_name):
     from datasets import load_dataset
 
     traindata = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
@@ -42,7 +42,7 @@ def get_wikitext2(nsamples, seed, seqlen, model):
 
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     trainenc = tokenizer("\n\n".join(traindata["text"]), return_tensors="pt")
     testenc = tokenizer("\n\n".join(testdata["text"]), return_tensors="pt")
 
@@ -295,10 +295,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "model", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
-    )
-    parser.add_argument(
-        "cachedir", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
+        "model_name",
+        type=str,
+        help="LLaMA model to load; pass `decapoda-research/llama-7b/13b/30b/65b-hf`.",
     )
     parser.add_argument(
         "--seed", type=int, default=0, help="Seed for sampling the calibration data."
@@ -336,14 +335,13 @@ if __name__ == "__main__":
     DEV = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # load fp16 model
-    model_cache = args.cachedir
-    model = get_llama(model_cache)
+    model = get_llama(args.model_name)
 
     # load dataloaders
     dataloader, testloader = get_wikitext2(
         nsamples=args.nsamples,
         seed=args.seed,
-        model=model_cache,
+        model_name=args.model_name,
         seqlen=model.seqlen,
     )
 

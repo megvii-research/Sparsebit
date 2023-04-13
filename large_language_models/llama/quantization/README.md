@@ -40,13 +40,13 @@ vim tokenizer_config.json
 
 ```
 # usage
-python3 convert.py model_name /huggingface/model/name --candidate-bits <bit-widths> --save /path/to/save
+python3 convert.py /huggingface/model/name --candidate-bits <bit-widths> --save /path/to/save
 
 # example 
-python3 convert.py llama-7b decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
+python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
 
 # example with groupsizes
-python3 convert.py llama-13b decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
+python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
 ```
 
 #### inference
@@ -54,16 +54,16 @@ python3 convert.py llama-13b decapoda-research/llama-7b-hf --candidate-bits 3 --
 
 ```
 # usage
-python3 inference.py model_name /huggingface/model/name --config_cache /path/to/config.json --tokenizer_cache /path/to/tokenizer
+python3 inference.py /huggingface/model/name /path/to/checkpoint
 
 # example
-python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /PATH_TO_HUGGINGFACE/hub/models--decapoda-research--llama-7b-hf/snapshots/5f98eefcc80e437ef68d457ad7bf167c2c6a1348/config.json --tokenizer_cache /PATH_TO_HUGGINGFACE/hub/models--decapoda-research--llama-7b-hf/snapshots/5f98eefcc80e437ef68d457ad7bf167c2c6a1348
+python3 inference.py decapoda-research/llama-7b-hf llama-7b_234w.pth.tar
 
 # example run in single gpu
-python3 inference.py llama-65b llama-65b_234w.pth.tar --config_cache /data/llama/hf/65b/llama-65b/config.json --tokenizer_cache /data/llama/hf/65b/tokenizer --single_device_mode
+python3 inference.py decapoda-research/llama-65b-hf llama-65b_234w.pth.tar --single_device_mode
 
 # example run a model with groupsize
-python3 inference.py llama-13b llama_13b_3w_group128.pth.tar --config_cache /data/llama/hf/13b/llama-13b/config.json --tokenizer_cache /data/llama/hf/13b/tokenizer --groupsize 128
+python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.tar --groupsize 128
 ```
 
 ### Results

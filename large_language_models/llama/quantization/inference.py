@@ -52,9 +52,9 @@ def inference(args):
     prompt = "Let me tell you a story:"
     # prompt = "why is the sky blue?"
 
-    config = transformers.AutoConfig.from_pretrained(args.config_cache)
+    config = transformers.AutoConfig.from_pretrained(args.model_name)
     model = load_llama(
-        args.model,
+        args.model_name,
         load_quant=True,
         config=config,
         checkpoint=args.checkpoint,
@@ -64,7 +64,7 @@ def inference(args):
     if not model.single_device_mode:
         model.to(DEV)
 
-    tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_cache)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_name)
     import time
 
     inputs = tokenizer.encode(prompt, return_tensors="pt").to(DEV)
@@ -80,27 +80,15 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "model", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
+        "model_name",
+        type=str,
+        help="LLaMA model to load; pass `decapoda-research/llama-7b/13b/30b/65b-hf`.",
     )
     parser.add_argument(
         "checkpoint",
         type=str,
         default="",
         help="a checkpoint path from local storage",
-    )
-    parser.add_argument(
-        "--config_cache",
-        type=str,
-        default="",
-        required=True,
-        help="config from local storage",
-    )
-    parser.add_argument(
-        "--tokenizer_cache",
-        type=str,
-        default="",
-        required=True,
-        help="tokenizer config from local storage",
     )
     parser.add_argument(
         "--groupsize",
