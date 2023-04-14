@@ -10,22 +10,28 @@
 - In the future, we will continue to optimize our method to further explore smaller model sizes and higher precision. Additionally, we will also provide sparse+quantized versions soon.
 
 ### Prerequests
-#### install transformers from source
+#### install transformers>=4.28.0
 
 ```
-git clone https://github.com/zphang/transformers.git --branch llama_push --depth=20
-cd transformers
-git checkout 6a17e7f3b4
-python3 setup.py develop --user
+pip install transformers==4.28.0
 ```
 
-#### Convert Weights
-
+#### Download pretrained weight
+LLaMA-7b is used as an example here
 ```
-python3 src/transformers/models/llama/convert_llama_weights_to_hf.py \
-    --input_dir /path/to/downloaded/llama/weights \
-    --model_size 7B \
-    --output_dir /data/llama/hf/
+from transformers import AutoTokenizer, AutoModelForCausalLM
+tokenizer = AutoTokenizer.from_pretrained("decapoda-research/llama-7b-hf")
+model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
+```
+
+#### Fix tokenizer bug (May deprecate in the future)
+LLaMA tokenizer can't be correctly used in transformers==4.28.0, so we need to fix it first.
+LLaMA-7b is used as an example here.
+```
+cd /PATH_TO_HUGGINGFACE/hub/models--decapoda-research--llama-7b-hf/snapshots
+cd SUB_FOLDER_NAME
+vim tokenizer_config.json
+"LLaMATokenizer"->"LlamaTokenizer"
 ```
 
 ### Run
@@ -34,13 +40,13 @@ python3 src/transformers/models/llama/convert_llama_weights_to_hf.py \
 
 ```
 # usage
-python3 convert.py model_name /path/to/cachedir --candidate-bits <bit-widths> --save /path/to/save
+python3 convert.py huggingface_model_name --candidate-bits <bit-widths> --save /path/to/save
 
 # example 
-python3 convert.py llama-7b /data/llama/hf/ --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
+python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
 
 # example with groupsizes
-python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
+python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
 ```
 
 #### inference
@@ -48,16 +54,16 @@ python3 convert.py llama-13b /data/llama/hf/ --candidate-bits 3 --groupsize 128 
 
 ```
 # usage
-python3 inference.py model_name /path/to/checkpoint --config_cache /path/to/config.json --tokenizer_cache /path/to/tokenizer
+python3 inference.py huggingface_model_name /path/to/checkpoint
 
 # example
-python3 inference.py llama-7b llama-7b_234w.pth.tar --config_cache /data/llama/hf/7b/llama-7b/config.json --tokenizer_cache /data/llama/hf/7b/tokenizer
+python3 inference.py decapoda-research/llama-7b-hf llama-7b_234w.pth.tar
 
 # example run in single gpu
-python3 inference.py llama-65b llama-65b_234w.pth.tar --config_cache /data/llama/hf/65b/llama-65b/config.json --tokenizer_cache /data/llama/hf/65b/tokenizer --single_device_mode
+python3 inference.py decapoda-research/llama-65b-hf llama-65b_234w.pth.tar --single_device_mode
 
 # example run a model with groupsize
-python3 inference.py llama-13b llama_13b_3w_group128.pth.tar --config_cache /data/llama/hf/13b/llama-13b/config.json --tokenizer_cache /data/llama/hf/13b/tokenizer --groupsize 128
+python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.tar --groupsize 128
 ```
 
 ### Results

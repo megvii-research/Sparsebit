@@ -11,13 +11,13 @@ from utils.modelutils import find_layers
 from utils.quant import QuantLinear, Quantizer, make_quant, quantize
 
 
-def get_llama(model):
+def get_llama(model_name):
     import torch
 
     def skip(*args, **kwargs):
         pass
 
-    from transformers import LLaMAForCausalLM
+    from transformers import LlamaForCausalLM
 
     torch.nn.init.kaiming_uniform_ = skip
     torch.nn.init.uniform_ = skip
@@ -26,7 +26,7 @@ def get_llama(model):
     transformers.modeling_utils._init_weights = False
     torch.set_default_dtype(torch.half)
 
-    model = LLaMAForCausalLM.from_pretrained(model, torch_dtype="auto")
+    model = LlamaForCausalLM.from_pretrained(model_name, torch_dtype="auto")
     model.seqlen = 2048
     torch.set_default_dtype(torch.float)
     model.eval()
@@ -34,7 +34,7 @@ def get_llama(model):
     return model
 
 
-def get_wikitext2(nsamples, seed, seqlen, model):
+def get_wikitext2(nsamples, seed, seqlen, model_name):
     from datasets import load_dataset
 
     traindata = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
@@ -42,7 +42,7 @@ def get_wikitext2(nsamples, seed, seqlen, model):
 
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     trainenc = tokenizer("\n\n".join(traindata["text"]), return_tensors="pt")
     testenc = tokenizer("\n\n".join(testdata["text"]), return_tensors="pt")
 
@@ -66,9 +66,9 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
 
     use_cache = model.config.use_cache
     model.config.use_cache = False
-    layers = model.model.decoder.layers
+    layers = model.model.layers
 
-    model.model.decoder.embed_tokens = model.model.decoder.embed_tokens.to(dev)
+    model.model.embed_tokens = model.model.embed_tokens.to(dev)
     layers[0] = layers[0].to(dev)
 
     dtype = next(iter(model.parameters())).dtype
@@ -76,6 +76,9 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         (args.nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
     )
     cache = {"i": 0, "attention_mask": None}
+    position_ids = torch.arange(
+        0, model.seqlen, dtype=torch.long, device=inps.device
+    ).unsqueeze(0)
 
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -97,7 +100,7 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
     layers[0] = layers[0].module
 
     layers[0] = layers[0].cpu()
-    model.model.decoder.embed_tokens = model.model.decoder.embed_tokens.cpu()
+    model.model.embed_tokens = model.model.embed_tokens.cpu()
     torch.cuda.empty_cache()
 
     outs = torch.zeros_like(inps)
@@ -130,7 +133,11 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         for name in subset:
             handles.append(subset[name].register_forward_hook(add_batch(name)))
         for j in range(args.nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+            )[0]
         for h in handles:
             h.remove()
 
@@ -145,11 +152,15 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
             quantizer.find_params(
                 gptq[name].layer.weight.data, weight=True, groupsize=args.groupsize
             )
-            quantizers["model.decoder.layers.%d.%s" % (i, name)] = quantizer
-            print("model.decoder.layers.%d.%s: %d" % (i, name, quantizer.bit))
+            quantizers["model.layers.%d.%s" % (i, name)] = quantizer
+            print("model.layers.%d.%s: %d" % (i, name, quantizer.bit))
             gptq[name].free()
         for j in range(args.nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+            )[0]
 
         layers[i] = layer.cpu()
         del gptq
@@ -171,9 +182,9 @@ def llama_eval(model, testenc, dev, args):
 
     use_cache = model.config.use_cache
     model.config.use_cache = False
-    layers = model.model.decoder.layers
+    layers = model.model.layers
 
-    model.model.decoder.embed_tokens = model.model.decoder.embed_tokens.to(dev)
+    model.model.embed_tokens = model.model.embed_tokens.to(dev)
     layers[0] = layers[0].to(dev)
 
     dtype = next(iter(model.parameters())).dtype
@@ -181,6 +192,9 @@ def llama_eval(model, testenc, dev, args):
         (nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
     )
     cache = {"i": 0, "attention_mask": None}
+    position_ids = torch.arange(
+        0, model.seqlen, dtype=torch.long, device=inps.device
+    ).unsqueeze(0)
 
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -203,7 +217,7 @@ def llama_eval(model, testenc, dev, args):
     layers[0] = layers[0].module
 
     layers[0] = layers[0].cpu()
-    model.model.decoder.embed_tokens = model.model.decoder.embed_tokens.cpu()
+    model.model.embed_tokens = model.model.embed_tokens.cpu()
     torch.cuda.empty_cache()
 
     outs = torch.zeros_like(inps)
@@ -212,20 +226,24 @@ def llama_eval(model, testenc, dev, args):
     for i in range(len(layers)):
         layer = layers[i].to(dev)
         for j in range(nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
+            outs[j] = layer(
+                inps[j].unsqueeze(0),
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+            )[0]
         layers[i] = layer.cpu()
         del layer
         torch.cuda.empty_cache()
         inps, outs = outs, inps
 
-    model.model.decoder.norm = model.model.decoder.norm.to(dev)
+    model.model.norm = model.model.norm.to(dev)
     model.lm_head = model.lm_head.to(dev)
 
     testenc = testenc.to(dev)
     nlls = []
     for i in range(nsamples):
         hidden_states = inps[i].unsqueeze(0)
-        hidden_states = model.model.decoder.norm(hidden_states)
+        hidden_states = model.model.norm(hidden_states)
         lm_logits = model.lm_head(hidden_states)
         shift_logits = lm_logits[:, :-1, :].contiguous()
         shift_labels = testenc[:, (i * model.seqlen) : ((i + 1) * model.seqlen)][:, 1:]
@@ -277,10 +295,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "model", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
-    )
-    parser.add_argument(
-        "cachedir", type=str, help="LLaMA model to load; pass `llama-7b/13b/30b/65b`."
+        "model_name",
+        type=str,
+        help="LLaMA model to load; pass `decapoda-research/llama-7b/13b/30b/65b-hf`.",
     )
     parser.add_argument(
         "--seed", type=int, default=0, help="Seed for sampling the calibration data."
@@ -318,17 +335,13 @@ if __name__ == "__main__":
     DEV = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # load fp16 model
-    model_cache = os.path.join(args.cachedir, args.model.split("-")[-1], args.model)
-    model = get_llama(model_cache)
+    model = get_llama(args.model_name)
 
     # load dataloaders
-    tokenizer_cache = os.path.join(
-        args.cachedir, args.model.split("-")[-1], "tokenizer"
-    )
     dataloader, testloader = get_wikitext2(
         nsamples=args.nsamples,
         seed=args.seed,
-        model=tokenizer_cache,
+        model_name=args.model_name,
         seqlen=model.seqlen,
     )
 
