@@ -28,7 +28,7 @@ if DEBUG:
     MICRO_BATCH_SIZE = 2
     BATCH_SIZE = 2
 else:
-    MICRO_BATCH_SIZE = 4  # this could actually be 5 but i like powers of 2
+    MICRO_BATCH_SIZE = 16  # this could actually be 5 but i like powers of 2
     BATCH_SIZE = 128
 GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
 EPOCHS = 3  # we don't need 3 tbh
@@ -39,7 +39,8 @@ LORA_ALPHA = 16
 LORA_DROPOUT = 0.05
 TRAIN_SET_SIZE = None
 VAL_SET_SIZE = 2000
-model_cachedir = "./caches/llama-7b/"
+model_arch = "llama-7b"
+model_cachedir = "./caches/{}/".format(model_arch)
 if DEBUG:
     TRAIN_SET_SIZE = 2000
     VAL_SET_SIZE = 100
@@ -49,7 +50,7 @@ if QUANT:
         os.path.join(model_cachedir, "config.json")
     )
     model = load_qllama(
-        config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
+        config, os.path.join(model_cachedir, "{}_4w_pack8.pth.tar".format(model_arch))
     )
     model.is_loaded_in_8bit = True  # hack for gradient-checkpoint
     model = prepare_model_for_int8_training(model)

@@ -14,16 +14,11 @@
 `./build_cutlass.sh`
 `./environment.sh`
 
-- 4. modify transformers modeling\_llama for loading checkpoint
-`cd /path/to/site-packages/transformers/models/llama`
-`vim modeling_llama.py, go to line98`
-`replace self.register_buffer("inv_freq", inv_freq) with self.inv_freq = inv_freq`
-
 ### Usage
 #### how to quant backbone?
 - go to [qllama](https://github.com/megvii-research/Sparsebit/tree/main/large_language_models/llama/quantization) to get quant backbone
-- pack quant backbone to torch.int8: `python3 convert.py /path/to/quant-backbone /path/to/output-quant-backbone`
-- you can download a [llama-7B] checkpoint to run.
+- pack quant backbone to torch.int8: `python3 convert_pack32topack8.py /path/to/quant-backbone /path/to/output-quant-backbone`
+- you can also download a checkpoint [llama-7B](https://drive.google.com/file/d/1cBsZb31Q4kJPUV4ixGFwIGkmfFyjVBjZ/view?usp=sharing) into `/path/to/repo/caches/llama-7b/` to run.
 
 #### Training
 - `python3 finetun.py`
@@ -88,5 +83,3 @@ print(fibonacci(10))
 - We are grateful for these excellent projects and list them as follows:
   - [GPTQ](https://github.com/IST-DASLab/gptq)
   - [alpaca-lora](https://github.com/tloen/alpaca-lora)
-
-
