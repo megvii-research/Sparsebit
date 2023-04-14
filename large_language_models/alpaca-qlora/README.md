@@ -30,7 +30,7 @@
 ### training on single 2080ti
 - the data of gpu-memory from nvidia-smi
 
-method | gpu-memory | macro-batch-size | gpu-hours | final-loss
+method | gpu-memory | micro-batch-size | gpu-hours
 --- | --- | --- | --- | --- 
 alpaca-lora | 8.71G | 4 | 14.25h |
 alpaca-qlora(ours) | 5.63G | 4 | 16h | 
