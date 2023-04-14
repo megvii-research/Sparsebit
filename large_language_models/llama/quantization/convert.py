@@ -76,6 +76,9 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
         (args.nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
     )
     cache = {"i": 0, "attention_mask": None}
+    position_ids = torch.arange(
+        0, model.seqlen, dtype=torch.long, device=inps.device
+    ).unsqueeze(0)
 
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -133,9 +136,7 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
             outs[j] = layer(
                 inps[j].unsqueeze(0),
                 attention_mask=attention_mask,
-                position_ids=torch.arange(
-                    0, model.seqlen, dtype=torch.long, device=inps.device
-                ).unsqueeze(0),
+                position_ids=position_ids,
             )[0]
         for h in handles:
             h.remove()
@@ -158,9 +159,7 @@ def llama_sequential(model, dataloader, dev, means=None, stds=None):
             outs[j] = layer(
                 inps[j].unsqueeze(0),
                 attention_mask=attention_mask,
-                position_ids=torch.arange(
-                    0, model.seqlen, dtype=torch.long, device=inps.device
-                ).unsqueeze(0),
+                position_ids=position_ids,
             )[0]
 
         layers[i] = layer.cpu()
@@ -193,6 +192,9 @@ def llama_eval(model, testenc, dev, args):
         (nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
     )
     cache = {"i": 0, "attention_mask": None}
+    position_ids = torch.arange(
+        0, model.seqlen, dtype=torch.long, device=inps.device
+    ).unsqueeze(0)
 
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -227,9 +229,7 @@ def llama_eval(model, testenc, dev, args):
             outs[j] = layer(
                 inps[j].unsqueeze(0),
                 attention_mask=attention_mask,
-                position_ids=torch.arange(
-                    0, model.seqlen, dtype=torch.long, device=inps.device
-                ).unsqueeze(0),
+                position_ids=position_ids,
             )[0]
         layers[i] = layer.cpu()
         del layer
