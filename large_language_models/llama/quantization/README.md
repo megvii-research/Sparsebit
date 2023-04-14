@@ -40,7 +40,7 @@ vim tokenizer_config.json
 
 ```
 # usage
-python3 convert.py /huggingface/model/name --candidate-bits <bit-widths> --save /path/to/save
+python3 convert.py huggingface_model_name --candidate-bits <bit-widths> --save /path/to/save
 
 # example 
 python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save llama-7b_234w.pth.tar
@@ -54,7 +54,7 @@ python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize
 
 ```
 # usage
-python3 inference.py /huggingface/model/name /path/to/checkpoint
+python3 inference.py huggingface_model_name /path/to/checkpoint
 
 # example
 python3 inference.py decapoda-research/llama-7b-hf llama-7b_234w.pth.tar
