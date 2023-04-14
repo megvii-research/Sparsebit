@@ -13,7 +13,7 @@
 #### install transformers>=4.28.0
 
 ```
-pip install transformers
+pip install transformers==4.28.0
 ```
 
 #### Download pretrained weight
