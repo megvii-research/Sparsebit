@@ -151,7 +151,7 @@ class GPTQ:
         Q = Q.reshape(self.layer.weight.shape).to(self.layer.weight.data.dtype)
         quantizer.find_params(Q, weight=True, groupsize=groupsize)
 
-        if rank != 0 and quantizer.bit == 2:  # svd
+        if rank != 0 and quantizer.bit in [2, 3]:  # svd
             print("rank : {}".format(rank))
             delta_w = self.layer.weight.data - Q
             w_weights = torch.diag(Hinv)[None, :]
