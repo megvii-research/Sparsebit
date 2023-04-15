@@ -16,6 +16,7 @@ tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf")
 
 QUANT = True
 PORT = 7860
+CHECKPOINT_PATH = None
 
 if QUANT:
     model_cachedir = "./caches/llama-7b/"
@@ -26,7 +27,7 @@ if QUANT:
         config, os.path.join(model_cachedir, "llama-7b_4w_pack8.pth.tar")
     )
     model = PeftQModel.from_pretrained(
-        model, "./lora-alpaca-4bit-zhb/", torch_dtype=torch.float16
+        model, CHECKPOINT_PATH, torch_dtype=torch.float16
     )
 
 else:
