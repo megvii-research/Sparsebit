@@ -10,11 +10,11 @@
 - 2. If bitsandbytes doesn't work, [install it from source.](https://github.com/TimDettmers/bitsandbytes/blob/main/compile_from_source.md) Windows users can follow [these instructions](https://github.com/tloen/alpaca-lora/issues/17).
 
 - 3. Install CUDA cutlass
-`git clone https://github.com/NVIDIA/cutlass`
-`cd /path/to/repo/cuda/`
-`ln -s /path/to/cutlass/ .`
-`./build_cutlass.sh`
-`./environment.sh`
+  - `git clone https://github.com/NVIDIA/cutlass`
+  - `cd /path/to/repo/cuda/`
+  - `ln -s /path/to/cutlass/ .`
+  - `./build_cutlass.sh`
+  - `./environment.sh`
 
 ### Usage
 #### how to quant backbone?
@@ -32,7 +32,7 @@
 - the data of gpu-memory from nvidia-smi
 
 method | gpu-memory | micro-batch-size | gpu-hours
---- | --- | --- | --- | --- 
+--- | --- | --- | --- |
 alpaca-lora | 8.71G | 4 | 14.25h |
 alpaca-qlora(ours) | 5.63G | 4 | 16h | 
 alpaca-qlora(ours) | 8.09G | 16 | 11.5h | 
