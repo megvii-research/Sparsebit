@@ -12,6 +12,7 @@
 - 3. Install CUDA cutlass
 `git clone https://github.com/NVIDIA/cutlass`
 `cd /path/to/repo/cuda/`
+`ln -s /path/to/cutlass/ .`
 `./build_cutlass.sh`
 `./environment.sh`
 
