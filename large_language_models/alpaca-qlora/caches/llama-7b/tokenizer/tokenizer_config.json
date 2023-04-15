@@ -1,0 +1,8 @@
+{
+  "bos_token": "",
+  "eos_token": "",
+  "model_max_length": 1000000000000000019884624838656,
+  "special_tokens_map_file": "/home/sunpeiqin/.cache/huggingface/hub/models--decapoda-research--llama-7b-hf/snapshots/5f98eefcc80e437ef68d457ad7bf167c2c6a1348/special_tokens_map.json",
+  "tokenizer_class": "LlamaTokenizer",
+  "unk_token": ""
+}
