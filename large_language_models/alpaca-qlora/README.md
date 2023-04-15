@@ -10,7 +10,8 @@
 - 2. If bitsandbytes doesn't work, [install it from source.](https://github.com/TimDettmers/bitsandbytes/blob/main/compile_from_source.md) Windows users can follow [these instructions](https://github.com/tloen/alpaca-lora/issues/17).
 
 - 3. Install CUDA cutlass
-`cd cuda`
+`git clone https://github.com/NVIDIA/cutlass`
+`cd /path/to/repo/cuda/`
 `./build_cutlass.sh`
 `./environment.sh`
 
@@ -21,11 +22,10 @@
 - you can also download a checkpoint [llama-7B](https://drive.google.com/file/d/1cBsZb31Q4kJPUV4ixGFwIGkmfFyjVBjZ/view?usp=sharing) into `/path/to/repo/caches/llama-7b/` to run.
 
 #### Training
-- `python3 finetun.py`
+- `python3 finetune.py`
 
 #### Inference
 - `python3 generate.py`
-
 
 ### training on single 2080ti
 - the data of gpu-memory from nvidia-smi
