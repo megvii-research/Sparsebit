@@ -1,7 +1,7 @@
 ## [中文版](https://github.com/megvii-research/Sparsebit/blob/main/README_zh-CN.md)
 
 ## News
-- 2023.04.15: :fire: We release an [alpaca-qlora](https://github.com/megvii-research/Sparsebit/blob/main/large_language_models/alpaca-qlora) which reduce a half-model size gpu-memory than alpaca-lora. With alpaca-qlora support, you can use a single 2080ti to instruct fine-tuning llama-7b/13b.    
+- 2023.04.15: :fire: We release [alpaca-qlora](https://github.com/megvii-research/Sparsebit/blob/main/large_language_models/alpaca-qlora) which reduce a half model size gpu-memory than alpaca-lora. With alpaca-qlora support, you can use a single 2080ti to instruct fine-tuning llama-7b/13b.    
 - 2023.03.20: :fire: We implemented a GPTQ cuda kernel with groupsize feature and add `--single_device_mode` to support all quant LLaMAs run in a single GPU(i.e. 2080ti). [GPTQ for LLaMA](https://github.com/megvii-research/Sparsebit/blob/main/large_language_models/llama/quantization).
 - 2023.03.08: Release a mix-precision quantization method based on [GPTQ for LLaMA](https://github.com/megvii-research/Sparsebit/blob/main/large_language_models/llama/quantization).
 - 2023.02.23: Release a PTQ example of [GPT2 on wikiText2](https://github.com/megvii-research/Sparsebit/blob/main/examples/post_training_quantization/wikitext)
