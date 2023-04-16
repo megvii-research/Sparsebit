@@ -19,8 +19,8 @@
 ### Usage
 #### how to quant backbone?
 - go to [qllama](https://github.com/megvii-research/Sparsebit/tree/main/large_language_models/llama/quantization) to get quant backbone
-- pack quant backbone to torch.int8: `python3 convert_pack32topack8.py /path/to/quant-backbone /path/to/output-quant-backbone`
-- you can also download a checkpoint [llama-7B](https://drive.google.com/file/d/1cBsZb31Q4kJPUV4ixGFwIGkmfFyjVBjZ/view?usp=sharing) into `/path/to/repo/caches/llama-7b/` to run.
+- you can also download a checkpoint [llama-7B](https://drive.google.com/file/d/1qcwDiHbJAZNd4l2SFtshrEs2G1VHr6MK/view?usp=share_link) as the quant backbone(pack32).
+- convert the weight dtype of quant backbone from torch.int32 to torch.int8: `python3 convert_pack32topack8.py /path/to/quant-backbone-pack32 /path/to/output-quant-backbone-pack8`
 
 #### Training
 - `python3 finetune.py`
