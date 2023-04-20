@@ -47,6 +47,12 @@ python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save l
 
 # example with groupsizes
 python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
+
+# example with mixbit
+python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --mixbit-config ./mixbit_configs/llama-7b-234mix-3.2bit-g128.json --save llama-7b-234mix-3.2bit-g128.pth.tar
+
+# example with svd
+python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --rank 10
 ```
 
 #### inference
@@ -83,6 +89,40 @@ python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.ta
 |int4/3/2|**7.755(3.2G)**|~~5.700(6.0G)~~|~~4.897(27G)~~|
 |int3|13.905(2.6G)|6.310(5.1G)|4.9056(24G)|
 |int3 & groupsize=128 | 7.547(2.6G) | 5.52(5.1G) | 4.376(25G) | 
+
+- We use kl loss to measure the quantized sensitivity of each layer of the model, and then perform mixed bit allocation. The result is as follows：All experiments use quantization groupsize=128
+
+<img width="640" height="480" src="./figs/llama-mixbit.png"/>
+
+#### Table B
+- All experiments use quantization groupsize=128
+|bit-width|LLaMA-7b    |LLaMA-13b    |
+|---      |---         |---          |
+|fp16     |5.67(14G)   |5.09(25G)    |
+|int4     |6.057       |5.175        |
+|mix3.8   |6.109       |5.196        |
+|mix3.6   |6.162       |5.234        |
+|mix3.4   |6.245       |5.285        |
+|mix3.2   |6.433       |5.370        |
+|mix3.0   |6.515       |5.466        |
+|int3     |7.818       |5.528        |
+|mix2.8   |6.840       |5.609        |
+|mix2.6   |7.457       |5.867        |
+|mix2.4   |8.155       |6.220        |
+|mix2.2   |9.763       |6.725        |
+|int2     |16.83       |7.561        |
+
+- We also provide svg decomposition of the quantization error and improve the accuracy of the quantized model by adding a low rank matrix
+
+#### Table C
+- All experiments use quantization groupsize=128
+|bit-width            |LLaMA-7b    |LLaMA-13b    |
+|---                  |---         |---          |
+|fp16                 |5.67        |5.09         |
+|int3&rank10          |6.243       |5.451        |
+|int3                 |7.818       |5.528        |
+|int2&rank10          |9.495       |7.284        |
+|int2                 |16.83       |7.561        |
 
 ### Acknowledgement
 - We are grateful for these excellent projects and list them as follows:

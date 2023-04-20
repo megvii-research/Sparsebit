@@ -31,7 +31,7 @@ class Quantizer(nn.Module):
         grid=100,
         maxshrink=0.8,
     ):
-        self.maxq = torch.tensor(2**bit - 1)
+        self.maxq = torch.tensor(2 ** bit - 1)
         self.perchannel = perchannel
         self.sym = sym
         self.mse = mse
@@ -187,7 +187,8 @@ class QuantLinear(nn.Module):
     def pack(self, linear, scales, zeros):
         self.zeros = zeros * scales
         self.scales = scales.clone()
-        self.bias = linear.bias.clone()
+        if linear.bias is not None:
+            self.bias = linear.bias.clone()
 
         weight = linear.weight.data
         if self.groups > 1:

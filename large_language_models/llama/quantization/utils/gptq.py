@@ -66,7 +66,8 @@ class GPTQ:
         percdamp=0.01,
         groupsize=-1,
         threshold=1e-3,
-        bias_correction=True,
+        rank=0,
+        bias_correction=False,
     ):
         weight = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):
@@ -124,7 +125,7 @@ class GPTQ:
                     Q1[:, i] = q
                     Losses1[:, i] = (
                         w - q
-                    ) ** 2 / d**2  # 误差大小, 平方是有道理的, 因为做了cholesky分解.
+                    ) ** 2 / d ** 2  # 误差大小, 平方是有道理的, 因为做了cholesky分解.
 
                     err1 = (w - q) / d  # 只有一列
                     W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))
@@ -148,6 +149,19 @@ class GPTQ:
         if isinstance(self.layer, transformers.Conv1D):
             Q = Q.t()
         Q = Q.reshape(self.layer.weight.shape).to(self.layer.weight.data.dtype)
+        quantizer.find_params(Q, weight=True, groupsize=groupsize)
+
+        if rank != 0 and quantizer.bit in [2, 3]:  # svd
+            print("rank : {}".format(rank))
+            delta_w = self.layer.weight.data - Q
+            w_weights = torch.diag(Hinv)[None, :]
+            delta_w_weighted = delta_w / w_weights
+            U, S, Vh = torch.linalg.svd(delta_w_weighted.float())
+            add_ww = (
+                U[:, 0:rank] @ torch.diag(S)[0:rank, 0:rank] @ Vh[0:rank, :] * w_weights
+            ).to(torch.half)
+            Q = Q + add_ww
+
         if bias_correction:
             delta_w = self.layer.weight.data - Q
             mean_inp = self.mean_inp.float() / self.nsamples
@@ -157,7 +171,7 @@ class GPTQ:
                 self.layer.bias.data += delta_bias
             else:
                 self.layer.bias = nn.Parameter(delta_bias)
-        self.layer.bias.data = self.layer.bias.data.to(torch.half)
+            self.layer.bias.data = self.layer.bias.data.to(torch.half)
         self.layer.weight.data = Q
 
         if DEBUG:
