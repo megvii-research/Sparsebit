@@ -96,9 +96,10 @@ python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.ta
 
 #### Table B
 - All experiments use quantization groupsize=128
+
 |bit-width|LLaMA-7b    |LLaMA-13b    |
 |---      |---         |---          |
-|fp16     |5.67(14G)   |5.09(25G)    |
+|fp16     |5.67        |5.09         |
 |int4     |6.057       |5.175        |
 |mix3.8   |6.109       |5.196        |
 |mix3.6   |6.162       |5.234        |
@@ -116,6 +117,7 @@ python3 inference.py decapoda-research/llama-13b-hf llama_13b_3w_group128.pth.ta
 
 #### Table C
 - All experiments use quantization groupsize=128
+
 |bit-width            |LLaMA-7b    |LLaMA-13b    |
 |---                  |---         |---          |
 |fp16                 |5.67        |5.09         |
