@@ -49,7 +49,7 @@ python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 2 3 4 --save l
 python3 convert.py decapoda-research/llama-13b-hf --candidate-bits 3 --groupsize 128 --save llama_13b_3w_group128.pth.tar
 
 # example with mixbit
-python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --mixbit-config ./mixbit_configs/llama-7b-234mix-3.2bit-g128.json --save llama-7b-234mix-3.2bit-g128.pth.tar
+python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --mixbit-config ./mixbit_configs/llama-7b-234mix-2.4bit-g128.json --save llama-7b-234mix-2.4bit-g128.pth.tar
 
 # example with svd
 python3 convert.py decapoda-research/llama-7b-hf --candidate-bits 3 --groupsize 128 --rank 10
