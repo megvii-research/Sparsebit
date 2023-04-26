@@ -14,7 +14,7 @@
   - `cd /path/to/repo/cuda/`
   - `ln -s /path/to/cutlass/ .`
   - `./build_cutlass.sh`
-  - `./environment.sh`
+  - `source environment.sh`
 
 ### Usage
 #### how to quant backbone?
