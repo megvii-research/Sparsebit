@@ -176,16 +176,14 @@ class LlamaForCausalLMWrappedForPipe(nn.Module):
         ), "chunks must be a interger greater than 1"
         num_devices = torch.cuda.device_count()
         num_layers = len(self.model)
-        balance = []
-        layers_assigned = 0
-        for i in range(num_devices):
-            x = (num_layers - layers_assigned) / (num_devices - i)
-            if x.is_integer():
-                balance.append(int(x))
-                layers_assigned += x
-            else:
-                balance.append(math.ceil(x))
-                layers_assigned += math.ceil(x)
+
+        layers_per_device = math.ceil(num_layers / num_devices)
+        balance = [layers_per_device for _ in range(num_devices - 1)]
+        last_device_layers = num_layers - layers_per_device * (num_devices - 1)
+        if last_device_layers == 0:
+            last_device_layers = 1
+            balance[-1] -= 1
+        balance.append(last_device_layers)
 
         model = pipe_utils.partition_model(self.model, balance)
         model_p = Pipe(model, chunks=chunks, checkpoint=pp_checkpoint)
