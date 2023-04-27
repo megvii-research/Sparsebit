@@ -25,7 +25,7 @@
 #### Training LLaMA-7b on single 2080ti
 - `python3 finetune.py`
 
-#### Training LLaMA-65b on 8gpu 2080ti with Pipeline Parallelism(PP)
+#### Training LLaMA-65b on 8*2080ti with Pipeline Parallelism(PP)
 - `python3 finetune_pp.py decapoda-research/llama-65b-hf /path/to/llama65b-pack8 --chunks 16 --pp_checkpoint except_last --micro_batch_size 32`
 
 #### Inference
@@ -40,7 +40,7 @@ alpaca-lora | 8.71G | 4 | 14.25h |
 alpaca-qlora(ours) | 5.63G | 4 | 16h | 
 alpaca-qlora(ours) | 8.09G | 16 | 11.5h | 
 
-### Time cost per epoch for training on 8gpu 2080ti with Pipeline Parallelism(PP)
+### Time cost per epoch for training on 8*2080ti with Pipeline Parallelism(PP)
 
 |LLaMA-7b chunks|1|2|4|8|16|32|
 |---|---|---|---|---|---|---|
