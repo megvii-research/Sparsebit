@@ -48,10 +48,10 @@ alpaca-qlora(ours) | 8.09G | 16 | 11.5h |
 |micro_batch=16|2.6h|1.8h|1.6h|2.3h|4.5h|-|
 |micro_batch=32|OOM|1.6h|1.25h|1.45h|2.4h|4.5h|
 
-|LLaMA-65b chunks|2|4|8|16|
-|---|---|---|---|---|
-|micro_batch=8|OOM|23h|27h|-|
-|micro_batch=16|OOM|OOM|16h|23h|
+|LLaMA-65b chunks|2|4|8|16|32|
+|---|---|---|---|---|---|
+|micro_batch=8|OOM|23h|27h|-|-|
+|micro_batch=16|OOM|OOM|16h|23h|-|
 |micro_batch=32|OOM|OOM|OOM|13h|21.5h|
 
 
