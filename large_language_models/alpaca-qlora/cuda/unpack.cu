@@ -46,7 +46,6 @@ torch::Tensor unpack_cuda(torch::Tensor &inputs, torch::Tensor &zeros, bool tran
         inputs_nrows,
         inputs_ncols,
         transpose);
-    cudaDeviceSynchronize();
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -159,7 +158,6 @@ torch::Tensor unpack_backward_cuda(torch::Tensor &inputs, torch::Tensor &scales,
             transpose);
 #undef ptr
     }
-    cudaDeviceSynchronize();
 
     return outputs;
 }

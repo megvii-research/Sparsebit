@@ -22,13 +22,16 @@
 - you can also download a checkpoint [llama-7B](https://drive.google.com/file/d/1qcwDiHbJAZNd4l2SFtshrEs2G1VHr6MK/view?usp=share_link) as the quant backbone(pack32).
 - convert the weight dtype of quant backbone from torch.int32 to torch.int8: `python3 convert_pack32topack8.py /path/to/quant-backbone-pack32 /path/to/output-quant-backbone-pack8`
 
-#### Training
+#### Training LLaMA-7b on single 2080ti
 - `python3 finetune.py`
+
+#### Training LLaMA-65b on 8*2080ti with Pipeline Parallelism(PP)
+- `python3 finetune_pp.py decapoda-research/llama-65b-hf /path/to/llama65b-pack8 --chunks 16 --pp_checkpoint except_last --micro_batch_size 32`
 
 #### Inference
 - `python3 generate.py`
 
-### training on single 2080ti
+### training LLaMA-7b on single 2080ti
 - the data of gpu-memory from nvidia-smi
 
 method | gpu-memory | micro-batch-size | gpu-hours
@@ -36,6 +39,21 @@ method | gpu-memory | micro-batch-size | gpu-hours
 alpaca-lora | 8.71G | 4 | 14.25h |
 alpaca-qlora(ours) | 5.63G | 4 | 16h | 
 alpaca-qlora(ours) | 8.09G | 16 | 11.5h | 
+
+### Time cost per epoch for training on 8*2080ti with Pipeline Parallelism(PP)
+
+|LLaMA-7b chunks|1|2|4|8|16|32|
+|---|---|---|---|---|---|---|
+|micro_batch=8|3.0h|2.2h|2.3h|4.3h|-|-|
+|micro_batch=16|2.6h|1.8h|1.6h|2.3h|4.5h|-|
+|micro_batch=32|OOM|1.6h|1.25h|1.45h|2.4h|4.5h|
+
+|LLaMA-65b chunks|2|4|8|16|32|
+|---|---|---|---|---|---|
+|micro_batch=8|OOM|23h|27h|-|-|
+|micro_batch=16|OOM|OOM|16h|23h|-|
+|micro_batch=32|OOM|OOM|OOM|13h|21.5h|
+
 
 
 ### Results

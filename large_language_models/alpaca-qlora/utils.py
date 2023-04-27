@@ -20,10 +20,27 @@ def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=""):
     return res
 
 
-def modulename_remap(ckpt):
+def modulename_remap(ckpt, is_pp_mode=False, num_layers=None):
     new_state_dict = {}
     for k, v in ckpt.items():
-        new_name = k.replace(".decoder", "")
+        # new_name = k.replace(".decoder", "")
+        if is_pp_mode:
+            assert num_layers, "num_layers cannot be None for pp mode!"
+            new_name = k.replace(".layers", "")
+            if (
+                not "embed_tokens" in new_name
+                and not "lm_head" in new_name
+                and not ".norm" in new_name
+            ):
+                old_layer = new_name.split(".")[1]
+                new_layer = str(int(old_layer) + 1)
+                new_name = new_name.replace(old_layer, new_layer)
+            if "embed_tokens" in new_name:
+                new_name = new_name[0:6] + "0." + new_name[6:]
+            if ".norm" in new_name:
+                new_name = new_name.replace("norm", str(num_layers + 1))
+            if "lm_head" in new_name:
+                new_name = new_name.replace("lm_head", "model." + str(num_layers + 2))
         if "feed_forward" in new_name:
             new_name = new_name.replace("feed_forward", "mlp")
             if "w1" in new_name:
@@ -40,7 +57,7 @@ def modulename_remap(ckpt):
     return new_state_dict
 
 
-def load_qllama(config, checkpoint=""):
+def load_qllama(config, checkpoint="", pp_kwargs=None):
     def skip(*args, **kwargs):
         pass
 
@@ -52,7 +69,12 @@ def load_qllama(config, checkpoint=""):
     torch.set_default_dtype(torch.half)
 
     assert os.path.exists(checkpoint), "loading low-bit model requires checkpoint"
-    model = LlamaForCausalLM(config)
+    if pp_kwargs is None:
+        model = LlamaForCausalLM(config)
+    else:
+        from model_pp import LlamaForCausalLMWrappedForPipe
+
+        model = LlamaForCausalLMWrappedForPipe(config)
     torch.set_default_dtype(torch.float)
     model.eval()
 
@@ -61,10 +83,19 @@ def load_qllama(config, checkpoint=""):
         if name in layers:
             del layers[name]
     ckpt = torch.load(checkpoint)["model"]
-    ckpt_remapped = modulename_remap(ckpt)
+    if pp_kwargs is None:
+        ckpt_remapped = modulename_remap(ckpt)
+    else:
+        ckpt_remapped = modulename_remap(
+            ckpt, is_pp_mode=True, num_layers=config.num_hidden_layers
+        )
     layers_bit = {k: 4 for k in layers}
     make_quant(model, layers_bit)
     model.load_state_dict(ckpt_remapped)
+    if pp_kwargs is not None:
+        model.pipe_sequential_model(
+            chunks=pp_kwargs["chunks"], pp_checkpoint=pp_kwargs["checkpoint"]
+        )
     model.seqlen = 2048
     print("Loading Model Done")
     return model
