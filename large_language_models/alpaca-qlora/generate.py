@@ -17,6 +17,7 @@ tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf")
 QUANT = True
 PORT = 7860
 CHECKPOINT_PATH = None
+assert CHECKPOINT_PATH, "set the checkpoint_path as the path to your output-dir where save your adapter_model.bin before running"
 
 if QUANT:
     model_cachedir = "./caches/llama-7b/"
