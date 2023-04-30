@@ -16,7 +16,6 @@ from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
 def build_model(args):
     if args.load_qlora:
-        model_cachedir = "./caches/llama-7b/"
         config = transformers.AutoConfig.from_pretrained(args.llama_config)
         model = load_qllama(config, args.qllama_checkpoint)
         model = PeftQModel.from_pretrained(
