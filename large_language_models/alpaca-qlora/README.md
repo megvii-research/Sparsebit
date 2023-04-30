@@ -29,7 +29,7 @@
 - `python3 finetune_pp.py decapoda-research/llama-65b-hf /path/to/llama65b-pack8 --chunks 16 --pp_checkpoint except_last --micro_batch_size 32`
 
 #### Inference
-- `python3 generate.py`
+- `python3 generate.py --load-qlora --llama-config /path/to/llama/config.json --qllama-checkpoint /path/to/quant-backbone-pack8 --qlora-dir /path/to/save/adapter --port 7860`
 
 ### training LLaMA-7b on single 2080ti
 - the data of gpu-memory from nvidia-smi
