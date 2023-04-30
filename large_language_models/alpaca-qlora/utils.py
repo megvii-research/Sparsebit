@@ -23,7 +23,7 @@ def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=""):
 def modulename_remap(ckpt, is_pp_mode=False, num_layers=None):
     new_state_dict = {}
     for k, v in ckpt.items():
-        # new_name = k.replace(".decoder", "")
+        new_name = k
         if is_pp_mode:
             assert num_layers, "num_layers cannot be None for pp mode!"
             new_name = k.replace(".layers", "")
