@@ -1,4 +1,5 @@
 ### Update News
+- LLaMA-7B and 13B quantization are also available [here](https://huggingface.co/cnbeining/sparsebit-llama-quantization-7b-13b).
 - We have updated a llama-13b checkpoint with 3-bit 128-group quantization [here](https://drive.google.com/file/d/1LjZmOU8tr2VT6HdAP_WbuX8cqmrs5DrR). For config_cache and tokenizer_cache, the files can be found [here in huggingface](https://huggingface.co/decapoda-research/llama-13b-hf).
 - We implemented a cuda kernel for groupsize=128(int3/int4) & groupsize=64(int2). In our experiments, setting groupsize=128(int3) can make all quantization models achieve a significant increase in ppl compared to groupsize=-1. All results are updated in Table A.
 - We add `--single_device_mode` to support all quant models run in a single GPU(i.e. 2080ti). Please refer to the inference section for details.
