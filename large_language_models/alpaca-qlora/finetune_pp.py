@@ -148,7 +148,7 @@ def main(args):
     lr_scheduler = get_linear_schedule_with_warmup(
         optimizer=optimizer,
         num_warmup_steps=100,
-        num_training_steps=EPOCHS*len(epoch_iterator) // GRADIENT_ACCUMULATION_STEPS,
+        num_training_steps=EPOCHS * len(epoch_iterator) // GRADIENT_ACCUMULATION_STEPS,
     )
 
     scaler = torch.cuda.amp.GradScaler()
@@ -195,7 +195,7 @@ def main(args):
                     + "'loss': {0:1.4f}, 'learning_rate': {1:2.6f}, 'epoch': {2:3.2f}".format(
                         accumulated_loss,
                         optimizer.param_groups[0]["lr"],
-                        step / len(epoch_iterator)+epoch,
+                        step / len(epoch_iterator) + epoch,
                     )
                     + "}"
                 )
