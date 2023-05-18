@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import QuantLinear
 from peft import PeftModel, PeftConfig, PeftModelForCausalLM, LoraModel
-from peft.mapping import _prepare_lora_config, _prepare_prompt_learning_config
+from peft.mapping import _prepare_prompt_learning_config
 from peft.utils import PromptLearningConfig, _set_trainable, transpose
 from peft.tuners.lora import LoraConfig, LoraLayer
 from transformers.utils import PushToHubMixin
@@ -208,9 +208,7 @@ def get_peft_qmodel(model, peft_config):
 
     model_config = model.config.to_dict()
     peft_config.base_model_name_or_path = model.__dict__.get("name_or_path", None)
-    if not isinstance(peft_config, PromptLearningConfig):
-        peft_config = _prepare_lora_config(peft_config, model_config)
-    else:
+    if isinstance(peft_config, PromptLearningConfig):
         peft_config = _prepare_prompt_learning_config(peft_config, model_config)
     assert (
         peft_config.task_type == "QUANT_CAUSAL_LM"
