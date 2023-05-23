@@ -69,8 +69,12 @@ def main(args):
     )
     model = peft_func(model, config)
 
-    tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
-    data = load_dataset("json", data_files="alpaca_data.json")
+    tokenizer.pad_token_id = (
+        0  # unk. we want this to be different from the eos token
+    )
+    tokenizer.padding_side = "left"  # Allow batched inference
+
+    data = load_dataset("yahma/alpaca-cleaned")
 
     train_val = data["train"].train_test_split(
         train_size=TRAIN_SET_SIZE, test_size=VAL_SET_SIZE, shuffle=True, seed=42
@@ -84,22 +88,22 @@ def main(args):
         if data_point["input"]:
             return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
-    ### Instruction:
-    {data_point["instruction"]}
+### Instruction:
+{data_point["instruction"]}
 
-    ### Input:
-    {data_point["input"]}
+### Input:
+{data_point["input"]}
 
-    ### Response:
-    {data_point["output"]}"""
+### Response:
+{data_point["output"]}"""
         else:
             return f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.
 
-    ### Instruction:
-    {data_point["instruction"]}
+### Instruction:
+{data_point["instruction"]}
 
-    ### Response:
-    {data_point["output"]}"""
+### Response:
+{data_point["output"]}"""
 
 
     def tokenize(prompt):
@@ -131,8 +135,10 @@ def main(args):
             num_train_epochs=EPOCHS,
             learning_rate=LEARNING_RATE,
             fp16=True,
-            # logging_steps=20,
-            logging_steps=1,
+            logging_steps=10,
+            logging_dir="runs/logs",
+            logging_strategy="steps",
+            optim="adamw_torch",
             evaluation_strategy="steps",
             save_strategy="steps",
             eval_steps=200,

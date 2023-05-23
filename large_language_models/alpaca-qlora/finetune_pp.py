@@ -1,7 +1,7 @@
 import os
 import argparse
 import torch
-from torch.utils.data import DataLoader, DistributedSampler, RandomSampler
+from torch.utils.data import DataLoader, DistributedSampler, RandomSampler, SequentialSampler
 from datasets import load_dataset
 import transformers
 from transformers.optimization import AdamW
@@ -13,8 +13,11 @@ from utils import load_qllama
 from tqdm import tqdm
 from peft import (
     prepare_model_for_int8_training,
+    get_peft_model_state_dict,
     LoraConfig,
 )
+import math
+from tensorboardX import SummaryWriter
 
 
 def main(args):
@@ -22,13 +25,17 @@ def main(args):
     BATCH_SIZE = args.batch_size
     GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // args.micro_batch_size
     EPOCHS = 3  # we don't need 3 tbh
-    LEARNING_RATE = 3e-4  # the Karpathy constant
+    LEARNING_RATE = args.lr  # the Karpathy constant
     CUTOFF_LEN = 256  # 256 accounts for about 96% of the data
     LORA_R = 8
     LORA_ALPHA = 16
     LORA_DROPOUT = 0.05
     TRAIN_SET_SIZE = None
     VAL_SET_SIZE = 2000
+    SAVE_PATH="runs/llama-{}-qlora-lr{:.1e}".format(args.model.split("/")[-1].split("-")[1], args.lr)
+    logging_steps=10
+    eval_steps=200
+    save_steps=200
 
     # Need to initialize RPC framework first.
     os.environ["MASTER_ADDR"] = "localhost"
@@ -56,8 +63,11 @@ def main(args):
         task_type="QUANT_CAUSAL_LM",
     )
     model = peft_func(model, config)
-    tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
-    data = load_dataset("json", data_files="alpaca_data.json")
+    tokenizer.pad_token_id = (
+        0  # unk. we want this to be different from the eos token
+    )
+    tokenizer.padding_side = "left"  # Allow batched inference
+    data = load_dataset("yahma/alpaca-cleaned")
 
     train_val = data["train"].train_test_split(
         train_size=TRAIN_SET_SIZE, test_size=VAL_SET_SIZE, shuffle=False, seed=42
@@ -110,6 +120,7 @@ def main(args):
     ignored_columns = list(set(train_data.column_names) - set(signature_columns))
 
     train_dataset = train_data.remove_columns(ignored_columns)
+    val_dataset = train_data.remove_columns(ignored_columns)
 
     generator = torch.Generator()
     generator.manual_seed(42)
@@ -120,22 +131,26 @@ def main(args):
         batch_size=args.micro_batch_size,
         sampler=RandomSampler(train_dataset, generator=generator),
         collate_fn=data_collator,
+        drop_last=True,
+        num_workers=0,
+        pin_memory=True,
+        worker_init_fn=seed_worker,
+    )
+    val_dataloader = DataLoader(
+        val_dataset,
+        batch_size=args.micro_batch_size,
+        sampler=SequentialSampler(val_dataset),
+        collate_fn=data_collator,
         drop_last=False,
         num_workers=0,
         pin_memory=True,
         worker_init_fn=seed_worker,
     )
 
-    if isinstance(train_dataloader, DataLoader) and isinstance(
-        train_dataloader.sampler, DistributedSampler
-    ):
-        train_dataloader.sampler.set_epoch(0)
-    elif hasattr(train_dataloader, "dataset") and isinstance(
+    if hasattr(train_dataloader, "dataset") and isinstance(
         train_dataloader.dataset, IterableDatasetShard
     ):
         train_dataloader.dataset.set_epoch(0)
-
-    epoch_iterator = train_dataloader
 
     model.print_trainable_parameters()
 
@@ -148,68 +163,100 @@ def main(args):
     lr_scheduler = get_linear_schedule_with_warmup(
         optimizer=optimizer,
         num_warmup_steps=100,
-        num_training_steps=len(epoch_iterator) // GRADIENT_ACCUMULATION_STEPS,
+        num_training_steps=EPOCHS * len(train_dataloader) // GRADIENT_ACCUMULATION_STEPS,
     )
 
     scaler = torch.cuda.amp.GradScaler()
     loss_fct = torch.nn.CrossEntropyLoss()
+    writer = SummaryWriter(SAVE_PATH)
+
+    model.config.use_cache = False
+
+    old_state_dict = model.state_dict
+    model.state_dict = (
+        lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
+    ).__get__(model, type(model))
 
     # IMPORTANT! model.eval() -> model.train() enable requant 4-bit weights
     model.eval()
     model.train()
 
-    step = 0
-    accumulated_loss = 0
-    for inputs in tqdm(epoch_iterator):
-        step += 1
-        with torch.cuda.amp.autocast(cache_enabled=True, dtype=torch.float16):
-            labels = inputs.pop("labels")
-            outputs = model(**inputs)
-            outputs["logits"] = outputs["logits"].float()
-            labels = labels.to(outputs["logits"].device)
-            shift_logits = outputs["logits"][..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            # Flatten the tokens
-            shift_logits = shift_logits.view(-1, shift_logits.shape[-1])
-            shift_labels = shift_labels.view(-1)
-            # Enable model parallelism
-            shift_labels = shift_labels.to(shift_logits.device)
-            loss = loss_fct(shift_logits, shift_labels)
+    for epoch in range(EPOCHS):
+        step = 0
+        accumulated_loss = 0
+        model.train()
+        for inputs in tqdm(train_dataloader):
+            step += 1
+            with torch.cuda.amp.autocast(cache_enabled=True, dtype=torch.float16):
+                labels = inputs.pop("labels")
+                outputs = model(**inputs)
+                outputs["logits"] = outputs["logits"].float()
+                labels = labels.to(outputs["logits"].device)
+                shift_logits = outputs["logits"][..., :-1, :].contiguous()
+                shift_labels = labels[..., 1:].contiguous()
+                # Flatten the tokens
+                shift_logits = shift_logits.view(-1, shift_logits.shape[-1])
+                shift_labels = shift_labels.view(-1)
+                # Enable model parallelism
+                shift_labels = shift_labels.to(shift_logits.device)
+                loss = loss_fct(shift_logits, shift_labels)
 
-        loss /= GRADIENT_ACCUMULATION_STEPS
-        accumulated_loss += loss.item()
-        scaler.scale(loss).backward()
+            loss /= GRADIENT_ACCUMULATION_STEPS
+            accumulated_loss += loss.item()
+            scaler.scale(loss).backward()
 
-        if step % GRADIENT_ACCUMULATION_STEPS == 0:
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(
-                filter(lambda p: p.requires_grad, model.parameters()), max_norm=1.0
-            )
-            scaler.step(optimizer)
-            scaler.update()
-            lr_scheduler.step()
-            model.zero_grad()
-            tqdm.write(
-                "{"
-                + "'loss': {0:1.4f}, 'learning_rate': {1:2.6f}, 'epoch': {2:3.2f}".format(
-                    accumulated_loss,
-                    optimizer.param_groups[0]["lr"],
-                    step / len(epoch_iterator),
+            if step % GRADIENT_ACCUMULATION_STEPS == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    filter(lambda p: p.requires_grad, model.parameters()), max_norm=1.0
                 )
-                + "}"
-            )
-            accumulated_loss = 0
+                scaler.step(optimizer)
+                scaler.update()
+                lr_scheduler.step()
+                model.zero_grad()
+                if (step//GRADIENT_ACCUMULATION_STEPS + len(train_dataloader)//GRADIENT_ACCUMULATION_STEPS * epoch)%logging_steps == 0:
+                    tqdm.write(
+                        "{"
+                        + "'loss': {0:1.4f}, 'learning_rate': {1:2.6f}, 'epoch': {2:3.2f}".format(
+                            accumulated_loss/logging_steps,
+                            optimizer.param_groups[0]["lr"],
+                            step / len(train_dataloader) + epoch,
+                        )
+                        + "}"
+                    )
+                    writer.add_scalar('train/learning_rate', optimizer.param_groups[0]["lr"], step//GRADIENT_ACCUMULATION_STEPS + len(train_dataloader)//GRADIENT_ACCUMULATION_STEPS * epoch)
+                    writer.add_scalar('train/loss', accumulated_loss/logging_steps, step//GRADIENT_ACCUMULATION_STEPS + len(train_dataloader)//GRADIENT_ACCUMULATION_STEPS * epoch)
+                    accumulated_loss = 0
+                if (step//GRADIENT_ACCUMULATION_STEPS + len(train_dataloader)//GRADIENT_ACCUMULATION_STEPS * epoch)%eval_steps == 0:
+                    accumulated_loss = 0
+                    model.eval()
+                    s=0
+                    for inputs in tqdm(val_dataloader):
+                        s+=1
+                        with torch.no_grad():
+                            with torch.cuda.amp.autocast(cache_enabled=True, dtype=torch.float16):
+                                labels = inputs.pop("labels")
+                                outputs = model(**inputs)
+                                outputs["logits"] = outputs["logits"].float()
+                                labels = labels.to(outputs["logits"].device)
+                                shift_logits = outputs["logits"][..., :-1, :].contiguous()
+                                shift_labels = labels[..., 1:].contiguous()
+                                # Flatten the tokens
+                                shift_logits = shift_logits.view(-1, shift_logits.shape[-1])
+                                shift_labels = shift_labels.view(-1)
+                                # Enable model parallelism
+                                shift_labels = shift_labels.to(shift_logits.device)
+                                loss = loss_fct(shift_logits, shift_labels)
 
-    print("Peak memory usage for GPUs: ", end="")
-    for i in range(len(model.model.devices)):
-        print(
-            "cuda:{}: {}, ".format(
-                i, sizeof_fmt(torch.cuda.memory_stats(i)["allocated_bytes.all.peak"])
-            ),
-            end="",
-        )
-    print()
+                            accumulated_loss += loss.item()
 
+
+                    print('Eval_loss:', str(accumulated_loss/s))
+                    writer.add_scalar('eval/loss', accumulated_loss/s, step//GRADIENT_ACCUMULATION_STEPS + len(train_dataloader)//GRADIENT_ACCUMULATION_STEPS * epoch )
+
+    model.save_pretrained(SAVE_PATH)
+
+    print("\n If there's a warning about missing keys above, please disregard :)")
 
 if __name__ == "__main__":
 
@@ -220,9 +267,12 @@ if __name__ == "__main__":
         "--batch_size", type=int, default=128, help="Batch size for training."
     )
     parser.add_argument(
+        "--lr", type=float, default=3e-4, help="Max learning rate for training."
+    )
+    parser.add_argument(
         "--micro_batch_size",
         type=int,
-        default=64,
+        default=32,
         help="Micro batch size for gradient accumulating.",
     )
     parser.add_argument(
