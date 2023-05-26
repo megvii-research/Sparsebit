@@ -27,8 +27,8 @@ def main(args):
     MICRO_BATCH_SIZE = args.micro_batch_size
     BATCH_SIZE = args.batch_size
     GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
-    EPOCHS = 3  # we don't need 3 tbh
-    LEARNING_RATE = 3e-4  # the Karpathy constant
+    EPOCHS = args.epochs  # we don't need 3 tbh
+    LEARNING_RATE = args.lr  # the Karpathy constant
     CUTOFF_LEN = 256  # 256 accounts for about 96% of the data
     LORA_R = 8
     LORA_ALPHA = 16
@@ -131,12 +131,12 @@ def main(args):
         args=transformers.TrainingArguments(
             per_device_train_batch_size=MICRO_BATCH_SIZE,
             gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
-            warmup_steps=100,
+            warmup_steps=args.warmup_steps,
             num_train_epochs=EPOCHS,
             learning_rate=LEARNING_RATE,
             fp16=True,
             logging_steps=10,
-            logging_dir="runs/logs",
+            logging_dir=args.logging_dir,
             logging_strategy="steps",
             optim="adamw_torch",
             evaluation_strategy="steps",
@@ -144,8 +144,11 @@ def main(args):
             eval_steps=200,
             save_steps=200,
             output_dir="lora-alpaca",
-            save_total_limit=3,
+            save_total_limit=6,
             load_best_model_at_end=True,
+            weight_decay=args.weight_decay,
+            adam_beta1=args.adam_beta1,
+            adam_beta2=args.adam_beta2,
         ),
         data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
@@ -177,6 +180,27 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--micro_batch_size", type=int, default=16, help="Batch size for training."
+    )
+    parser.add_argument(
+        "--logging_dir", type=str, default="runs/logs", help="dir for logging."
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=3, help="epochs for training."
+    )
+    parser.add_argument(
+        "--lr", type=float, default=3e-4, help="learning rate"
+    )
+    parser.add_argument(
+        "--weight_decay", type=float, default=0.0, help="weight_decay for training."
+    )
+    parser.add_argument(
+        "--adam_beta1", type=float, default=0.9, help="adam_beta1 for training."
+    )
+    parser.add_argument(
+        "--adam_beta2", type=float, default=0.999, help="adam_beta2 for training."
+    )
+    parser.add_argument(
+        "--warmup_steps", type=int, default=100, help="adam_beta2 for training."
     )
     args = parser.parse_args()
     main(args)
