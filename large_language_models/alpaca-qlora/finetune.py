@@ -144,7 +144,7 @@ def main(args):
             eval_steps=200,
             save_steps=200,
             output_dir="lora-alpaca",
-            save_total_limit=6,
+            save_total_limit=10,
             load_best_model_at_end=True,
             weight_decay=args.weight_decay,
             adam_beta1=args.adam_beta1,
