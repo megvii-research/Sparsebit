@@ -10,7 +10,10 @@ class DataCache(object):
         self._data_cache = []
 
     def update(self, data):
-        self._data_cache.append(data)
+        if self.ch_axis != 0:
+            self._data_cache.append(data.transpose(self.ch_axis, 0))
+        else:
+            self._data_cache.append(data)
 
     def reset(self):
         self._data_cache = []
@@ -23,16 +26,42 @@ class DataCache(object):
         assert granularity in [
             Granularity.LAYERWISE,
             Granularity.CHANNELWISE,
-        ], "only layerwise or channelwise quantization are supported now!"
-        if granularity == Granularity.CHANNELWISE:
-            data = torch.cat(self._data_cache, dim=self.qdesc.ch_axis)
-            if self.qdesc.ch_axis != 0:
-                data = data.transpose(0, self.qdesc.ch_axis)
-            data = data.flatten(1)
-        elif granularity == Granularity.LAYERWISE:
-            data = torch.cat([d.reshape(-1) for d in self._data_cache], axis=0)
-        else:
-            raise NotImplementedError
+            Granularity.GROUPWISE,
+        ], "only layerwise, channelwise and groupwise quantization are supported now!"
+        if granularity == Granularity.LAYERWISE:
+            data = torch.cat([d.reshape(1, -1) for d in self._data_cache], axis=1)
+        elif granularity == Granularity.CHANNELWISE:
+            data = torch.cat(
+                [d.reshape(d.shape[0], -1) for d in self._data_cache], axis=1
+            )
+        elif granularity == Granularity.GROUPWISE:
+            if self.target == QuantTarget.FEATURE:  # feature group on channel dim
+                assert (
+                    self._data_cache[0].shape[0] <= self.group_size
+                    or self._data_cache[0].shape[0] % self.group_size == 0
+                ), "group size must be divided by channel num! got {} and {} instead".format(
+                    self.group_size, self._data_cache[0].shape[0]
+                )
+                group_num = max(self._data_cache[0].shape[0] // self.group_size, 1)
+                if group_num == 1:
+                    self.qdesc.set_group_size = self._data_cache[0].shape[0]
+                data = torch.cat(
+                    [d.reshape(group_num, -1) for d in self._data_cache], axis=1
+                )
+            else:  # weight group on ic dim
+                assert (
+                    self._data_cache[0].shape[1] <= self.group_size
+                    or self._data_cache[0].shape[1] % self.group_size == 0
+                ), "group size must be divided by ic num! got {} and {} instead".format(
+                    self.group_size, self._data_cache[0].shape[1]
+                )
+                group_num = max(self._data_cache[0].shape[1] // self.group_size, 1)
+                if group_num == 1:
+                    self.qdesc.set_group_size = self._data_cache[0].shape[1]
+                data = torch.cat(
+                    [d.reshape(d.shape[0] * group_num, -1) for d in self._data_cache],
+                    axis=1,
+                )
         return data
 
     def get_batch_size(self):
@@ -43,6 +72,18 @@ class DataCache(object):
     def get_data_cache(self):
         assert len(self._data_cache), "No data cached!"
         return self._data_cache
+
+    @property
+    def target(self):
+        return self.qdesc.target
+
+    @property
+    def group_size(self):
+        return self.qdesc.group_size
+
+    @property
+    def ch_axis(self):
+        return self.qdesc.ch_axis
 
 
 class Observer(nn.Module):
@@ -79,9 +120,17 @@ class Observer(nn.Module):
         return scale, zero_point
 
     @property
-    def is_perchannel(self):
-        return self.qdesc.is_perchannel
+    def granularity(self):
+        return self.qdesc.granularity
 
     @property
     def is_symmetric(self):
         return self.qdesc.is_symmetric
+
+    @property
+    def target(self):
+        return self.qdesc.target
+
+    @property
+    def group_size(self):
+        return self.qdesc.group_size

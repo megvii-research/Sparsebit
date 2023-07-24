@@ -1,7 +1,7 @@
 import torch
 from sparsebit.quantization.observers import Observer as BaseObserver
 from sparsebit.quantization.observers import register_observer
-from sparsebit.quantization.common import QuantTarget
+from sparsebit.quantization.common import Granularity, QuantTarget
 
 
 @register_observer
@@ -14,6 +14,9 @@ class Observer(BaseObserver):
             hasattr(config.OBSERVER, "MOVING_AVERAGE")
             and self.qdesc.target == QuantTarget.FEATURE
         ), "Moving_average observer only support feature observing!"
+        assert (
+            self.granularity == Granularity.LAYERWISE
+        ), "Moving_average observer only support layerwise quantization!"
         self.ema_ratio = config.OBSERVER.MOVING_AVERAGE.EMA_RATIO
 
     def calc_minmax(self):

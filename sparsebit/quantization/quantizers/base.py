@@ -115,8 +115,8 @@ class Quantizer(nn.Module, abc.ABC):
         return self.observer.ch_axis
 
     @property
-    def is_perchannel(self):
-        return self.qdesc.is_perchannel
+    def granularity(self):
+        return self.qdesc.granularity
 
     @property
     def is_symmetric(self):

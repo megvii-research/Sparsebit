@@ -14,13 +14,7 @@ class Observer(BaseObserver):
         self.alpha = config.OBSERVER.PERCENTILE.ALPHA
 
     def calc_minmax(self):
-
-        if self.is_perchannel:
-            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
-        else:
-            data = self.data_cache.get_data_for_calibration(
-                Granularity.LAYERWISE
-            ).reshape(1, -1)
+        data = self.data_cache.get_data_for_calibration(self.granularity)
         self.data_cache.reset()
         channel = data.shape[0]
 

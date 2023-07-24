@@ -1,5 +1,5 @@
 import torch
-from sparsebit.quantization.common import get_qscheme
+from sparsebit.quantization.common import get_qscheme, Granularity
 
 
 class QuantDescriptor:
@@ -8,26 +8,42 @@ class QuantDescriptor:
         self._target = cfg.TARGET[0]
         self._scheme = get_qscheme(cfg.QSCHEME)
         self._bit = cfg.QUANTIZER.BIT
+        self._group_size = cfg.QUANTIZER.GROUP_SIZE
+        if self._group_size != -1:
+            assert cfg.QSCHEME in ["per-group-symmetric", "per-group-affine"]
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
         self._ch_axis = self._set_channel_axis()
         self._bs_axis = self._set_batchsize_axis()
-        self.is_perchannel = (
-            self._scheme == torch.per_channel_symmetric
-            or self._scheme == torch.per_channel_affine
-        )
+        self.granularity = {
+            torch.per_channel_symmetric: Granularity.CHANNELWISE,
+            torch.per_channel_affine: Granularity.CHANNELWISE,
+            torch.per_tensor_symmetric: Granularity.LAYERWISE,
+            torch.per_tensor_affine: Granularity.LAYERWISE,
+            "per-group-symmetric": Granularity.GROUPWISE,
+            "per-group-affine": Granularity.GROUPWISE,
+        }[self._scheme]
         self.is_symmetric = (
             self._scheme == torch.per_channel_symmetric
             or self._scheme == torch.per_tensor_symmetric
+            or self._scheme == "per-group-symmetric"
         )
 
     def calc_qmin_qmax(self, bit, scheme):
-        if scheme in [torch.per_channel_symmetric, torch.per_tensor_symmetric]:
+        if scheme in [
+            torch.per_channel_symmetric,
+            torch.per_tensor_symmetric,
+            "per-group-symmetric",
+        ]:
             qmin = -(2 ** (bit - 1))
             qmax = 2 ** (bit - 1) - 1
             _type = "int{}".format(bit)
-        elif scheme in [torch.per_channel_affine, torch.per_tensor_affine]:
+        elif scheme in [
+            torch.per_channel_affine,
+            torch.per_tensor_affine,
+            "per-group-affine",
+        ]:
             qmin = 0
             qmax = 2**bit - 1
             _type = "uint{}".format(bit)
@@ -61,14 +77,19 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
+    def set_group_size(self, group_size):
+        self._group_size = group_size
+
     def set_symmetric(self, is_symmetric: bool):
         self.is_symmetric = is_symmetric
         self._scheme = {
-            (True, True): torch.per_channel_symmetric,
-            (True, False): torch.per_channel_affine,
-            (False, True): torch.per_tensor_symmetric,
-            (False, False): torch.per_tensor_affine,
-        }[(self.is_perchannel, self.is_symmetric)]
+            (Granularity.CHANNELWISE, True): torch.per_channel_symmetric,
+            (Granularity.CHANNELWISE, False): torch.per_channel_affine,
+            (Granularity.LAYERWISE, True): torch.per_tensor_symmetric,
+            (Granularity.LAYERWISE, False): torch.per_tensor_affine,
+            (Granularity.GROUPWISE, True): "per-group-symmetric",
+            (Granularity.GROUPWISE, False): "per-group-affine",
+        }[(self.granularity, self.is_symmetric)]
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(
             self._bit, self._scheme
         )
@@ -105,7 +126,11 @@ class QuantDescriptor:
     def bs_axis(self):
         return self._bs_axis
 
+    @property
+    def group_size(self):
+        return self._group_size
+
     def __repr__(self):
-        return self._type + "\t qmin: {}  qmax: {}, qscheme: {}".format(
-            self.qmin, self.qmax, self.scheme
+        return self._type + "\t qmin: {}  qmax: {}, qscheme: {}, group_size: {}".format(
+            self.qmin, self.qmax, self.scheme, self.group_size
         )

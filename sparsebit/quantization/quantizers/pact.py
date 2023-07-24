@@ -5,7 +5,7 @@ from torch.nn import functional as F
 
 from sparsebit.quantization.quantizers import Quantizer as BaseQuantizer
 from sparsebit.quantization.quantizers import register_quantizer
-from sparsebit.quantization.common import QuantTarget
+from sparsebit.quantization.common import QuantTarget, Granularity
 from .quant_tensor import STE
 
 
@@ -18,7 +18,9 @@ class Quantizer(BaseQuantizer):
         assert (
             self.qdesc.target == QuantTarget.FEATURE
         ), "PACT only support feature quantization"
-        assert not self.qdesc.is_perchannel, "PACT no yet supports per-channel"
+        assert (
+            not self.granularity == Granularity.LAYERWISE
+        ), "PACT only supports per-tensor now!"
         self.init_alpha_value = config.QUANTIZER.PACT.ALPHA_VALUE
 
     def calc_qparams(self):

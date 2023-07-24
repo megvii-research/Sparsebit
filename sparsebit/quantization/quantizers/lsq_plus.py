@@ -22,7 +22,7 @@ class Quantizer(BaseQuantizer):
         if self.fake_fused:
             return self.scale, self.zero_point
         if not self.init_params:
-            if self.is_perchannel:
+            if self.granularity == Granularity.CHANNELWISE:
                 x_oc = self.observer.data_cache.get_data_for_calibration(
                     Granularity.CHANNELWISE
                 )
@@ -39,7 +39,7 @@ class Quantizer(BaseQuantizer):
                     self._broadcast_qparams(scale.to(self.device))
                 )
                 self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))
-            else:
+            elif granularity == Granularity.LAYERWISE:
                 assert (
                     not self.is_symmetric
                 ), "LSQ+ only support per-tensor-affine quant for activation"
@@ -51,6 +51,8 @@ class Quantizer(BaseQuantizer):
                 self.zero_point = nn.Parameter(
                     self._broadcast_qparams(zero_point.to(self.device))
                 )
+            else:
+                raise NotImplementedError
             self.init_params = True
         return self.scale, self.zero_point
 
@@ -70,11 +72,13 @@ class Quantizer(BaseQuantizer):
         return scale, zero_point
 
     def _forward(self, x, scale, zero_point):
-        if self.is_perchannel:
+        if self.granularity == Granularity.CHANNELWISE:
             num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
             gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qdesc.qmax)
-        else:
+        elif self.granularity == Granularity.LAYERWISE:
             gs_ratio = 1.0 / math.sqrt(x.numel() * self.qdesc.qmax)
+        else:
+            raise NotImplementedError
         scale = gs_scaling.apply(scale, gs_ratio)
         if zero_point.requires_grad:
             zero_point = gs_scaling.apply(zero_point, gs_ratio)

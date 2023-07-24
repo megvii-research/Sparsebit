@@ -41,10 +41,12 @@ class Quantizer(BaseQuantizer):
                     "Found data less than 0, reset quantizer scheme as symmetric"
                 )
                 self.qdesc.set_symmetric(True)
-            if self.is_perchannel:
+            if self.granularity == Granularity.CHANNELWISE:
                 scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
-            else:
+            elif self.granularity == Granularity.LAYERWISE:
                 scale = 2 * x_oc.abs().mean() / math.sqrt(self.qdesc.qmax)
+            else:
+                raise NotImplementedError
             self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
             self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))
             self.init_params = True
@@ -66,11 +68,13 @@ class Quantizer(BaseQuantizer):
         return scale, zero_point
 
     def _forward(self, x, scale, zero_point):
-        if self.is_perchannel:
+        if self.granularity == Granularity.CHANNELWISE:
             num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
             gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qdesc.qmax)
-        else:
+        if self.granularity == Granularity.LAYERWISE:
             gs_ratio = 1.0 / math.sqrt(x.numel() * self.qdesc.qmax)
+        else:
+            raise NotImplementedError
         scale = gs_scaling.apply(scale, gs_ratio)
         x_dq = STE.apply(x, scale, zero_point, self.qdesc, self.backend)
         return x_dq
