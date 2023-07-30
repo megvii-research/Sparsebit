@@ -1,3 +1,6 @@
 [submodule "examples/quantization_aware_training/imagenet1k/deit/deit"]
 	path = examples/quantization_aware_training/imagenet1k/deit/deit
 	url = https://github.com/facebookresearch/deit.git
+[submodule "examples/post_training_quantization/coco2017/yolov5/yolov5"]
+	path = examples/post_training_quantization/coco2017/yolov5/yolov5
+	url = https://github.com/ultralytics/yolov5.git
