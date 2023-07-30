@@ -4,8 +4,8 @@ import random
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', type=str, required=True)
-parser.add_argument('--calib_size', type=int, default=128)
+parser.add_argument("--data_path", type=str, required=True)
+parser.add_argument("--calib_size", type=int, default=128)
 args = parser.parse_args()
 
 with open(os.path.join(args.data_path, "train2017.txt"), "r") as f:
