@@ -1,7 +1,7 @@
 ## Command
 ```
-python3 main.py --model_name yolov5n --data_path /PATH/TO/COCO
-python3 main.py --model_name yolov5s --data_path /PATH/TO/COCO
+python3 main.py --model_name yolov5n --qconfig_path qconfig.yaml --data_path /PATH/TO/COCO --checkpoint_path checkpoints/yolov5n.pth
+python3 main.py --model_name yolov5s --qconfig_path qconfig.yaml --data_path /PATH/TO/COCO --checkpoint_path checkpoints/yolov5s.pth
 ```
 
 ## Dataset
@@ -26,8 +26,11 @@ python3 main.py --model_name yolov5s --data_path /PATH/TO/COCO
   ```
 
 ## Pretraind model
-
-- Download float model:
+- create checkpoints dir:
+  ```
+  mkdir ./checkpoints
+  ```
+- Download float checkpoints:
     - [yolov5n](https://drive.google.com/file/d/1pcsVQHoHCZ4N0ZB8E2QfDFzCmKfSCOjz/view?usp=sharing)
     - [yolov5s](https://drive.google.com/file/d/1fsDtQtnmNfMM6n0CpslzTMca7xkiaWhq/view?usp=sharing)
 
