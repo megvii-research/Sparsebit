@@ -55,9 +55,9 @@ pip install -r yolov5/requirements.txt
   - Observer: MinMax
 
 |Model|qconfig|mAP50-95|mAP50|prec|recall|
-|-----|-----|-----|-----|
+|-----|-----|-----|-----|-----|-----|
 |YOLOv5n|float|27.7%|45.6%|57.5%|43.2%|
 |YOLOv5n|8w8f|27.2%|45.2%|58.1%|42.6%|
-|
+||
 |YOLOv5s|float|37.1%|56.6%|66.8%|52.1%|
 |YOLOv5s|8w8f|36.8%|56.4%|66.8%|52.0%|
