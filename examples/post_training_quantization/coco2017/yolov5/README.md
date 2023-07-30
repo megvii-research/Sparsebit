@@ -14,17 +14,22 @@ python3 main.py --model_name yolov5s --data_path /PATH/TO/COCO
     └── val2017
   └── annotations
   └── labels
+  └── train2017.txt
+  └── val2017.txt
   ```
 
 ## Calibration
 -  Random sample image paths for calibration:
 
+  ```
+  python3 random_sample_calib.py --data_path /PATH/TO/COCO
+  ```
 
 ## Pretraind model
 
 - Download float model:
-    - [yolov5n]()
-    - [yolov5s]()
+    - [yolov5n](https://drive.google.com/file/d/1pcsVQHoHCZ4N0ZB8E2QfDFzCmKfSCOjz/view?usp=sharing)
+    - [yolov5s](https://drive.google.com/file/d/1fsDtQtnmNfMM6n0CpslzTMca7xkiaWhq/view?usp=sharing)
 
 ## Requirements
 ```
@@ -48,8 +53,8 @@ pip install -r yolov5/requirements.txt
 
 |Model|qconfig|mAP50-95|mAP50|prec|recall|
 |-----|-----|-----|-----|
-|YOLOv5n|float|
+|YOLOv5n|float|27.7%|45.6%|57.5%|43.2%|
 |YOLOv5n|8w8f|27.2%|45.2%|58.1%|42.6%|
 |
-|YOLOv5s|float|
+|YOLOv5s|float|37.1%|56.6%|66.8%|52.1%|
 |YOLOv5s|8w8f|36.8%|56.4%|66.8%|52.0%|

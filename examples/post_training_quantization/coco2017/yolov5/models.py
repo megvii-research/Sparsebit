@@ -6,25 +6,12 @@ Usage:
     $ python models/yolo.py --cfg yolov5s.yaml
 """
 
-import argparse
 import contextlib
-import os
-import platform
-import re
-import sys
 from copy import deepcopy
-from pathlib import Path
 import torch
 import torch.nn as nn
 import warnings
 import math
-
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[1]  # YOLOv5 root directory
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-if platform.system() != 'Windows':
-    ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
     # Pad to 'same' shape outputs
@@ -39,15 +26,6 @@ def make_divisible(x, divisor):
     if isinstance(divisor, torch.Tensor):
         divisor = int(divisor.max())  # to int
     return math.ceil(x / divisor) * divisor
-
-# def check_anchor_order(m):
-#     # Check anchor order against stride order for YOLOv5 Detect() module m, and correct if necessary
-#     a = m.anchors.prod(-1).mean(-1).view(-1)  # mean anchor area per output layer
-#     da = a[-1] - a[0]  # delta a
-#     ds = m.stride[-1] - m.stride[0]  # delta s
-#     if da and (da.sign() != ds.sign()):  # same order
-#         print(f'{PREFIX}Reversing anchor order')
-#         m.anchors[:] = m.anchors.flip(0)
 
 class Conv(nn.Module):
     # Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)
@@ -291,17 +269,6 @@ class DetectionModel(nn.Module):
         self.model[19] = nn.Identity()
         self.model[22] = nn.Identity()
 
-    # def _apply(self, fn):
-    #     # Apply to(), cpu(), cuda(), half() to model tensors that are not parameters or registered buffers
-    #     self = super()._apply(fn)
-    #     m = self.model[-1]  # Detect()
-    #     if isinstance(m, Detect):
-    #         m.stride = fn(m.stride)
-    #         m.grid = list(map(fn, m.grid))
-    #         if isinstance(m.anchor_grid, list):
-    #             m.anchor_grid = list(map(fn, m.anchor_grid))
-    #     return self
-
     def forward(self, x):
         x1, x2, x3 = self.model4quant(x)
         y1, x1 = self.detect_head1(x1)
@@ -313,7 +280,7 @@ class DetectionModel(nn.Module):
 
 
 
-def yolov5n(pretrain_path=None, model_path=None):
+def yolov5n(checkpoint_path=None):
     cfg = {
         "nc": 80,
         "depth_multiple": 0.33,
@@ -355,8 +322,8 @@ def yolov5n(pretrain_path=None, model_path=None):
         ]
     }
     model = DetectionModel(cfg)
-    if model_path is not None:
-        state_dict = torch.load(model_path, map_location="cpu")
+    if checkpoint_path is not None:
+        state_dict = torch.load(checkpoint_path, map_location="cpu")
         new_state_dict = {}
         for key, val in state_dict.items():
             key=key.replace("model.24.m.0", "model.24")
@@ -367,7 +334,7 @@ def yolov5n(pretrain_path=None, model_path=None):
         model.model4quant.load_state_dict(new_state_dict)
     return model
 
-def yolov5s(pretrain_path=None, model_path=None):
+def yolov5s(checkpoint_path=None):
     cfg = {
         "nc": 80,
         "depth_multiple": 0.33,
@@ -409,8 +376,8 @@ def yolov5s(pretrain_path=None, model_path=None):
         ]
     }
     model = DetectionModel(cfg)
-    if model_path is not None:
-        state_dict = torch.load(model_path, map_location="cpu")
+    if checkpoint_path is not None:
+        state_dict = torch.load(checkpoint_path, map_location="cpu")
         new_state_dict = {}
         for key, val in state_dict.items():
             key = "model."+key
