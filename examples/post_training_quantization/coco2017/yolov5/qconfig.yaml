@@ -1,0 +1,18 @@
+BACKEND: virtual
+SCHEDULE:
+  FUSE_BN: True
+W:
+  QSCHEME: per-channel-symmetric
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MINMAX
+A:
+  QSCHEME: per-tensor-affine
+  QUANTIZER:
+    TYPE: uniform
+    BIT: 8
+  OBSERVER:
+    TYPE: MINMAX
+    LAYOUT: NCHW
