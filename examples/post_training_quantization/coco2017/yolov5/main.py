@@ -49,8 +49,9 @@ from yolov5.utils.metrics import ap_per_class, box_iou
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
+
 def set_seed(seed):
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -58,6 +59,7 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.enabled = False
+
 
 def save_one_txt(predn, save_conf, shape, file):
     # Save one txt result
