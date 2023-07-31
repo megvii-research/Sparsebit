@@ -5,6 +5,7 @@ from enum import Enum
 class Granularity(Enum):
     LAYERWISE = 0
     CHANNELWISE = 1
+    GROUPWISE = 2
 
 
 class QuantTarget(Enum):
@@ -44,6 +45,10 @@ def get_qscheme(qscheme):
         return torch.per_channel_symmetric
     if qscheme == "per-channel-affine":
         return torch.per_channel_affine
+    if qscheme == "per-group-symmetric":
+        return "per-group-symmetric"
+    if qscheme == "per-group-affine":
+        return "per-group-affine"
     raise TypeError(
         "only support a qscheme equals to per-[tensor/channel]-[affine/symmetric] , not {}".format(
             qscheme

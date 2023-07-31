@@ -63,16 +63,18 @@ class Observer(BaseObserver):
         self.gaus_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
 
     def calc_laplace_minmax(self):
-        if self.is_perchannel:
-            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
+        data = self.data_cache.get_data_for_calibration(self.granularity)
+        if self.granularity in [Granularity.CHANNELWISE, Granularity.GROUPWISE]:
             b = torch.mean(torch.abs(data - data.mean(1).unsqueeze(1)), dim=1)
-        else:
-            data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
+        elif self.granularity == Granularity.LAYERWISE:
             b = torch.mean(torch.abs(data - data.mean()))
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         is_half_range = data.min() >= 0
         if (
-            self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
+            self.qdesc.scheme
+            in [torch.per_channel_affine, torch.per_tensor_affine, "per-group-affine"]
             and is_half_range
         ):
             max_val = self.alpha_laplace_positive[self.qdesc.bit] * b
@@ -85,25 +87,26 @@ class Observer(BaseObserver):
     def calc_gaus_minmax(self):
         if self.qdesc.target == QuantTarget.FEATURE:
             batch_size = self.data_cache.get_batch_size()
-        if self.is_perchannel:
-            data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
+        data = self.data_cache.get_data_for_calibration(self.granularity)
+        if self.granularity in [Granularity.CHANNELWISE, Granularity.GROUPWISE]:
             max_val = data.max(axis=1).values
             min_val = data.min(axis=1).values
-        else:
-            data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
+        elif Granularity.LAYERWISE:
             max_val = data.max()
             min_val = data.min()
-            self.data_cache.get_batch_size
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         is_half_range = data.min() >= 0
-        num_elements = data.numel()
+        num_elements = data[0].numel()
         if self.qdesc.target == QuantTarget.FEATURE:
             num_elements /= batch_size
         std = ((max_val - min_val) * self.gaus_const) / (
             (2 * math.log(num_elements)) ** 0.5
         )
         if (
-            self.qdesc.scheme in [torch.per_channel_affine, torch.per_tensor_affine]
+            self.qdesc.scheme
+            in [torch.per_channel_affine, torch.per_tensor_affine, "per-group-affine"]
             and is_half_range
         ):
             max_val = self.alpha_gaus_positive[self.qdesc.bit] * std
