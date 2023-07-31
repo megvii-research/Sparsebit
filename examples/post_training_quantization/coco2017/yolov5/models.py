@@ -297,10 +297,10 @@ class ModelForQuant(nn.Module):
 class DetectionModel(nn.Module):
     # YOLOv5 detection model
     def __init__(
-        self, cfg="yolov5s.yaml", ch=3, nc=None, anchors=None
+        self, cfg, ch=3, nc=None, anchors=None
     ):  # model, input channels, number of classes
         super().__init__()
-        self.model4quant = ModelForQuant(cfg, ch, nc, anchors)
+        self.model = ModelForQuant(cfg, ch, nc, anchors)
         self.yaml = cfg  # model dict
         self.names = [str(i) for i in range(self.yaml["nc"])]  # default names
 
@@ -308,24 +308,8 @@ class DetectionModel(nn.Module):
         self.detect_head2 = Detect(self.yaml["nc"], [30, 61, 62, 45, 59, 119], 16)
         self.detect_head3 = Detect(self.yaml["nc"], [116, 90, 156, 198, 373, 326], 32)
 
-        # Define model
-        ch = self.yaml["ch"] = self.yaml.get("ch", ch)  # input channels
-        if nc and nc != self.yaml["nc"]:
-            print(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
-            self.yaml["nc"] = nc  # override yaml value
-        if anchors:
-            print(f"Overriding model.yaml anchors with anchors={anchors}")
-            self.yaml["anchors"] = round(anchors)  # override yaml value
-        self.model, self.save = parse_model(
-            deepcopy(self.yaml), ch=[ch]
-        )  # model, savelist
-        self.model[12] = nn.Identity()
-        self.model[16] = nn.Identity()
-        self.model[19] = nn.Identity()
-        self.model[22] = nn.Identity()
-
     def forward(self, x):
-        x1, x2, x3 = self.model4quant(x)
+        x1, x2, x3 = self.model(x)
         y1, x1 = self.detect_head1(x1)
         y2, x2 = self.detect_head2(x2)
         y3, x3 = self.detect_head3(x3)
@@ -381,7 +365,7 @@ def yolov5n(checkpoint_path=None):
             key = key.replace("model.24.m.2", "model.26")
             if key != "model.24.anchors":
                 new_state_dict[key] = val
-        model.model4quant.load_state_dict(new_state_dict)
+        model.model.load_state_dict(new_state_dict)
     return model
 
 
@@ -433,5 +417,5 @@ def yolov5s(checkpoint_path=None):
             key = key.replace("model.24.m.2", "model.26")
             if key != "model.24.anchors":
                 new_state_dict[key] = val
-        model.model4quant.load_state_dict(new_state_dict)
+        model.model.load_state_dict(new_state_dict)
     return model

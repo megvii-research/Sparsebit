@@ -6,7 +6,10 @@ import random
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_path", type=str, required=True)
 parser.add_argument("--calib_size", type=int, default=128)
+parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
+
+random.seed(args.seed)
 
 with open(os.path.join(args.data_path, "train2017.txt"), "r") as f:
     img_paths = f.readlines()

@@ -20,7 +20,6 @@ Usage - formats:
 """
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
@@ -50,6 +49,15 @@ from yolov5.utils.metrics import ap_per_class, box_iou
 
 from sparsebit.quantization import QuantModel, parse_qconfig
 
+def set_seed(seed):
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.enabled = False
 
 def save_one_txt(predn, save_conf, shape, file):
     # Save one txt result
@@ -112,6 +120,7 @@ def process_batch(detections, labels, iouv):
 
 @torch.no_grad()
 def main(args):
+    set_seed(args.seed)
     if args.model_name == "yolov5n":
         model = yolov5n(checkpoint_path=args.checkpoint_path)
     elif args.model_name == "yolov5s":
@@ -120,9 +129,9 @@ def main(args):
         raise NotImplementedError
 
     qconfig = parse_qconfig(args.qconfig_path)
-    qmodel = QuantModel(model.model4quant, config=qconfig)
+    qmodel = QuantModel(model.model, config=qconfig)
 
-    setattr(model, "model4quant", qmodel)
+    setattr(model, "model", qmodel)
     imgsz = 640
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -274,6 +283,7 @@ def parse_args():
     parser.add_argument("--qconfig_path", type=str, default="./qconfig.yaml")
     parser.add_argument("--data_path", type=str, required=True)
     parser.add_argument("--checkpoint_path", type=str, required=True)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--workers", type=int, default=8, help="dataloader workers")
     parser.add_argument(
         "--conf_thres", type=float, default=0.001, help="confidence threshold"
