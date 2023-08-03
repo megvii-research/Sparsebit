@@ -1,5 +1,6 @@
 import copy
 import torch
+import torch.nn as nn
 from functools import partial
 
 from sparsebit.quantization.modules import QuantOpr
@@ -9,8 +10,9 @@ from .tensor_wrapper import to_cpu, to_device, to_detach
 
 
 class CalibrationRunner(object):
-    def __init__(self, model):
+    def __init__(self, model, bias_correction=False):
         self.model = fx_symbolic_trace(model)
+        self.bias_correction = bias_correction
 
     def prepare_calibration(self):
         input_names_cache = set(
@@ -96,6 +98,9 @@ class CalibrationRunner(object):
                 )
                 self.builder.qstorage.set_output(node.target, quant_outputs)
                 self.builder.qstorage.finish_node(node.target)
+            # bias correction
+            if self.bias_correction:
+                self.run_bias_correction(batch_num, node, device)
             # pop the outputs of nodes whose out-degree=0
             self.builder.storage.finish_node(node.target)
 
@@ -158,3 +163,49 @@ class CalibrationRunner(object):
         if isinstance(module, QuantOpr):
             module.set_quant(w_quant=False, a_quant=False)
         return outputs
+
+    def run_bias_correction(self, batch_num, node, device):
+        module = self.model
+        for n in node.target.split("."):
+            module = getattr(module, n)
+        if isinstance(module, QuantOpr) and getattr(module, "weight_quantizer", None):
+            for inp_node in node.all_input_nodes:
+                inp_tensors = self.builder.storage.get_output(inp_node.target)
+                float_outputs = torch.Tensor([])
+                quant_outputs = torch.Tensor([])
+                float_outputs_cached = self.builder.storage.get_output(node.target)
+                for idx in range(batch_num):
+                    inp_tensor = inp_tensors[idx].cuda()
+                    with torch.no_grad():
+                        float_output = (
+                            float_outputs_cached[idx]
+                            .transpose(module.input_quantizer.qdesc._ch_axis, 0)
+                            .flatten(1)
+                        )
+                        module.set_quant(True, False)
+                        quant_output = (
+                            module(inp_tensor)
+                            .cpu()
+                            .transpose(module.input_quantizer.qdesc._ch_axis, 0)
+                            .flatten(1)
+                        )
+                        module.set_quant(False, False)
+                        float_outputs = torch.cat(
+                            (float_outputs, float_output.detach()), 1
+                        )
+                        quant_outputs = torch.cat(
+                            (quant_outputs, quant_output.detach()), 1
+                        )
+                float_output_mean = float_outputs.mean(-1)
+                quant_output_mean = quant_outputs.mean(-1)
+                bias = quant_output_mean - float_output_mean
+                if module.bias is None:
+                    module.bias = nn.Parameter(
+                        data=torch.zeros(
+                            module.weight.size(0),
+                            dtype=torch.float32,
+                            device=device,
+                        ),
+                        requires_grad=False,
+                    )
+                module.bias.data = module.bias.data - bias.cuda()

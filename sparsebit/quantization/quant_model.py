@@ -185,7 +185,9 @@ class QuantModel(nn.Module):
         from sparsebit.quantization.tools.calibration import CalibrationRunner
 
         self.eval()
-        self.calibration_runner = CalibrationRunner(self.model)
+        self.calibration_runner = CalibrationRunner(
+            self.model, self.cfg.SCHEDULE.BIAS_CORRECTION
+        )
         self.calibration_runner.prepare_calibration()
 
     def calc_qparams(self, asym=False, w_quant=False, a_quant=False):

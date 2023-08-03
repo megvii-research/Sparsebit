@@ -15,4 +15,8 @@ A:
     BIT: 8
   OBSERVER:
     TYPE: MINMAX
-    LAYOUT: NCHW
+    LAYOUT: NLC
+  SPECIFIC: [{
+    "patch_embed_proj": ["OBSERVER.LAYOUT", "NCHW"],
+    "head": ["OBSERVER.LAYOUT", "NCHW"],
+  }]

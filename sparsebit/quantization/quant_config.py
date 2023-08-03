@@ -9,6 +9,7 @@ _C.SKIP_TRACE_MODULES = []  # a list of modules_name
 
 _C.SCHEDULE = CN()
 _C.SCHEDULE.FUSE_BN = False  # use ``with torch.no_grad()`` if it's enabled
+_C.SCHEDULE.BIAS_CORRECTION = False
 _C.SCHEDULE.BN_TUNING = False
 _C.SCHEDULE.DISABLE_UNNECESSARY_QUANT = True
 
