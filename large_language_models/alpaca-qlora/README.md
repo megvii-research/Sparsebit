@@ -23,7 +23,7 @@
 - convert the weight dtype of quant backbone from torch.int32 to torch.int8: `python3 convert_pack32topack8.py /path/to/quant-backbone-pack32 /path/to/output-quant-backbone-pack8`
 
 #### Training LLaMA-7b on single 2080ti
-- `python3 finetune.py`
+- `python3 finetune.py decapoda-research/llama-7b-hf --int4_backbone /path/to/llama7b-pack8`
 
 #### Training LLaMA-65b on 8*2080ti with Pipeline Parallelism(PP)
 - `python3 finetune_pp.py decapoda-research/llama-65b-hf /path/to/llama65b-pack8 --chunks 16 --pp_checkpoint except_last --micro_batch_size 32`

@@ -43,27 +43,11 @@ class Quant4Matmul(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_y):
-        # ic_scales = ctx.backward_ic_scales
-        # ic_zeros = ctx.backward_ic_zeros
         qweight, scales, zeros, ic_scales, ic_zeros = ctx.saved_tensors
-        ic_shapes = [1] * (len(ctx.in_shapes) - 1) + [ctx.in_shapes[-1]]
-        assert ic_scales is not None and ic_zeros is not None
-        # scales = ctx.scales
-        # zeros = ctx.zeros
-        # qweight = ctx.qweight
         grad_x = torch.zeros(ctx.in_shapes, dtype=grad_y.dtype, device=grad_y.device)
-        grad_y, inv_grad_scales = cuda_kernel.quant_pertoken(grad_y)
-        qweight8_ic_t = cuda_kernel.unpack_backward(
-            qweight, scales, zeros, ic_scales, ic_zeros, False
-        )
-        cuda_kernel.int8gemm(
-            grad_y.view(-1, grad_y.size(-1)),
-            qweight8_ic_t,
-            grad_x.view(-1, grad_x.size(-1)),
-            1.0,
-            0.0,
-        )
-        grad_x *= ic_scales.view(ic_shapes)
-        grad_x -= torch.sum(grad_y, dim=-1, keepdim=True) * ic_zeros.view(ic_shapes)
-        grad_x *= inv_grad_scales.unsqueeze(-1)
+        fp16_weight = cuda_kernel.unpack(
+            qweight, (zeros / scales).round().char(), True
+        ).to(grad_y.dtype)
+        fp16_weight = fp16_weight * scales
+        grad_x = torch.matmul(grad_y, fp16_weight)
         return grad_x, None, None, None, None, None, None, None
