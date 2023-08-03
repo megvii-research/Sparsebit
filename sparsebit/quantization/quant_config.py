@@ -47,6 +47,10 @@ _C.A.QADD = CN()
 _C.A.QADD.ENABLE_QUANT = False
 _C.A.SPECIFIC = []
 
+_C.REGULARIZER = CN()
+_C.REGULARIZER.ENABLE = False
+_C.REGULARIZER.TYPE = ""
+
 
 def parse_qconfig(cfg_file):
     qconfig = _parse_config(cfg_file, default_cfg=_C)
