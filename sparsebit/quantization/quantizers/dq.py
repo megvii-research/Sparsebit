@@ -1,0 +1,105 @@
+import math
+import torch
+import torch.nn as nn
+from torch.nn import functional as F
+import warnings
+
+from sparsebit.quantization.quantizers import Quantizer as BaseQuantizer
+from sparsebit.quantization.quantizers import register_quantizer
+from sparsebit.quantization.common import Granularity
+
+
+class gs_scaling(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, ratio):
+        ctx.ratio = ratio
+        return x
+
+    @staticmethod
+    def backward(ctx, grad):
+        return grad * ctx.ratio, None
+
+class STE(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        x_int = x.round()
+        return x_int
+
+    @staticmethod
+    def backward(ctx, grad):
+        return grad
+
+
+@register_quantizer
+class Quantizer(BaseQuantizer):
+    TYPE = "DQ"
+
+    def __init__(self, config):
+        super(Quantizer, self).__init__(config)
+        self.init_params = False  # LSQ需要基于calibration做初始化
+
+    def calc_qparams(self):
+        if self.fake_fused:
+            return self.scale, self.zero_point
+        if not self.init_params:
+            x_oc = self.observer.data_cache.get_data_for_calibration(
+                Granularity.CHANNELWISE
+            )
+            if x_oc.min() < 0 and not self.qdesc.is_symmetric:
+                warnings.warn(
+                    "Found data less than 0, reset quantizer scheme as symmetric"
+                )
+                self.qdesc.set_symmetric(True)
+            if self.is_perchannel:
+                scale = 2 * x_oc.abs().mean(axis=1) / math.sqrt(self.qdesc.qmax)
+            else:
+                scale = 2 * x_oc.abs().mean() / math.sqrt(self.qdesc.qmax)
+            self.scale = nn.Parameter(self._broadcast_qparams(scale.to(self.device)))
+            self.zero_point = self._broadcast_qparams(torch.zeros_like(self.scale))
+            self.qmax = nn.Parameter(torch.tensor(float(self.qdesc.qmax)).to(self.device))
+            if not self.qdesc.is_symmetric:
+                self.qmin = torch.tensor(0).to(self.device)
+            self.init_params = True
+        return self.scale, self.zero_point
+
+    def _qparams_preprocess(self, x):
+        if self.export_onnx:
+            return torch.tensor(
+                self.scale.abs().detach().cpu().numpy(), device=self.device
+            ), torch.tensor(
+                torch.clamp(self.zero_point, self.qdesc.qmin, self.qmax)
+                .detach()
+                .cpu()
+                .numpy(),
+                device=self.device,
+            )
+        scale = self.scale.abs()
+        zero_point = torch.clamp(self.zero_point, self.qdesc.qmin, self.qdesc.qmax)
+        return scale, zero_point
+
+    def fix_bit(self):
+        with torch.no_grad():
+            if self.qdesc.is_symmetric:
+                cur_bit = torch.sqrt(2*self.qmax+2)
+                new_bit = cur_bit.round()
+                new_qmax = 2**(new_bit-1)-1
+            else:
+                cur_bit = torch.sqrt(self.qmax+1)
+                new_bit = cur_bit.round()
+                new_qmax = 2**(new_bit)-1
+
+            self.qmax.data.copy_(new_qmax)
+            self.qmax.requires_grad = False
+
+    def _forward(self, x, scale, zero_point):
+        if self.is_perchannel:
+            num_perchannel = x.numel() / x.shape[self.qdesc.ch_axis]
+            gs_ratio = 1.0 / math.sqrt(num_perchannel * self.qmax.item())
+        else:
+            gs_ratio = 1.0 / math.sqrt(x.numel() * self.qmax.item())
+        scale = gs_scaling.apply(scale, gs_ratio)
+        if self.qdesc.is_symmetric:
+            x_dq = STE.apply((x / scale).clamp(-self.qmax-1, self.qmax)) * scale
+        else:
+            x_dq = STE.apply((x / scale).clamp(self.qmin, self.qmax)) * scale
+        return x_dq

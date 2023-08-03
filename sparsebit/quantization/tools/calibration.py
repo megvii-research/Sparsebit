@@ -157,4 +157,5 @@ class CalibrationRunner(object):
                 outputs.append(to_cpu(module(*args, **kwargs)))
         if isinstance(module, QuantOpr):
             module.set_quant(w_quant=False, a_quant=False)
+            module.output_shape = outputs[0].shape
         return outputs
