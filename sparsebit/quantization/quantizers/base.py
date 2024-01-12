@@ -89,7 +89,7 @@ class Quantizer(nn.Module, abc.ABC):
     def enable_export_onnx(self):
         self.export_onnx = True
         # round zero point for onnx export
-        self.zero_point = self.zero_point.round()
+        self.zero_point.data = self.zero_point.data.round()
 
     def disable_export_onnx(self):
         self.export_onnx = False
